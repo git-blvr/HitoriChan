@@ -6,11 +6,6 @@ const userSchema = new Schema({
     required: true,
   },
 
-  guildId: {
-    type: String,
-    required: true,
-  },
-
   balance: {
       type: Number,
       default: 0,
@@ -24,7 +19,6 @@ const userSchema = new Schema({
   lastDaily: {
     type: Date,
     required: true,
-
   }
 });
 

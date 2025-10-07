@@ -1,5 +1,5 @@
 
-const { Client, Interaction, ApplicationCommandOptionType } = require("discord.js");
+const { Client, Interaction, ApplicationCommandOptionType, EmbedBuilder } = require("discord.js");
 const User = require("../../models/user");
 const EmojiHandler = require("../../utils/emojiHandler");
 
@@ -71,13 +71,11 @@ module.exports = {
     // Get user's balance
     let userProfile = await User.findOne({
       userId: memberId,
-      guildId: guild.id,
     });
 
     if (!userProfile) {
       userProfile = new User({
         userId: memberId,
-        guildId: guild.id,
         balance: 0,
         lastDaily: new Date()
       });
@@ -140,8 +138,7 @@ module.exports = {
     const emojiHandler = new EmojiHandler(client);
 
     // Check for booster role
-    const boosterRoleId = '1381497449147007076';
-    const hasBoosterRole = interaction.member.roles.cache.has(boosterRoleId);
+    const hasBoosterRole = !!member.premiumSince; // that "!!" converts the output to boolean
     const boosterMultiplier = hasBoosterRole ? 2.0 : 1.50;
 
     if (isWin) {
@@ -149,18 +146,29 @@ module.exports = {
       userProfile.balance += winAmount;
       await userProfile.save();
 
-      const boosterText = hasBoosterRole ? " *(Booster bonus applied!)*" : "";
-      const winContent = 
+      const boosterText = hasBoosterRole ? " *(Booster bonus applied!)*" : "Boost the server for 300% BONUS!";
+      const winContent = new EmbedBuilder()
+      .setTitle("HITORI CHAN - COINFLIP")
+      .addFields(
+        { name: "You chose:", value: `${choice}`, inline: true },
+        { name: "Your bet:", value:`${amount}`, inline: true },
+        { name: "The result:", value:`It landed on ${result}!`, inline: true },
+
+        { name: "The reward:", value: `+${winAmount}` },
+        { name: "BONUS COINS:", value: `${boosterText}` + ' | ' }
+      )
+      .setColor('#fad000')
+      /*
         `🪙 **Coinflip Result: ${result.toUpperCase()}** 🪙\n\n` +
         `🎉 **You won!** You chose **${choice}** and it landed on **${result}**!\n\n` +
         `💰 **+${winAmount}** coins${boosterText}\n` +
         `💵 **New balance:** ${userProfile.balance} coins`;
-
+      */
       let winMessage;
       if (isSlashCommand) {
-        winMessage = await interaction.editReply(winContent);
+        winMessage = await interaction.editReply( { embeds: [ winContent ] } );
       } else {
-        winMessage = await interaction.reply(winContent);
+        winMessage = await interaction.reply( { embeds: [ winContent ] } );
       }
 
       // React with celebration emojis

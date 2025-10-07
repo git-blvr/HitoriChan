@@ -21,7 +21,7 @@ module.exports = {
 
     await interaction.deferReply();
 
-    const userDoc = await User.findOne({ userId: targetUserId, guildId: interaction.guild.id });
+    const userDoc = await User.findOne({ userId: targetUserId });
 
     if (!userDoc) {
       await interaction.editReply(`That user doesn't exist.`);

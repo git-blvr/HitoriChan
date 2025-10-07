@@ -13,7 +13,7 @@ const buildCommandsMeta = () => {
   }
 
   const rawCommands = getLocalCommands();
-  const commandsMeta = { economy: [], fun: [], misc: [], moderation: [] };
+  const commandsMeta = { economy: [], fun: [], misc: [], moderation: [], voice: [], prefix: [] };
 
   const buildUsage = (cmd) => {
     if (!cmd.options?.length) return `/${cmd.name || 'unknown'}`;

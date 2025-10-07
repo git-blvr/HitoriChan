@@ -30,7 +30,6 @@ module.exports = {
 
       const query = {
         userId: interaction.member.id,
-        guildId: interaction.guild.id,
       };
 
       let user = await User.findOne(query);
@@ -60,8 +59,7 @@ module.exports = {
       }
 
       const dailyAmount = getDailyAmount();
-      const boosterRoleId = '1381497449147007076';
-      const hasBoosterRole = interaction.member.roles.cache.has(boosterRoleId);
+      const hasBoosterRole = !!member.premiumSince;
       
       let bonusAmount = 0;
       let totalAmount = dailyAmount;

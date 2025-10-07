@@ -7,7 +7,7 @@ module.exports = async (client) => {
   const localCommands = getLocalCommands();
 
   try {
-    const applicationCommands = await getApplicationCommands(client, testServer);
+    const applicationCommands = await getApplicationCommands(client);
 
     // Helper to format options and their choices (handles nested subcommands)
     const formatOption = (option) => {

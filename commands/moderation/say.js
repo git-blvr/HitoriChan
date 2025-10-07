@@ -11,18 +11,21 @@ module.exports = {
   options: [
     {
       name: "message",
+      value: "message",
       description: "The message you want the bot to say",
       required: false,
       type: ApplicationCommandOptionType.String,
     },
     {
       name: "channel",
+      value: "channel",
       description: "Channel to send the message to (optional)",
       required: false,
       type: ApplicationCommandOptionType.Channel,
     },
     {
       name: "message_id",
+      value: "id",
       description: "The ID of a message to copy",
       required: false,
       type: ApplicationCommandOptionType.String,

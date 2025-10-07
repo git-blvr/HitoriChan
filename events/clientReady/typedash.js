@@ -1,18 +1,18 @@
 const User = require('../../models/user');
 
 const words = [
-    "hitori gotoh", "guitar", "rock", "nijika", "ikuyo kita",
-    "hatsune miku", "kasane teto", "ryo yamada",
-    "social axiety", "i hate job", "sata andagi"
+    "Hitori", "Ikuyo", "Ryo", "Nijika", "Starry", "Kessoku", "Guitar", "Bass", "Vocalist", "BLVR"
 ];
 
 let messageCounter = 0;
-let messageThreshold = getRandomThreshold(); // random 50–100
+let messageThreshold = getRandomThreshold();
 let isRoundActive = false;
 
 function getRandomThreshold() {
-    return Math.floor(Math.random() * (100 - 10 + 1)) + 10; // 50–100
+    return Math.floor(Math.random() * (100 - 10 + 1)) + 10; 
 }
+
+console.log(`${messageThreshold} left to start the game!`)
 
 async function startRound(channel) {
     isRoundActive = true;
@@ -37,12 +37,16 @@ async function startRound(channel) {
                 lastDaily: new Date(),
             });
         }
-
-        const reward = Math.floor(Math.random() * (10000 - 1000 + 1)) + 1000;
+                                                                                    
+        const reward = Math.floor(Math.random() * (1000 - 250 + 1)) + 250;
         userDoc.balance += reward;
         await userDoc.save();
-
-        msg.reply(`🎉 Congrats ${msg.author}, you earned **${reward}** coins!`);
+        
+        if (randomWord === "BLVR") {
+            msg.reply(`🎉 Congrats ${msg.author}, you earned 1 coin...\n-# just kidding, you won **${reward}**`)
+        } else {
+            msg.reply(`🎉 Congrats ${msg.author}, you earned **${reward}** coins!`);
+        }
     });
 
     collector.on('end', collected => {
