@@ -59,7 +59,7 @@ module.exports = {
       }
 
       const dailyAmount = getDailyAmount();
-      const hasBoosterRole = !!member.premiumSince;
+      const hasBoosterRole = !!interaction.member.premiumSince;
       
       let bonusAmount = 0;
       let totalAmount = dailyAmount;
@@ -108,7 +108,7 @@ module.exports = {
       // Delete the message after 30 seconds
       setTimeout(() => {
         reply.delete().catch(() => {});
-      }, 30000);
+      }, 30000);2
     } catch (error) {
       console.log(`Error with /daily: ${error}`);
     }

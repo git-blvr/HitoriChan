@@ -146,7 +146,7 @@ module.exports = {
       userProfile.balance += winAmount;
       await userProfile.save();
 
-      const boosterText = hasBoosterRole ? " *(Booster bonus applied!)*" : "Boost the server for 300% BONUS!";
+      const boosterText = hasBoosterRole ? "| *(Booster bonus applied!)*" : "Boost the server for 300% BONUS!";
       const winContent = new EmbedBuilder()
       .setTitle("HITORI CHAN - COINFLIP")
       .addFields(
@@ -155,7 +155,7 @@ module.exports = {
         { name: "The result:", value:`It landed on ${result}!`, inline: true },
 
         { name: "The reward:", value: `+${winAmount}` },
-        { name: "BONUS COINS:", value: `${boosterText}` + ' | ' }
+        { name: "BONUS COINS:", value: `${boosterText}`}
       )
       .setColor('#fad000')
       /*

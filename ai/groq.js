@@ -2,7 +2,10 @@ const fs = require("fs");
 const path = require("path");
 const fetch = (...args) => import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
-const GROQ_API_KEY = process.env.GROQ_API; // load from .env
+// Support both correct and legacy/typo env var names for backwards compatibility.
+// (The expected env var is GROQ_API; some setups may have used QROQ_API by mistake.)
+const GROQ_API_KEY = process.env.GROQ_API;
+
 const MODEL = "openai/gpt-oss-120b"; // or any model Groq provides
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
@@ -38,6 +41,11 @@ Make your response short and don't write long explanations.
  * @returns {Promise<string>} - reply from Groq model
  */
 async function queryGroq(prompt) {
+  if (!GROQ_API_KEY) {
+    console.error("Missing Groq API key: set GROQ_API in your environment (or QROQ_API for legacy config)");
+    return "⚠️ AI not configured. Please set GROQ_API.";
+  }
+
   try {
     const res = await fetch(GROQ_API_URL, {
       method: "POST",
