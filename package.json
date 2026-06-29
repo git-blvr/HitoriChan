@@ -1,45 +1,31 @@
 {
-  "name": "hitorichan-bot",
-  "version": "2.0.0",
-  "description": "Bocchi The Rock Discord Bot - Optimized Version",
+  "name": "hitorichan",
+  "version": "26.0.1",
+  "description": "BocchiChan is a fan-made Bocchi The Rock Discord bot! **Recent Updates** 1. Ai Enabled 2. Message history DataBase",
   "main": "index.js",
   "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "dev": "nodemon --max-old-space-size=512 index.js",
-    "lint": "echo 'Linting not configured'",
-    "test": "echo 'Tests not configured'"
+    "dev": "nodemon index.js"
   },
-  "keywords": [
-    "discord",
-    "bot",
-    "bocchi",
-    "anime"
-  ],
-  "author": "HitoriChan Dev",
-  "license": "MIT",
-  "engines": {
-    "node": ">=18.0.0"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/git-blvr/HitoriChan.git"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/git-blvr/HitoriChan/issues"
+  },
+  "homepage": "https://github.com/git-blvr/HitoriChan#readme",
   "dependencies": {
-    "@discordjs/voice": "^0.19.0",
-    "@types/node": "^22.18.6",
-    "canvacord": "^6.0.3",
-    "discord.js": "^14.22.1",
-    "dotenv": "^17.2.2",
-    "forever": "^1.0.1",
+    "discord.js": "^14.26.4",
+    "dotenv": "^17.4.2",
     "fs": "^0.0.1-security",
-    "mongodb": "^6.20.0",
-    "mongoose": "^8.18.1",
-    "ms": "^2.1.3",
-    "node-fetch": "^3.3.2",
-    "openai": "^5.22.0",
-    "pretty-ms": "^9.3.0",
-    "spotify-url-info": "^3.2.18",
-    "tslib": "^2.8.1",
-    "yt-search": "^2.13.1",
-    "ytdl-core": "^4.11.5"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.10"
+    "mongoose": "^9.7.3",
+    "path": "^0.12.7",
+    "url": "^0.11.4"
   }
 }

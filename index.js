@@ -1,52 +1,32 @@
-const { Client, IntentsBitField } = require("discord.js");
-require("dotenv").config();
-const mongoose = require("mongoose");
-const eventHandler = require("./handlers/eventHandler");
+import "dotenv/config";
+import { Client, GatewayIntentBits, Partials } from "discord.js";
+import mongoose from "mongoose";
+import { loadCommands, registerCommandListeners } from "./src/handlers/commandHandler.js";
+import { loadEvents } from "./src/handlers/eventHandler.js";
 
 const client = new Client({
   intents: [
-    IntentsBitField.Flags.Guilds,
-    IntentsBitField.Flags.GuildMembers,
-    IntentsBitField.Flags.GuildMessages,
-    IntentsBitField.Flags.GuildPresences,
-    IntentsBitField.Flags.MessageContent,
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildVoiceStates,
   ],
+  partials: [Partials.Message, Partials.Channel],
 });
 
-// Optimized MongoDB connection with connection pooling
-const connectDB = async () => {
-  if (!process.env.MONGODB_URI || !process.env.TOKEN) {
-    console.error("Missing required environment variables!");
-    process.exit(1);
-  }
+async function main() {
+  await mongoose.connect(process.env.MONGODB_URI);
+  console.log("Connected to MongoDB");
 
-  try {
-    await mongoose.connect(process.env.MONGODB_URI, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-      bufferCommands: false,
-    });
-    console.log("✅ Connected to MongoDB successfully!");
-  } catch (error) {
-    console.error("❌ MongoDB connection failed:", error.message);
-  }
-};
+  await loadCommands(client);
+  await loadEvents(client);
+  registerCommandListeners(client);
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🔄 Shutting down gracefully...');
-  await mongoose.connection.close();
-  client.destroy();
-  process.exit(0);
-});
-
-(async () => {
-  await connectDB();
-  eventHandler(client);
   await client.login(process.env.TOKEN);
-})();
+}
 
-
-
-
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
