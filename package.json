@@ -6,7 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "slist": "node src/scripts/listServers.js",
+    "sleave": "node src/scripts/leaveServer.js",
+    "inviteclear": "node src/scripts/leaveServer.js"
   },
   "repository": {
     "type": "git",
