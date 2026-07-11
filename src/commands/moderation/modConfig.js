@@ -15,7 +15,7 @@ async function getOrCreate(guildId) {
   return ModerationSettings.findOneAndUpdate(
     { guildId },
     {},
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 }
 

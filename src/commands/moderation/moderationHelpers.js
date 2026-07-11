@@ -26,7 +26,7 @@ export async function deleteCase(guildId, caseId) {
   const doc = await ModerationCase.findOneAndUpdate(
     { guildId, caseId, active: true },
     { active: false },
-    { new: true }
+    { returnDocument: "after" }
   );
   return doc;
 }
