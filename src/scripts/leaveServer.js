@@ -1,49 +1,29 @@
 import "dotenv/config";
 import { Client, GatewayIntentBits } from "discord.js";
 
+// ← Put the guild ID you want to leave here
+const GUILD_ID = "";
+
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-client.once("ready", async () => {
-  console.log(`\nLogged in as ${client.user.tag}`);
-  console.log(`Scanning ${client.guilds.cache.size} server(s) for invites...\n`);
-  console.log("─".repeat(60));
-
-  let totalDeleted = 0;
-  let totalFailed = 0;
-
-  for (const guild of client.guilds.cache.values()) {
-    try {
-      const invites = await guild.invites.fetch();
-      const botInvites = invites.filter((inv) => inv.inviterId === client.user.id);
-
-      if (botInvites.size === 0) {
-        console.log(`${guild.name} — no invites to clear`);
-        continue;
-      }
-
-      let deleted = 0;
-      let failed = 0;
-
-      for (const invite of botInvites.values()) {
-        try {
-          await invite.delete("clearInvites script");
-          deleted++;
-        } catch {
-          failed++;
-        }
-      }
-
-      totalDeleted += deleted;
-      totalFailed += failed;
-
-      console.log(`${guild.name} — deleted ${deleted}${failed ? `, failed ${failed}` : ""}`);
-    } catch (err) {
-      console.log(`${guild.name} — could not fetch invites: ${err.message}`);
-    }
+client.once("clientReady", async () => {
+  if (!GUILD_ID) {
+    console.error("No GUILD_ID set. Open the script and fill in the GUILD_ID variable.");
+    client.destroy();
+    return;
   }
 
-  console.log("─".repeat(60));
-  console.log(`\nDone. ${totalDeleted} invite(s) deleted, ${totalFailed} failed.`);
+  const guild = client.guilds.cache.get(GUILD_ID);
+
+  if (!guild) {
+    console.error(`Bot is not in a server with ID: ${GUILD_ID}`);
+    client.destroy();
+    return;
+  }
+
+  console.log(`Leaving "${guild.name}" (${guild.id})...`);
+  await guild.leave();
+  console.log(`Done.`);
 
   client.destroy();
 });

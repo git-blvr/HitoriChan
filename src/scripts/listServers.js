@@ -1,3 +1,5 @@
+// Development purposes only
+
 import "dotenv/config";
 import { Client, GatewayIntentBits } from "discord.js";
 import { writeFileSync, mkdirSync } from "fs";
@@ -5,7 +7,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const LOG_DIR = join(__dirname, "..", "src", "logs", "servers");
+const LOG_DIR = join(__dirname, "..", "..", "src", "logs", "servers");
 const WITH_INVITES = process.argv.includes("--invites");
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -56,7 +58,7 @@ client.once("ready", async () => {
   writeFileSync(filePath, output, "utf-8");
 
   console.log(output);
-  console.log(`\nLog saved to src/logs/servers/${fileName}`);
+  console.log(`\nLog saved to ./src/logs/servers/${fileName}`);
 
   client.destroy();
 });
