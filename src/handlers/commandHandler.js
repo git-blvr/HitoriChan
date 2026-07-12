@@ -4,7 +4,8 @@ import { Collection, MessageFlags } from "discord.js";
 import { walkDirectory } from "../utils/fileWalker.js";
 import { createCtx } from "../utils/ctx.js";
 import { getPrefix } from "../utils/prefixManager.js";
-import { handleStreak } from "../handlers/streakHandler.js";
+import { handleStreak } from "./streakHandler.js";
+import { handleChat } from "./chatHandler.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -59,9 +60,10 @@ export function registerCommandListeners(client) {
   });
 
   client.on("messageCreate", async (message) => {
-    handleStreak(message);
-
     if (message.author.bot || !message.guild) return;
+
+    await handleStreak(message);
+    await handleChat(message);
 
     const prefix = await getPrefix(message.guild.id);
     if (!message.content.startsWith(prefix)) return;

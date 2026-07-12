@@ -1,7 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 import StreakProfile from "../models/StreakProfile.js";
 import StreakSettings from "../models/StreakSettings.js";
-import EconomyProfile from "../models/EconomyProfile.js";
+import EconomyProfile from "../models/EconomyAccount.js";
 
 const MILESTONES = new Set([3, 7, 14, 30, 60, 100, 200, 365]);
 
@@ -35,7 +35,7 @@ async function awardFolts(userId, guildId, amount) {
   await EconomyProfile.findOneAndUpdate(
     { userId, guildId },
     { $inc: { folts: amount } },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 }
 
