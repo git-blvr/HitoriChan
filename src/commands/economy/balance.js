@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, EmbedBuilder, InviteTargetUsersJobStatus } from "discord.js";
 import { getEconomyAccount, getGuildEconomyConfig, formatCurrency, getExchangeRate } from "../../utils/economyManager.js";
 
 export default {
@@ -27,21 +27,51 @@ export default {
     const account = await getEconomyAccount(ctx.guild.id, target.id);
     const rate = getExchangeRate(ctx.guild.id);
 
-    const displayName = target.user ? `${target.user.username}#${target.user.discriminator}` : target.user ?? target.username;
+    const displayName = target.user ? `${target.user.username}` : target.user ?? target.username;
     const avatarUrl = (target.user ? target.user : target).displayAvatarURL?.({ dynamic: true, size: 1024 }) ?? null;
 
+    let status;
+
+    if (account.primary < account.secondary) {
+      status = `${target.user} currently has more ${config.secondary.name}, it seems like ${target.user.username} is playing too much games.`;
+    }
+    if (account.primary > account.secondary) {
+      status = `${target.user} currently has more ${config.primary.name}, seems balanced.`;
+    }
+    if (account.primary === account.secondary) {
+      status = `Oh! ${target.user} has equal amounts of both, perfect and balanced.`;
+    }
+    if (account.primary === 67 || account.secondary === 67) {
+      status = `67 :fire:`;
+    }
+    if (account.primary === 0) {
+      status = `It seems like ${target.user} either exchanged it to play games or they're so broke.`
+    }
+    if (account.secondary === 0) {
+      status = `It seems like ${target.user} either played too much or exchanged all the ${config.secondary.name}`
+    }
+    if (account.primary === 0 && account.secondary === 0) {
+      status = `Broke ahh :sob:`
+    }
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)
-      .setTitle(`${displayName} — Balance`)
+      .setTitle(`${displayName}'s Balance`)
       .setThumbnail(avatarUrl)
-      .setDescription(`Here are the current balances for **${displayName.split("#")[0]}**:`)
+      .setDescription(`${status}`)
       .addFields(
-        { name: `${config.primary.name}`, value: `${formatCurrency(account.primary, config.primary)}`, inline: true },
-        { name: `${config.secondary.name}`, value: `${formatCurrency(account.secondary, config.secondary)}`, inline: true },
-        { name: "Exchange Rate", value: `1 ${config.primary.name} = ${rate} ${config.secondary.name}`, inline: false }
+        { 
+          name: `${config.primary.name}`, 
+          value: `${account.primary}`, 
+          inline: true 
+        },
+        { 
+          name: `${config.secondary.name}`, 
+          value: `${account.secondary}`, 
+          inline: true 
+        }
       )
       .setTimestamp()
-      .setFooter({ text: "HitoriChan Economy" });
+      .setFooter({ text: `Exchanging Rate: 1 ${config.primary.name} = ${rate} ${config.secondary.name}` });
 
     await ctx.reply({ embeds: [embed] });
   },

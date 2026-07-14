@@ -10,7 +10,7 @@ const COLOR       = 0x5865f2;
 export default {
   data: new SlashCommandBuilder()
     .setName("ask")
-    .setDescription("Ask Bocchi anything (costs 750 £T, 5 min cooldown)")
+    .setDescription("Ask Bocchi anything (costs 750 FOLTs)")
     .addStringOption((o) =>
       o.setName("question").setDescription("Your question").setRequired(true)
     ),
@@ -35,7 +35,7 @@ export default {
     }
 
     const profile = await EconomyAccount.findOne({ userId: ctx.user.id, guildId: ctx.guild.id });
-    const balance = profile?.folts ?? 0;
+    const balance = profile?.secondary ?? 0;
 
     if (balance < FOLT_COST) {
       clearCooldown(ctx.user.id, "ask");

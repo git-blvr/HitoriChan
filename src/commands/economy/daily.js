@@ -36,23 +36,24 @@ export default {
     await ctx.reply({
       embeds: [
         new EmbedBuilder()
-          .setColor(0x5865f2)
-          .setTitle("Daily Reward Claimed")
+          .setColor(0xff61a5)
+          .setTitle("Daily Reward Claimed!")
           .setDescription(
             `You received ${config.primary.symbol}${DAILY_REWARD.primary.toLocaleString()} ${config.primary.name}.`
           )
           .addFields(
             {
               name: `New ${config.primary.name} Balance`,
-              value: `${formatBalance(claimedAccount.primary, config.primary)}`,
+              value: `${claimedAccount.primary}`,
               inline: true,
             },
             {
               name: `Current ${config.secondary.name} Balance`,
-              value: `${formatBalance(claimedAccount.secondary, config.secondary)}`,
+              value: `${claimedAccount.secondary}`,
               inline: true,
             }
-          ),
+          )
+          .setThumbnail("https://cdn.discordapp.com/attachments/1376242032619684061/1523470888056651919/Untitled1677_20260706022904.png?ex=6a576f14&is=6a561d94&hm=c5f57d89258cd24008d05d65f53ec7d7b57eb9e15a9cc15253344a59d8eb371e")
       ],
     });
   },

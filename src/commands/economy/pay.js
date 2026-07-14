@@ -62,10 +62,10 @@ export default {
       await ctx.reply({
         embeds: [
           new EmbedBuilder()
-            .setColor(0x5865f2)
-            .setTitle("Payment Sent")
+            .setColor(0xff61a5)
+            .setTitle("Payment Sent!")
             .setDescription(
-              `You sent ${currencySymbol}${amount.toLocaleString()} ${currencyName} to ${recipient.user?.username ?? recipient.username}.`
+              `You sent ${amount.toLocaleString()} ${currencyName} to ${recipient.user?.username ?? recipient.username}.`
             ),
         ],
       });
