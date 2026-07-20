@@ -9,7 +9,8 @@
     "dev": "nodemon index.js",
     "slist": "node src/scripts/listServers.js",
     "sleave": "node src/scripts/leaveServer.js",
-    "inviteclear": "node src/scripts/.js"
+    "inviteclear": "node src/scripts/.js",
+    "deploy": "node src/scripts/deployCommands.js"
   },
   "repository": {
     "type": "git",
