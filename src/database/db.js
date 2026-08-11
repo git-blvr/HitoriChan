@@ -167,6 +167,15 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_voice_sessions_guild_created ON voice_sessions(guild_id, joined_at);
     `,
   },
+  {
+    version: 4,
+    sql: `
+      ALTER TABLE guild_settings ADD COLUMN primary_currency_emoji TEXT;
+      ALTER TABLE guild_settings ADD COLUMN secondary_currency_emoji TEXT;
+      ALTER TABLE guild_settings ADD COLUMN daily_min INTEGER DEFAULT 100;
+      ALTER TABLE guild_settings ADD COLUMN daily_max INTEGER DEFAULT 500;
+    `,
+  },
 ];
 
 export function migrate() {

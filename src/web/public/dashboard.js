@@ -66,13 +66,25 @@ const sections = {
 
   economy: async () => {
     if (!currentGuild) return;
-    const rows = await json(`/api/economy/${currentGuild}`);
+    const { settings, leaderboard } = await json(`/api/economy/${currentGuild}`);
+
+    document.getElementById("econ-primary-name").value = settings.primaryCurrency.name;
+    document.getElementById("econ-primary-symbol").value = settings.primaryCurrency.symbol;
+    document.getElementById("econ-primary-emoji").value = settings.primaryCurrency.emoji || "";
+    document.getElementById("econ-secondary-name").value = settings.secondaryCurrency.name;
+    document.getElementById("econ-secondary-symbol").value = settings.secondaryCurrency.symbol;
+    document.getElementById("econ-secondary-emoji").value = settings.secondaryCurrency.emoji || "";
+    document.getElementById("econ-daily-min").value = settings.dailyMin;
+    document.getElementById("econ-daily-max").value = settings.dailyMax;
+
+    await loadEmojiPicker(currentGuild);
+
     const tbody = document.querySelector("#economy-table tbody");
-    tbody.innerHTML = rows.map((r) => `
+    tbody.innerHTML = leaderboard.map((r) => `
       <tr>
         <td>${escapeHtml(r.userName || r.userId)}</td>
-        <td>${r.primary.toLocaleString()}</td>
-        <td>${r.secondary.toLocaleString()}</td>
+        <td>${(settings.primaryCurrency.emoji ? `${settings.primaryCurrency.emoji} ` : "")}${r.primary.toLocaleString()}</td>
+        <td>${(settings.secondaryCurrency.emoji ? `${settings.secondaryCurrency.emoji} ` : "")}${r.secondary.toLocaleString()}</td>
       </tr>
     `).join("") || '<tr><td colspan="3">No data</td></tr>';
   },
@@ -331,6 +343,97 @@ guildSelect.addEventListener("change", async (e) => {
   } else {
     refreshSection();
   }
+});
+
+// ── Emoji picker ──
+
+let activeEmojiInput = null;
+
+async function loadEmojiPicker(guildId) {
+  const picker = document.getElementById("emoji-picker");
+  const defaultsEl = document.getElementById("emoji-defaults");
+  const guildEl = document.getElementById("emoji-guild");
+  const guildHeading = document.getElementById("emoji-guild-heading");
+
+  defaultsEl.innerHTML = "";
+  guildEl.innerHTML = "";
+
+  if (!guildId) {
+    picker.hidden = true;
+    return;
+  }
+
+  const { defaults, guild } = await json(`/api/emojis/${guildId}`);
+
+  for (const emoji of defaults) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "emoji-btn";
+    btn.textContent = emoji;
+    btn.addEventListener("click", () => pickEmoji(emoji, btn));
+    defaultsEl.appendChild(btn);
+  }
+
+  if (guild && guild.length) {
+    guildHeading.hidden = false;
+    for (const emoji of guild) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "emoji-btn";
+      btn.textContent = emoji.value;
+      btn.title = emoji.name;
+      btn.addEventListener("click", () => pickEmoji(emoji.value, btn));
+      guildEl.appendChild(btn);
+    }
+  } else {
+    guildHeading.hidden = true;
+  }
+}
+
+function pickEmoji(emoji, btn) {
+  if (activeEmojiInput) {
+    activeEmojiInput.value = emoji;
+    document.querySelectorAll(".emoji-btn").forEach((b) => b.classList.remove("selected"));
+    if (btn) btn.classList.add("selected");
+  }
+  document.getElementById("emoji-picker").hidden = true;
+}
+
+for (const id of ["econ-primary-emoji", "econ-secondary-emoji"]) {
+  const input = document.getElementById(id);
+  input.addEventListener("focus", () => {
+    activeEmojiInput = input;
+    document.getElementById("emoji-picker").hidden = false;
+    document.getElementById("emoji-picker-title").textContent = `Pick emoji for ${id.includes("primary") ? "primary" : "secondary"} currency`;
+  });
+}
+
+document.getElementById("economy-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+
+  const min = Number(document.getElementById("econ-daily-min").value);
+  const max = Number(document.getElementById("econ-daily-max").value);
+  if (min > max) {
+    alert("Daily Min cannot be greater than Daily Max");
+    return;
+  }
+
+  await json(`/api/economy/${currentGuild}`, {
+    method: "POST",
+    body: JSON.stringify({
+      primaryName: document.getElementById("econ-primary-name").value.trim(),
+      primarySymbol: document.getElementById("econ-primary-symbol").value.trim(),
+      primaryEmoji: document.getElementById("econ-primary-emoji").value.trim() || null,
+      secondaryName: document.getElementById("econ-secondary-name").value.trim(),
+      secondarySymbol: document.getElementById("econ-secondary-symbol").value.trim(),
+      secondaryEmoji: document.getElementById("econ-secondary-emoji").value.trim() || null,
+      dailyMin: min,
+      dailyMax: max,
+    }),
+  });
+  alert("Economy settings saved");
+  refreshSection();
 });
 
 // ── Init ──

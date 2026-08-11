@@ -6,9 +6,7 @@ export const CURRENCY_TYPES = {
   SECONDARY: "secondary",
 };
 
-export const DAILY_REWARD = {
-  primary: 250,
-};
+export const DEFAULT_DAILY = { min: 100, max: 500 };
 
 export const EXCHANGE_BASE_RATE = 10;
 export const EXCHANGE_RATE_VARIANCE = 2;
@@ -27,11 +25,15 @@ export async function getGuildEconomyConfig(guildId) {
     primary: {
       name: settings.primaryCurrency?.name ?? "Starry Coins",
       symbol: settings.primaryCurrency?.symbol ?? "coins ",
+      emoji: settings.primaryCurrency?.emoji ?? null,
     },
     secondary: {
       name: settings.secondaryCurrency?.name ?? "FOLTs",
       symbol: settings.secondaryCurrency?.symbol ?? "folts ",
+      emoji: settings.secondaryCurrency?.emoji ?? null,
     },
+    dailyMin: settings.dailyMin ?? DEFAULT_DAILY.min,
+    dailyMax: settings.dailyMax ?? DEFAULT_DAILY.max,
   };
 }
 
@@ -82,9 +84,12 @@ export function getDailyCooldown(account) {
 
 export async function claimDaily(guildId, userId) {
   const account = await getEconomyAccount(guildId, userId);
-  account.primary += DAILY_REWARD.primary;
+  const config = await getGuildEconomyConfig(guildId);
+  const reward = Math.floor(Math.random() * (config.dailyMax - config.dailyMin + 1)) + config.dailyMin;
+  account.primary += reward;
   account.lastDaily = new Date();
-  return EconomyAccount.save(account);
+  const saved = await EconomyAccount.save(account);
+  return { account: saved, reward };
 }
 
 export async function convertPrimaryToSecondary(guildId, userId, amount) {

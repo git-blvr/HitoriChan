@@ -28,7 +28,46 @@ router.get("/guilds", requireAuth, async (req, res) => {
 // Economy
 router.get("/economy/:guildId", requireAuth, async (req, res) => {
   const top = await EconomyAccount.getLeaderboard(req.params.guildId, 50);
-  res.json(top);
+  const settings = await GuildSettings.getOrCreate(req.params.guildId);
+  res.json({ settings, leaderboard: top });
+});
+
+router.post("/economy/:guildId", requireAuth, async (req, res) => {
+  const {
+    primaryName, primarySymbol, primaryEmoji,
+    secondaryName, secondarySymbol, secondaryEmoji,
+    dailyMin, dailyMax,
+  } = req.body;
+  await GuildSettings.save(req.params.guildId, {
+    primaryName, primarySymbol, primaryEmoji,
+    secondaryName, secondarySymbol, secondaryEmoji,
+    dailyMin: dailyMin !== undefined ? Number(dailyMin) : undefined,
+    dailyMax: dailyMax !== undefined ? Number(dailyMax) : undefined,
+  });
+  res.json({ ok: true });
+});
+
+// Emojis
+router.get("/emojis/:guildId", requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const guild = client.guilds.cache.get(req.params.guildId);
+
+  const defaults = [
+    "💰", "🪙", "💵", "💎", "⭐", "🌟", "✨", "🔮", "🧧", "🎟️",
+    "🍀", "🌸", "🍬", "🍭", "🍫", "🍪", "🥇", "🥈", "🏆", "🎁",
+  ];
+
+  const guildEmojis = guild
+    ? Array.from(guild.emojis.cache.values()).map((e) => ({
+        id: e.id,
+        name: e.name,
+        animated: e.animated,
+        value: e.animated ? `<a:${e.name}:${e.id}>` : `<:${e.name}:${e.id}>`,
+        url: e.url,
+      }))
+    : [];
+
+  res.json({ defaults, guild: guildEmojis });
 });
 
 // AI settings

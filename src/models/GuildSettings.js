@@ -3,8 +3,10 @@ import { db } from "../database/db.js";
 const DEFAULTS = {
   guildId: null,
   prefix: "_",
-  primaryCurrency: { name: "Starry Coins", symbol: "coins " },
-  secondaryCurrency: { name: "FOLTs", symbol: "folts " },
+  primaryCurrency: { name: "Starry Coins", symbol: "coins ", emoji: null },
+  secondaryCurrency: { name: "FOLTs", symbol: "folts ", emoji: null },
+  dailyMin: 100,
+  dailyMax: 500,
 };
 
 const getStmt = db.prepare("SELECT * FROM guild_settings WHERE guild_id = ?");
@@ -12,15 +14,20 @@ const getStmt = db.prepare("SELECT * FROM guild_settings WHERE guild_id = ?");
 const upsertStmt = db.prepare(`
   INSERT INTO guild_settings (
     guild_id, prefix,
-    primary_currency_name, primary_currency_symbol,
-    secondary_currency_name, secondary_currency_symbol
-  ) VALUES (?, ?, ?, ?, ?, ?)
+    primary_currency_name, primary_currency_symbol, primary_currency_emoji,
+    secondary_currency_name, secondary_currency_symbol, secondary_currency_emoji,
+    daily_min, daily_max
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(guild_id) DO UPDATE SET
     prefix = excluded.prefix,
     primary_currency_name = excluded.primary_currency_name,
     primary_currency_symbol = excluded.primary_currency_symbol,
+    primary_currency_emoji = excluded.primary_currency_emoji,
     secondary_currency_name = excluded.secondary_currency_name,
-    secondary_currency_symbol = excluded.secondary_currency_symbol
+    secondary_currency_symbol = excluded.secondary_currency_symbol,
+    secondary_currency_emoji = excluded.secondary_currency_emoji,
+    daily_min = excluded.daily_min,
+    daily_max = excluded.daily_max
 `);
 
 function fromRow(row) {
@@ -31,11 +38,15 @@ function fromRow(row) {
     primaryCurrency: {
       name: row.primary_currency_name,
       symbol: row.primary_currency_symbol,
+      emoji: row.primary_currency_emoji,
     },
     secondaryCurrency: {
       name: row.secondary_currency_name,
       symbol: row.secondary_currency_symbol,
+      emoji: row.secondary_currency_emoji,
     },
+    dailyMin: row.daily_min ?? DEFAULTS.dailyMin,
+    dailyMax: row.daily_max ?? DEFAULTS.dailyMax,
   };
 }
 
@@ -52,34 +63,48 @@ export async function getOrCreate(guildId) {
     DEFAULTS.prefix,
     DEFAULTS.primaryCurrency.name,
     DEFAULTS.primaryCurrency.symbol,
+    DEFAULTS.primaryCurrency.emoji,
     DEFAULTS.secondaryCurrency.name,
-    DEFAULTS.secondaryCurrency.symbol
+    DEFAULTS.secondaryCurrency.symbol,
+    DEFAULTS.secondaryCurrency.emoji,
+    DEFAULTS.dailyMin,
+    DEFAULTS.dailyMax
+  );
+  return fromRow(getStmt.get(guildId));
+}
+
+export async function save(guildId, values) {
+  const current = await getOrCreate(guildId);
+  upsertStmt.run(
+    guildId,
+    values.prefix ?? current.prefix,
+    values.primaryName ?? current.primaryCurrency.name,
+    values.primarySymbol ?? current.primaryCurrency.symbol,
+    values.primaryEmoji !== undefined ? values.primaryEmoji : current.primaryCurrency.emoji,
+    values.secondaryName ?? current.secondaryCurrency.name,
+    values.secondarySymbol ?? current.secondaryCurrency.symbol,
+    values.secondaryEmoji !== undefined ? values.secondaryEmoji : current.secondaryCurrency.emoji,
+    values.dailyMin !== undefined ? values.dailyMin : current.dailyMin,
+    values.dailyMax !== undefined ? values.dailyMax : current.dailyMax
   );
   return fromRow(getStmt.get(guildId));
 }
 
 export async function setPrefix(guildId, prefix) {
-  const current = await getOrCreate(guildId);
-  upsertStmt.run(
-    guildId,
-    prefix,
-    current.primaryCurrency.name,
-    current.primaryCurrency.symbol,
-    current.secondaryCurrency.name,
-    current.secondaryCurrency.symbol
-  );
-  return fromRow(getStmt.get(guildId));
+  return save(guildId, { prefix });
 }
 
 export async function setCurrencies(guildId, values) {
-  const current = await getOrCreate(guildId);
-  const primaryName = values.primaryName ?? current.primaryCurrency.name;
-  const primarySymbol = values.primarySymbol ?? current.primaryCurrency.symbol;
-  const secondaryName = values.secondaryName ?? current.secondaryCurrency.name;
-  const secondarySymbol = values.secondarySymbol ?? current.secondaryCurrency.symbol;
-
-  upsertStmt.run(guildId, current.prefix, primaryName, primarySymbol, secondaryName, secondarySymbol);
-  return fromRow(getStmt.get(guildId));
+  return save(guildId, {
+    primaryName: values.primaryName,
+    primarySymbol: values.primarySymbol,
+    secondaryName: values.secondaryName,
+    secondarySymbol: values.secondarySymbol,
+  });
 }
 
-export default { get, getOrCreate, setPrefix, setCurrencies };
+export async function setEconomy(guildId, values) {
+  return save(guildId, values);
+}
+
+export default { get, getOrCreate, save, setPrefix, setCurrencies, setEconomy };

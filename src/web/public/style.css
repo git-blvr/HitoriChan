@@ -283,6 +283,46 @@ body {
   margin-right: 8px;
 }
 
+.inline-fields {
+  display: flex;
+  gap: 12px;
+}
+
+.inline-fields .grow {
+  flex: 1;
+}
+
+.emoji-input {
+  cursor: pointer;
+}
+
+.emoji-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.emoji-btn {
+  padding: 8px 10px;
+  font-size: 1.3rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input);
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.emoji-btn:hover {
+  border-color: var(--container);
+  transform: scale(1.1);
+}
+
+.emoji-btn.selected {
+  border-color: var(--container);
+  box-shadow: 0 0 0 2px var(--container);
+}
+
 .save-btn,
 .login-btn {
   padding: 10px 18px;

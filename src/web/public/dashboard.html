@@ -73,6 +73,44 @@
 
     <section id="economy" class="content-section">
       <div class="panel">
+        <h2>Economy Configuration</h2>
+        <form id="economy-form" class="config-form">
+          <h3>Primary Currency</h3>
+          <div class="inline-fields">
+            <label class="grow">Name <input type="text" id="econ-primary-name" /></label>
+            <label class="grow">Symbol <input type="text" id="econ-primary-symbol" /></label>
+          </div>
+          <label class="emoji-label">Emoji
+            <input type="text" id="econ-primary-emoji" class="emoji-input" placeholder="Pick or type an emoji" readonly />
+          </label>
+
+          <h3>Secondary Currency</h3>
+          <div class="inline-fields">
+            <label class="grow">Name <input type="text" id="econ-secondary-name" /></label>
+            <label class="grow">Symbol <input type="text" id="econ-secondary-symbol" /></label>
+          </div>
+          <label class="emoji-label">Emoji
+            <input type="text" id="econ-secondary-emoji" class="emoji-input" placeholder="Pick or type an emoji" readonly />
+          </label>
+
+          <h3>Daily Reward</h3>
+          <div class="inline-fields">
+            <label class="grow">Min <input type="number" id="econ-daily-min" min="1" /></label>
+            <label class="grow">Max <input type="number" id="econ-daily-max" min="1" /></label>
+          </div>
+
+          <button type="submit" class="save-btn">Save Economy Settings</button>
+        </form>
+      </div>
+
+      <div class="panel" id="emoji-picker" hidden>
+        <h2 id="emoji-picker-title">Emoji Picker</h2>
+        <div id="emoji-defaults" class="emoji-grid"></div>
+        <h3 id="emoji-guild-heading" hidden>Server Emojis</h3>
+        <div id="emoji-guild" class="emoji-grid"></div>
+      </div>
+
+      <div class="panel">
         <h2>Server Richboard</h2>
         <table class="data-table" id="economy-table">
           <thead><tr><th>User</th><th>Primary</th><th>Secondary</th></tr></thead>

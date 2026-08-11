@@ -30,17 +30,18 @@ export default {
       return;
     }
 
-    const claimedAccount = await claimDaily(ctx.guild.id, ctx.user.id);
+    const { account: claimedAccount, reward } = await claimDaily(ctx.guild.id, ctx.user.id);
     const config = await getGuildEconomyConfig(ctx.guild.id);
+    const primaryEmoji = config.primary.emoji ? `${config.primary.emoji} ` : "";
 
     await ctx.reply(cv2({
       color: 0xff61a5,
       title: "Daily Reward Claimed!",
-      description: `You received ${config.primary.symbol}${DAILY_REWARD.primary.toLocaleString()} ${config.primary.name}.`,
+      description: `You received ${primaryEmoji}${config.primary.symbol}${reward.toLocaleString()} ${config.primary.name}.`,
       thumbnail: THUMBNAIL,
       fields: [
-        { name: `New ${config.primary.name} Balance`, value: `${claimedAccount.primary}`, inline: true },
-        { name: `Current ${config.secondary.name} Balance`, value: `${claimedAccount.secondary}`, inline: true },
+        { name: `New ${config.primary.name} Balance`, value: `${primaryEmoji}${claimedAccount.primary}`, inline: true },
+        { name: `Current ${config.secondary.name} Balance`, value: `${config.secondary.emoji ? `${config.secondary.emoji} ` : ""}${claimedAccount.secondary}`, inline: true },
       ],
     }));
   },
