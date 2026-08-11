@@ -302,9 +302,11 @@ async function renderChart(guildId, days) {
             color: "#a89bb8",
             maxRotation: 45,
             minRotation: 0,
-            callback: (value, idx, values) => {
-              const label = activityChart.data.labels[idx];
-              return label && label.length > 18 ? label.slice(0, 18) + "…" : label;
+            callback(value) {
+              if (typeof value === "string" && value.length > 18) {
+                return value.slice(0, 18) + "…";
+              }
+              return value;
             },
           },
           grid: { color: "rgba(255, 255, 255, 0.05)" },
