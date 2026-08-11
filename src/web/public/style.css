@@ -34,7 +34,7 @@ body {
 
 .login-bg {
   flex: 1;
-  background: url("/assets/login-bg.jpg") center/cover no-repeat;
+  background: url("/assets/login-bg.webp") center/cover no-repeat;
   filter: blur(8px) brightness(0.55);
   transform: scale(1.05);
 }

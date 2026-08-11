@@ -38,4 +38,4 @@
 - The `data/` directory is ignored by git.
 - AI behavior can be customized per server with `/aiconfig prompt`.
 - The dashboard initial login is `Admin` with a 6-digit password printed to console on startup.
-- Put a `login-bg.jpg` image in `src/web/public/assets/` to customize the login background.
+- Put a `login-bg.webp` (or `.jpg`/`.png`) image in `src/web/public/assets/` to customize the login background.

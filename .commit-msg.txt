@@ -1,0 +1,9 @@
+Add Bocchi the Rock image as the dashboard login background.
+
+Downloaded the provided poster and saved it as `src/web/public/assets/login-bg.webp`.
+Updated the login CSS to use it as the blurred left-side background.
+Also updated README and AGENTS.md to reflect the image path.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

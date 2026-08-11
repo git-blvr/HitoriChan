@@ -113,7 +113,7 @@ The bot now starts a web dashboard at `http://localhost:3000` (or `WEB_PORT`).
 - Layout: left navigation, top header, main content area.
 - Supports Economy, AI Config, Streak Config, Moderation Config, Triggers, and Logs.
 
-Put a `login-bg.jpg` image in `src/web/public/assets/` to customize the login background.
+Put a `login-bg.webp` (or `.jpg`/`.png`) image in `src/web/public/assets/` to customize the login background.
 
 ## Commands structure and metadata
 
