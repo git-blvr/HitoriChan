@@ -172,6 +172,8 @@ router.get("/stats/:guildId", requireAuth, async (req, res) => {
   const daysNum = Math.min(Math.max(Number(days) || 7, 1), 90);
   const since = Date.now() - daysNum * 24 * 60 * 60 * 1000;
 
+  const client = req.app.get("client");
+  const guild = client.guilds.cache.get(req.params.guildId);
   const msgStats = MessageLog.getStats(req.params.guildId, since);
   const voiceStats = VoiceSession.getVoiceStats(req.params.guildId, since);
 
@@ -180,6 +182,7 @@ router.get("/stats/:guildId", requireAuth, async (req, res) => {
     since,
     data: [{
       guildId: req.params.guildId,
+      name: guild?.name ?? req.params.guildId,
       messages: msgStats.total,
       voiceHours: voiceStats.hours,
       collaborators: msgStats.uniqueUsers,

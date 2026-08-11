@@ -298,7 +298,15 @@ async function renderChart(guildId, days) {
       },
       scales: {
         x: {
-          ticks: { color: "#a89bb8" },
+          ticks: {
+            color: "#a89bb8",
+            maxRotation: 45,
+            minRotation: 0,
+            callback: (value, idx, values) => {
+              const label = activityChart.data.labels[idx];
+              return label && label.length > 18 ? label.slice(0, 18) + "…" : label;
+            },
+          },
           grid: { color: "rgba(255, 255, 255, 0.05)" },
         },
         y: {
