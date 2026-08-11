@@ -1,4 +1,5 @@
-import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 import { getEconomyAccount, getGuildEconomyConfig, formatCurrency, adjustBalance } from "../../utils/economyManager.js";
 import { createDescBasicEmbed } from "../../utils/basicEmbed.js";
 
@@ -58,23 +59,14 @@ export default {
     await adjustBalance(ctx.guild.id, ctx.user.id, "primary", won ? amount : -amount);
     const updated = await getEconomyAccount(ctx.guild.id, ctx.user.id);
 
-    const embed = new EmbedBuilder()
-      .setColor(won ? 0x57f287 : 0xff3333)
-      .setTitle(won ? "🪙 You Won!" : "🪙 You Lost!")
-      .setDescription(`You chose **${side}** — it landed on **${result}**!`)
-      .addFields(
-        {
-          name: won ? "You earned" : "You lost",
-          value: formatCurrency(amount, config.primary),
-          inline: true,
-        },
-        {
-          name: "New balance",
-          value: formatCurrency(updated.primary, config.primary),
-          inline: true,
-        }
-      );
-
-    await ctx.reply({ embeds: [embed] });
+    await ctx.reply(cv2({
+      color: won ? 0x57f287 : 0xff3333,
+      title: won ? "🪙 You Won!" : "🪙 You Lost!",
+      description: `You chose **${side}** — it landed on **${result}**!`,
+      fields: [
+        { name: won ? "You earned" : "You lost", value: formatCurrency(amount, config.primary), inline: true },
+        { name: "New balance", value: formatCurrency(updated.primary, config.primary), inline: true },
+      ],
+    }));
   },
 };

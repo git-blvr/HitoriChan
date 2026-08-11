@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 import { getGuildEconomyConfig, setGuildCurrencies } from "../../utils/economyManager.js";
 
 export default {
@@ -22,7 +23,7 @@ export default {
   aliases: ["currencies", "moneyconfig"],
   syntax: "{prefix}currency [primary_name] [primary_symbol] [secondary_name] [secondary_symbol]",
   example: "{prefix}currency StarryCoins $C FOLTs £T",
-  
+
   async execute(ctx) {
     if (!ctx.guild) {
       await ctx.reply("This command only works in a server.");
@@ -37,18 +38,15 @@ export default {
     const config = await getGuildEconomyConfig(ctx.guild.id);
 
     if (!primaryName && !primarySymbol && !secondaryName && !secondarySymbol) {
-      await ctx.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(0x5865f2)
-            .setTitle("Currency Configuration")
-            .addFields(
-              { name: "Primary Currency", value: `${config.primary.name} (${config.primary.symbol})`, inline: true },
-              { name: "Secondary Currency", value: `${config.secondary.name} (${config.secondary.symbol})`, inline: true }
-            )
-            .setDescription("Use this command with options to customize currency names and symbols.")
+      await ctx.reply(cv2({
+        color: 0x5865f2,
+        title: "Currency Configuration",
+        description: "Use this command with options to customize currency names and symbols.",
+        fields: [
+          { name: "Primary Currency", value: `${config.primary.name} (${config.primary.symbol})`, inline: true },
+          { name: "Secondary Currency", value: `${config.secondary.name} (${config.secondary.symbol})`, inline: true },
         ],
-      });
+      }));
       return;
     }
 
@@ -64,16 +62,13 @@ export default {
       secondarySymbol,
     });
 
-    await ctx.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(0x5865f2)
-          .setTitle("Currency Settings Updated")
-          .addFields(
-            { name: "Primary Currency", value: `${updated.primaryCurrency.name} (${updated.primaryCurrency.symbol})`, inline: true },
-            { name: "Secondary Currency", value: `${updated.secondaryCurrency.name} (${updated.secondaryCurrency.symbol})`, inline: true }
-          ),
+    await ctx.reply(cv2({
+      color: 0x5865f2,
+      title: "Currency Settings Updated",
+      fields: [
+        { name: "Primary Currency", value: `${updated.primaryCurrency.name} (${updated.primaryCurrency.symbol})`, inline: true },
+        { name: "Secondary Currency", value: `${updated.secondaryCurrency.name} (${updated.secondaryCurrency.symbol})`, inline: true },
       ],
-    });
+    }));
   },
 };

@@ -1,14 +1,16 @@
-import { EmbedBuilder } from 'discord.js';
+import { cv2 } from "../helpers/cv2.js";
 
 export function createBasicEmbed(title, description) {
-  return new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setTitle(title)
-    .setDescription(description);
+  return cv2({
+    color: 0x5865f2,
+    title,
+    description,
+  });
 }
 
 export function createDescBasicEmbed(desc, color) {
-    return new EmbedBuilder()
-    .setDescription(desc)
-    .setColor(color || 0x5865f2)
+  return cv2({
+    color: color || 0x5865f2,
+    description: desc,
+  });
 }

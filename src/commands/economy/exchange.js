@@ -1,6 +1,6 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 import { convertPrimaryToSecondary, convertSecondaryToPrimary, getGuildEconomyConfig, getExchangeRate } from "../../utils/economyManager.js";
-import { createBasicEmbed } from '../../utils/basicEmbed.js'
 
 const FROM_CHOICES = [
   { name: "Convert from Starry Coins to FOLTs", value: "primary" },
@@ -57,15 +57,15 @@ export default {
         description = `Converted ${config.primary.symbol}${amount.toLocaleString()} ${config.primary.name} into ${config.secondary.symbol}${result.converted.toLocaleString()} ${config.secondary.name} at a rate of 1 ${config.primary.name} = ${rate} ${config.secondary.name}.`;
       }
 
-      await ctx.reply({
-        embeds: [
-          createBasicEmbed("Exchange Completed", description)
-            .addFields(
-              { name: `New ${config.primary.name} Balance`, value: `${config.primary.symbol}${result.account.primary.toLocaleString()}`, inline: true },
-              { name: `New ${config.secondary.name} Balance`, value: `${config.secondary.symbol}${result.account.secondary.toLocaleString()}`, inline: true }
-            ),
+      await ctx.reply(cv2({
+        color: 0x5865f2,
+        title: "Exchange Completed",
+        description,
+        fields: [
+          { name: `New ${config.primary.name} Balance`, value: `${config.primary.symbol}${result.account.primary.toLocaleString()}`, inline: true },
+          { name: `New ${config.secondary.name} Balance`, value: `${config.secondary.symbol}${result.account.secondary.toLocaleString()}`, inline: true },
         ],
-      });
+      }));
     } catch (error) {
       await ctx.reply(error.message || "Could not complete exchange.");
     }

@@ -17,12 +17,12 @@ export default {
 
     const target = await resolveTarget(ctx, 0);
     if (!target) {
-      await ctx.reply({ embeds: [buildEmbed("Please mention a valid member.")] });
+      await ctx.reply(buildEmbed("Please mention a valid member."));
       return;
     }
 
     if (!target.kickable) {
-      await ctx.reply({ embeds: [buildEmbed("I cannot kick that member.")] });
+      await ctx.reply(buildEmbed("I cannot kick that member."));
       return;
     }
 
@@ -44,7 +44,7 @@ export default {
     });
 
     const embed = buildEmbed(`${target} has been **kicked** | ${reason}\nCase ID: \`${doc.caseId}\``, "kick");
-    await ctx.reply({ embeds: [embed] });
+    await ctx.reply(embed);
 
     const logEmbed = buildEmbed(
       `**Kick** | Case \`${doc.caseId}\`\n**Target:** ${target} (${target.id})\n**Moderator:** <@${ctx.user.id}>\n**Reason:** ${reason}${attachment ? `\n**Attachment:** ${attachment}` : ""}`,

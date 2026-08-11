@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 import { getPrefix, setPrefix } from "../../utils/prefixManager.js";
 
 const COLOR = 0x5865f2;
@@ -24,14 +25,11 @@ export default {
 
     if (!newPrefix) {
       const current = await getPrefix(ctx.guild.id);
-      await ctx.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(COLOR)
-            .setTitle("Current Prefix")
-            .setDescription(`The prefix for this server is \`${current}\``),
-        ],
-      });
+      await ctx.reply(cv2({
+        color: COLOR,
+        title: "Current Prefix",
+        description: `The prefix for this server is \`${current}\``,
+      }));
       return;
     }
 
@@ -47,13 +45,10 @@ export default {
 
     await setPrefix(ctx.guild.id, newPrefix);
 
-    await ctx.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(COLOR)
-          .setTitle("Prefix Updated")
-          .setDescription(`The prefix is now \`${newPrefix}\``),
-      ],
-    });
+    await ctx.reply(cv2({
+      color: COLOR,
+      title: "Prefix Updated",
+      description: `The prefix is now \`${newPrefix}\``,
+    }));
   },
 };

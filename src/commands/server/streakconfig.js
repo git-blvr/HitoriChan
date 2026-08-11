@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 import * as StreakSettings from "../../models/StreakSettings.js";
 
 const COLOR = 0xf5c542;
@@ -45,60 +46,56 @@ export default {
   example: "{prefix}streakconfig toggle",
   async execute(ctx) {
     if (!ctx.member?.permissions?.has(PermissionFlagsBits.ManageGuild)) {
-      await ctx.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription("You need Manage Server permission.")] });
+      await ctx.reply(cv2({ color: COLOR, description: "You need Manage Server permission." }));
       return;
     }
 
     const sub = getSub(ctx);
     if (!sub) {
-      await ctx.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Usage: `streakconfig <toggle|trackchannel|notifychannel|view>`")] });
+      await ctx.reply(cv2({ color: COLOR, description: "Usage: `streakconfig <toggle|trackchannel|notifychannel|view>`" }));
       return;
     }
 
     if (sub === "view") {
       const settings = await StreakSettings.getOrCreate(ctx.guild.id);
-      await ctx.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(COLOR)
-            .setTitle("Streak Settings")
-            .addFields(
-              { name: "Status", value: settings.enabled ? "✅ Enabled" : "❌ Disabled", inline: true },
-              { name: "Track Channel", value: settings.trackChannelId ? `<#${settings.trackChannelId}>` : "All channels", inline: true },
-              { name: "Notify Channel", value: settings.notifyChannelId ? `<#${settings.notifyChannelId}>` : "Same channel", inline: true },
-            ),
+      await ctx.reply(cv2({
+        color: COLOR,
+        title: "Streak Settings",
+        fields: [
+          { name: "Status", value: settings.enabled ? "✅ Enabled" : "❌ Disabled", inline: true },
+          { name: "Track Channel", value: settings.trackChannelId ? `<#${settings.trackChannelId}>` : "All channels", inline: true },
+          { name: "Notify Channel", value: settings.notifyChannelId ? `<#${settings.notifyChannelId}>` : "Same channel", inline: true },
         ],
-      });
+      }));
       return;
     }
 
     if (sub === "toggle") {
       const settings = await StreakSettings.toggle(ctx.guild.id);
-      await ctx.reply({
-        embeds: [new EmbedBuilder().setColor(COLOR).setDescription(`Streak system is now **${settings.enabled ? "enabled ✅" : "disabled ❌"}**.`)],
-      });
+      await ctx.reply(cv2({
+        color: COLOR,
+        description: `Streak system is now **${settings.enabled ? "enabled ✅" : "disabled ❌"}**.`,
+      }));
       return;
     }
 
     if (sub === "trackchannel") {
       const channelId = resolveChannelId(ctx, "channel", 1);
       await StreakSettings.set(ctx.guild.id, { trackChannelId: channelId });
-      await ctx.reply({
-        embeds: [new EmbedBuilder().setColor(COLOR).setDescription(
-          channelId ? `Streaks will now only be tracked in <#${channelId}>.` : "Streaks will now be tracked in **all channels**."
-        )],
-      });
+      await ctx.reply(cv2({
+        color: COLOR,
+        description: channelId ? `Streaks will now only be tracked in <#${channelId}>.` : "Streaks will now be tracked in **all channels**.",
+      }));
       return;
     }
 
     if (sub === "notifychannel") {
       const channelId = resolveChannelId(ctx, "channel", 1);
       await StreakSettings.set(ctx.guild.id, { notifyChannelId: channelId });
-      await ctx.reply({
-        embeds: [new EmbedBuilder().setColor(COLOR).setDescription(
-          channelId ? `Streak notifications will be sent to <#${channelId}>.` : "Streak notifications will be sent in the **same channel** as the message."
-        )],
-      });
+      await ctx.reply(cv2({
+        color: COLOR,
+        description: channelId ? `Streak notifications will be sent to <#${channelId}>.` : "Streak notifications will be sent in the **same channel** as the message.",
+      }));
     }
   },
 };

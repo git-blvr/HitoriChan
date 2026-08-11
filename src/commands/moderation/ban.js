@@ -18,12 +18,12 @@ export default {
 
     const target = await resolveTarget(ctx, 0);
     if (!target) {
-      await ctx.reply({ embeds: [buildEmbed("Please mention a valid member.")] });
+      await ctx.reply(buildEmbed("Please mention a valid member."));
       return;
     }
 
     if (!target.bannable) {
-      await ctx.reply({ embeds: [buildEmbed("I cannot ban that member.")] });
+      await ctx.reply(buildEmbed("I cannot ban that member."));
       return;
     }
 
@@ -46,7 +46,7 @@ export default {
     });
 
     const embed = buildEmbed(`${target} has been **banned** | ${reason}\nCase ID: \`${doc.caseId}\``, "ban");
-    await ctx.reply({ embeds: [embed] });
+    await ctx.reply(embed);
 
     const logEmbed = buildEmbed(
       `**Ban** | Case \`${doc.caseId}\`\n**Target:** ${target} (${target.id})\n**Moderator:** <@${ctx.user.id}>\n**Reason:** ${reason}${attachment ? `\n**Attachment:** ${attachment}` : ""}`,

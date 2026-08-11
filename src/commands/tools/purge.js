@@ -25,7 +25,7 @@ export default {
       : parseInt(ctx.args?.[0]);
 
     if (!amount || isNaN(amount) || amount < 1 || amount > MAX_PURGE) {
-      await ctx.reply({ embeds: [buildEmbed(`Please provide a number between 1 and ${MAX_PURGE}.`)] });
+      await ctx.reply(buildEmbed(`Please provide a number between 1 and ${MAX_PURGE}.`));
       return;
     }
 
@@ -42,7 +42,7 @@ export default {
       .first(amount);
 
     if (!messages.length) {
-      await ctx.reply({ embeds: [buildEmbed("No eligible messages found. Messages older than 14 days cannot be deleted.")] });
+      await ctx.reply(buildEmbed("No eligible messages found. Messages older than 14 days cannot be deleted."));
       return;
     }
 

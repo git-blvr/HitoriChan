@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 import * as StreakProfile from "../../models/StreakProfile.js";
 import { toDateString, getYesterday } from "../../helpers/time.js";
 
@@ -34,7 +35,7 @@ export default {
     }
 
     if (!target) {
-      await ctx.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Couldn't find that member.")] });
+      await ctx.reply(cv2({ color: COLOR, description: "Couldn't find that member." }));
       return;
     }
 
@@ -45,18 +46,16 @@ export default {
     const total = profile?.totalDays ?? 0;
     const status = streakStatus(profile);
 
-    await ctx.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(COLOR)
-          .setAuthor({ name: `${target.displayName}'s Streak`, iconURL: target.user.displayAvatarURL() })
-          .addFields(
-            { name: "🔥 Current Streak", value: `${current} day${current !== 1 ? "s" : ""}`, inline: true },
-            { name: "🏆 Longest Streak", value: `${longest} day${longest !== 1 ? "s" : ""}`, inline: true },
-            { name: "📅 Total Days",     value: `${total} day${total !== 1 ? "s" : ""}`, inline: true },
-            { name: "Status", value: status },
-          ),
+    await ctx.reply(cv2({
+      color: COLOR,
+      title: `${target.displayName}'s Streak`,
+      thumbnail: target.user.displayAvatarURL(),
+      fields: [
+        { name: "🔥 Current Streak", value: `${current} day${current !== 1 ? "s" : ""}`, inline: true },
+        { name: "🏆 Longest Streak", value: `${longest} day${longest !== 1 ? "s" : ""}`, inline: true },
+        { name: "📅 Total Days",     value: `${total} day${total !== 1 ? "s" : ""}`, inline: true },
+        { name: "Status", value: status },
       ],
-    });
+    }));
   },
 };

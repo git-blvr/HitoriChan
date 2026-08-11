@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 import { getLeaderboard, getGuildEconomyConfig, formatCurrency } from "../../utils/economyManager.js";
 
 export default {
@@ -29,11 +30,10 @@ export default {
       })
     );
 
-    const embed = new EmbedBuilder()
-      .setColor(0x5865f2)
-      .setTitle("Server Richboard")
-      .setDescription(rows.join("\n\n"));
-
-    await ctx.reply({ embeds: [embed] });
+    await ctx.reply(cv2({
+      color: 0x5865f2,
+      title: "Server Richboard",
+      description: rows.join("\n\n"),
+    }));
   },
 };

@@ -35,13 +35,13 @@ export default {
   example: "{prefix}modconfig logchannel #mod-logs",
   async execute(ctx) {
     if (!ctx.member?.permissions?.has(PermissionFlagsBits.ManageGuild)) {
-      await ctx.reply({ embeds: [buildEmbed("You need the Manage Server permission to use this command.")] });
+      await ctx.reply(buildEmbed("You need the Manage Server permission to use this command."));
       return;
     }
 
     const sub = getSubcommand(ctx);
     if (!sub) {
-      await ctx.reply({ embeds: [buildEmbed("Usage: `modconfig <logchannel|modrole|view>`")] });
+      await ctx.reply(buildEmbed("Usage: `modconfig <logchannel|modrole|view>`"));
       return;
     }
 
@@ -49,7 +49,7 @@ export default {
       const settings = await ModerationSettings.getOrCreate(ctx.guild.id);
       const logChannel = settings.logChannelId ? `<#${settings.logChannelId}>` : "Not set";
       const modRole = settings.modRoleId ? `<@&${settings.modRoleId}>` : "Not set";
-      await ctx.reply({ embeds: [buildEmbed(`**Moderation Settings**\n\n**Log Channel:** ${logChannel}\n**Mod Role:** ${modRole}`)] });
+      await ctx.reply(buildEmbed(`**Moderation Settings**\n\n**Log Channel:** ${logChannel}\n**Mod Role:** ${modRole}`));
       return;
     }
 
@@ -64,12 +64,12 @@ export default {
       }
 
       if (!channelId) {
-        await ctx.reply({ embeds: [buildEmbed("Please mention a valid channel.")] });
+        await ctx.reply(buildEmbed("Please mention a valid channel."));
         return;
       }
 
       await ModerationSettings.set(ctx.guild.id, { logChannelId: channelId });
-      await ctx.reply({ embeds: [buildEmbed(`Log channel set to <#${channelId}>.`)] });
+      await ctx.reply(buildEmbed(`Log channel set to <#${channelId}>.`));
       return;
     }
 
@@ -84,12 +84,12 @@ export default {
       }
 
       if (!roleId) {
-        await ctx.reply({ embeds: [buildEmbed("Please mention a valid role.")] });
+        await ctx.reply(buildEmbed("Please mention a valid role."));
         return;
       }
 
       await ModerationSettings.set(ctx.guild.id, { modRoleId: roleId });
-      await ctx.reply({ embeds: [buildEmbed(`Mod role set to <@&${roleId}>.`)] });
+      await ctx.reply(buildEmbed(`Mod role set to <@&${roleId}>.`));
     }
   },
 };

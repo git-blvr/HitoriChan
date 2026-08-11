@@ -1,5 +1,4 @@
-import { EmbedBuilder } from "discord.js";
-import { parseDuration, formatDuration } from "../../helpers/time.js";
+import { cv2 } from "../../helpers/cv2.js";
 import * as ModerationCase from "../../models/ModerationCase.js";
 import * as ModerationSettings from "../../models/ModerationSettings.js";
 
@@ -13,9 +12,10 @@ const ACTION_COLORS = {
 };
 
 export function buildEmbed(description, action = "default") {
-  return new EmbedBuilder()
-    .setDescription(description)
-    .setColor(ACTION_COLORS[action] ?? ACTION_COLORS.default);
+  return cv2({
+    color: ACTION_COLORS[action] ?? ACTION_COLORS.default,
+    description,
+  });
 }
 
 export async function createCase(data) {
@@ -34,12 +34,12 @@ export async function getSettings(guildId) {
   return ModerationSettings.get(guildId);
 }
 
-export async function sendLog(client, guildId, embed) {
+export async function sendLog(client, guildId, payload) {
   const settings = await getSettings(guildId);
   if (!settings?.logChannelId) return;
   const channel = await client.channels.fetch(settings.logChannelId).catch(() => null);
   if (channel?.isTextBased()) {
-    await channel.send({ embeds: [embed] }).catch(() => {});
+    await channel.send(payload).catch(() => {});
   }
 }
 
@@ -51,7 +51,7 @@ export async function requireModerator(ctx) {
   const hasPermission = member?.permissions?.has("ModerateMembers");
 
   if (!hasModRole && !hasPermission) {
-    await ctx.reply({ embeds: [buildEmbed("You don't have permission to use moderation commands.")] });
+    await ctx.reply(buildEmbed("You don't have permission to use moderation commands."));
     return false;
   }
   return true;
@@ -60,19 +60,19 @@ export async function requireModerator(ctx) {
 export async function checkHierarchy(ctx, target) {
   const botMember = ctx.guild.members.me;
   if (target.id === ctx.user.id) {
-    await ctx.reply({ embeds: [buildEmbed("You cannot moderate yourself.")] });
+    await ctx.reply(buildEmbed("You cannot moderate yourself."));
     return false;
   }
   if (target.id === ctx.guild.ownerId) {
-    await ctx.reply({ embeds: [buildEmbed("You cannot moderate the server owner.")] });
+    await ctx.reply(buildEmbed("You cannot moderate the server owner."));
     return false;
   }
   if (botMember.roles.highest.comparePositionTo(target.roles.highest) <= 0) {
-    await ctx.reply({ embeds: [buildEmbed("My role is too low to moderate that member.")] });
+    await ctx.reply(buildEmbed("My role is too low to moderate that member."));
     return false;
   }
   if (ctx.member.roles.highest.comparePositionTo(target.roles.highest) <= 0) {
-    await ctx.reply({ embeds: [buildEmbed("Your role is too low to moderate that member.")] });
+    await ctx.reply(buildEmbed("Your role is too low to moderate that member."));
     return false;
   }
   return true;
@@ -88,7 +88,7 @@ export async function resolveTarget(ctx, argIndex = 0) {
   const raw = ctx.args?.[argIndex];
   if (!raw || !ctx.guild) return null;
 
-  const mentionMatch = String(raw).match(/<@!?(\d+)>/);
+  const mentionMatch = String(raw).match(/<@!?(\d+)>$/);
   const id = mentionMatch?.[1] ?? raw;
   return ctx.guild.members.fetch(id).catch(() => null);
 }
@@ -105,15 +105,15 @@ export function resolveAttachment(ctx) {
   if (ctx.isInteraction) {
     return ctx.source?.options?.getAttachment?.("attachment")?.url ?? null;
   }
-  return ctx.source?.attachments?.first()?.url ?? null;
+  return ctx.source?.attachments?.first?.()?.url ?? null;
 }
 
 export async function notifyTarget(target, action, reason, caseId) {
-  const embed = buildEmbed(
+  const payload = buildEmbed(
     `You have been **${action}** in **${target.guild.name}**\n**Reason:** ${reason}\n**Case ID:** \`${caseId}\``,
     action
   );
-  await target.send({ embeds: [embed] }).catch(() => {});
+  await target.send(payload).catch(() => {});
 }
 
 export { parseDuration, formatDuration } from "../../helpers/time.js";

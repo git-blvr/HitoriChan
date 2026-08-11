@@ -16,12 +16,12 @@ export default {
 
     const target = await resolveTarget(ctx, 0);
     if (!target) {
-      await ctx.reply({ embeds: [buildEmbed("Please mention a valid member.")] });
+      await ctx.reply(buildEmbed("Please mention a valid member."));
       return;
     }
 
     if (!target.isCommunicationDisabled()) {
-      await ctx.reply({ embeds: [buildEmbed(`${target} is not currently muted.`)] });
+      await ctx.reply(buildEmbed(`${target} is not currently muted.`));
       return;
     }
 
@@ -42,7 +42,7 @@ export default {
     await notifyTarget(target, "unmuted", reason, doc.caseId);
 
     const embed = buildEmbed(`${target} has been **unmuted** | ${reason}`, "unmute");
-    await ctx.reply({ embeds: [embed] });
+    await ctx.reply(embed);
 
     const logEmbed = buildEmbed(
       `**Unmute** | Case \`${doc.caseId}\`\n**Target:** ${target} (${target.id})\n**Moderator:** <@${ctx.user.id}>\n**Reason:** ${reason}`,

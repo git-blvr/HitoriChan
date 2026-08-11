@@ -16,13 +16,13 @@ export default {
 
     const userId = ctx.isInteraction ? ctx.source?.options?.getString("user_id") : ctx.args?.[0];
     if (!userId) {
-      await ctx.reply({ embeds: [buildEmbed("Please provide a valid user ID.")] });
+      await ctx.reply(buildEmbed("Please provide a valid user ID."));
       return;
     }
 
     const ban = await ctx.guild.bans.fetch(userId).catch(() => null);
     if (!ban) {
-      await ctx.reply({ embeds: [buildEmbed(`No ban found for user ID \`${userId}\`.`)] });
+      await ctx.reply(buildEmbed(`No ban found for user ID \`${userId}\`.`));
       return;
     }
 
@@ -39,7 +39,7 @@ export default {
     });
 
     const embed = buildEmbed(`<@${userId}> has been **unbanned** | ${reason}\nCase ID: \`${doc.caseId}\``, "unmute");
-    await ctx.reply({ embeds: [embed] });
+    await ctx.reply(embed);
 
     const logEmbed = buildEmbed(
       `**Unban** | Case \`${doc.caseId}\`\n**Target:** <@${userId}> (${userId})\n**Moderator:** <@${ctx.user.id}>\n**Reason:** ${reason}`,

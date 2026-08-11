@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 import * as AISettings from "../../models/AISettings.js";
 
 const COLOR = 0x5865f2;
@@ -53,40 +54,38 @@ export default {
   example: "{prefix}aiconfig toggle",
   async execute(ctx) {
     if (!ctx.member?.permissions?.has(PermissionFlagsBits.ManageGuild)) {
-      await ctx.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription("You need Manage Server permission.")] });
+      await ctx.reply(cv2({ color: COLOR, description: "You need Manage Server permission." }));
       return;
     }
 
     const sub = getSub(ctx);
     if (!sub) {
-      await ctx.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Usage: `aiconfig <toggle|mode|channel|prompt|clearprompt|view>`")] });
+      await ctx.reply(cv2({ color: COLOR, description: "Usage: `aiconfig <toggle|mode|channel|prompt|clearprompt|view>`" }));
       return;
     }
 
     if (sub === "view") {
       const s = await AISettings.getOrCreate(ctx.guild.id);
-      await ctx.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(COLOR)
-            .setTitle("AI Chatbot Settings")
-            .addFields(
-              { name: "Status",   value: s.enabled ? "✅ Enabled" : "❌ Disabled", inline: true },
-              { name: "Mode",     value: s.mode === "channel" ? "📌 Specific channel" : "🌐 Everywhere", inline: true },
-              { name: "Channel",  value: s.channelId ? `<#${s.channelId}>` : "Not set", inline: true },
-              { name: "Custom Prompt", value: s.customPrompt ? s.customPrompt.slice(0, 1000) : "None" },
-            )
-            .setFooter({ text: "Use /aiconfig mode to change how the bot triggers" }),
+      await ctx.reply(cv2({
+        color: COLOR,
+        title: "AI Chatbot Settings",
+        fields: [
+          { name: "Status",   value: s.enabled ? "✅ Enabled" : "❌ Disabled", inline: true },
+          { name: "Mode",     value: s.mode === "channel" ? "📌 Specific channel" : "🌐 Everywhere", inline: true },
+          { name: "Channel",  value: s.channelId ? `<#${s.channelId}>` : "Not set", inline: true },
+          { name: "Custom Prompt", value: s.customPrompt ? s.customPrompt.slice(0, 1000) : "None" },
         ],
-      });
+        footer: { text: "Use /aiconfig mode to change how the bot triggers" },
+      }));
       return;
     }
 
     if (sub === "toggle") {
       const s = await AISettings.toggle(ctx.guild.id);
-      await ctx.reply({
-        embeds: [new EmbedBuilder().setColor(COLOR).setDescription(`AI chatbot is now **${s.enabled ? "enabled ✅" : "disabled ❌"}**.`)],
-      });
+      await ctx.reply(cv2({
+        color: COLOR,
+        description: `AI chatbot is now **${s.enabled ? "enabled ✅" : "disabled ❌"}**.`,
+      }));
       return;
     }
 
@@ -96,7 +95,7 @@ export default {
         : ctx.args?.[1]?.toLowerCase();
 
       if (!["everywhere", "channel"].includes(mode)) {
-        await ctx.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Mode must be `everywhere` or `channel`.")] });
+        await ctx.reply(cv2({ color: COLOR, description: "Mode must be `everywhere` or `channel`." }));
         return;
       }
 
@@ -106,7 +105,7 @@ export default {
         ? "Bocchi will now respond to **mentions and replies** in any channel."
         : "Bocchi will now **auto-reply** in a specific channel. Set it with `/aiconfig channel`.";
 
-      await ctx.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription(desc)] });
+      await ctx.reply(cv2({ color: COLOR, description: desc }));
       return;
     }
 
@@ -121,14 +120,15 @@ export default {
       }
 
       if (!channelId) {
-        await ctx.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Please mention a valid channel.")] });
+        await ctx.reply(cv2({ color: COLOR, description: "Please mention a valid channel." }));
         return;
       }
 
       await AISettings.setChannel(ctx.guild.id, channelId);
-      await ctx.reply({
-        embeds: [new EmbedBuilder().setColor(COLOR).setDescription(`AI chat channel set to <#${channelId}>.\nMode automatically switched to **channel**. `)],
-      });
+      await ctx.reply(cv2({
+        color: COLOR,
+        description: `AI chat channel set to <#${channelId}>.\nMode automatically switched to **channel**. `,
+      }));
       return;
     }
 
@@ -138,22 +138,24 @@ export default {
         : ctx.args?.slice(1).join(" ");
 
       if (!text?.trim()) {
-        await ctx.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Please provide prompt text.")] });
+        await ctx.reply(cv2({ color: COLOR, description: "Please provide prompt text." }));
         return;
       }
 
       await AISettings.setCustomPrompt(ctx.guild.id, text.trim());
-      await ctx.reply({
-        embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Custom prompt saved. Bocchi will keep it in mind when replying.")],
-      });
+      await ctx.reply(cv2({
+        color: COLOR,
+        description: "Custom prompt saved. Bocchi will keep it in mind when replying.",
+      }));
       return;
     }
 
     if (sub === "clearprompt") {
       await AISettings.setCustomPrompt(ctx.guild.id, null);
-      await ctx.reply({
-        embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Custom prompt removed.")],
-      });
+      await ctx.reply(cv2({
+        color: COLOR,
+        description: "Custom prompt removed.",
+      }));
     }
   },
 };

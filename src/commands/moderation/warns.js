@@ -15,17 +15,17 @@ export default {
 
     const target = await resolveTarget(ctx, 0);
     if (!target) {
-      await ctx.reply({ embeds: [buildEmbed("Please mention a valid member.")] });
+      await ctx.reply(buildEmbed("Please mention a valid member."));
       return;
     }
 
     const cases = (await getCasesForUser(ctx.guild.id, target.id)).filter((c) => c.action === "warn");
     if (!cases.length) {
-      await ctx.reply({ embeds: [buildEmbed(`${target} has no active warnings.`)] });
+      await ctx.reply(buildEmbed(`${target} has no active warnings.`));
       return;
     }
 
     const lines = cases.map((c) => `\`${c.caseId}\` | <@${c.moderatorId}>: ${c.reason}`).join("\n");
-    await ctx.reply({ embeds: [buildEmbed(`**Warnings for ${target}**\n\n${lines}`)] });
+    await ctx.reply(buildEmbed(`**Warnings for ${target}**\n\n${lines}`));
   },
 };

@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 import { getEconomyAccount, getGuildEconomyConfig, getExchangeRate } from "../../utils/economyManager.js";
 
 export default {
@@ -48,27 +49,18 @@ export default {
       status = `${target} currently has more ${config.secondary.name}, it seems like ${displayName} is playing too many games.`;
     }
 
-    const embed = new EmbedBuilder()
-      .setColor(0x5865f2)
-      .setTitle(`${displayName}'s Balance`)
-      .setThumbnail(avatarUrl)
-      .setDescription(`${status}`)
-      .addFields(
-        {
-          name: `${config.primary.name}`,
-          value: `${account.primary}`,
-          inline: true,
-        },
-        {
-          name: `${config.secondary.name}`,
-          value: `${account.secondary}`,
-          inline: true,
-        }
-      )
-      .setTimestamp()
-      .setFooter({ text: `Exchange Rate: 1 ${config.primary.name} = ${rate} ${config.secondary.name}` });
-
-    await ctx.reply({ embeds: [embed] });
+    await ctx.reply(cv2({
+      color: 0x5865f2,
+      title: `${displayName}'s Balance`,
+      description: status,
+      thumbnail: avatarUrl,
+      fields: [
+        { name: `${config.primary.name}`, value: `${account.primary}`, inline: true },
+        { name: `${config.secondary.name}`, value: `${account.secondary}`, inline: true },
+      ],
+      footer: { text: `Exchange Rate: 1 ${config.primary.name} = ${rate} ${config.secondary.name}` },
+      timestamp: true,
+    }));
   },
 };
 

@@ -16,17 +16,17 @@ export default {
 
     const caseId = ctx.isInteraction ? ctx.source?.options?.getString("case_id") : (ctx.args?.[0] ?? null);
     if (!caseId) {
-      await ctx.reply({ embeds: [buildEmbed("Please provide a valid case ID.")] });
+      await ctx.reply(buildEmbed("Please provide a valid case ID."));
       return;
     }
 
     const removed = await deleteCase(ctx.guild.id, caseId.toUpperCase());
     if (!removed) {
-      await ctx.reply({ embeds: [buildEmbed(`No active warning found with case ID \`${caseId}\`.`)] });
+      await ctx.reply(buildEmbed(`No active warning found with case ID \`${caseId}\`.`));
       return;
     }
 
-    await ctx.reply({ embeds: [buildEmbed(`Warning \`${removed.caseId}\` has been removed.`)] });
+    await ctx.reply(buildEmbed(`Warning \`${removed.caseId}\` has been removed.`));
 
     const logEmbed = buildEmbed(
       `**Warn Removed** | Case \`${removed.caseId}\`\n**Target:** <@${removed.targetId}>\n**Moderator:** <@${ctx.user.id}>\n**Original Reason:** ${removed.reason}`

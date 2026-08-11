@@ -1,17 +1,16 @@
 import {
   SlashCommandBuilder,
-  EmbedBuilder,
   StringSelectMenuBuilder,
   ButtonBuilder,
   ButtonStyle,
   ActionRowBuilder,
   MessageFlags,
 } from "discord.js";
+import { cv2 } from "../helpers/cv2.js";
 import { getPrefix, DEFAULT_PREFIX } from "../utils/prefixManager.js";
 
 const COLOR = 0xffadd1;
 
-// Banner URL in top makes it easy for me to change :)
 const BANNER_URL = "https://cdn.discordapp.com/attachments/1376242032619684061/1523665999046512810/Untitled1679_20260706152430.png?ex=6a577c0a&is=6a562a8a&hm=c394e529642a22fe7895316be92faef296807c6f7f2ad8a55371c1d1d0dca8af";
 
 const CATEGORY_EMOJIS = {
@@ -35,15 +34,11 @@ export default {
     const prefix = ctx.guild ? await getPrefix(ctx.guild.id) : DEFAULT_PREFIX;
     const categories = groupByCategory(ctx.client.commands);
 
-    // Closure state
     let currentCategory = null;
     let currentCommand  = null;
     let subIndex        = 0;
 
-    await ctx.reply({
-      embeds: [buildHomeEmbed()],
-      components: [buildCategorySelect(categories)],
-    });
+    await ctx.reply(buildHomePayload(categories));
 
     const message = await ctx.fetchReplyMessage();
     if (!message) return;
@@ -56,20 +51,15 @@ export default {
         return;
       }
 
-      // Category
       if (interaction.customId === "help_category_select") {
         currentCategory = interaction.values[0];
         currentCommand  = null;
         subIndex        = 0;
         const commands  = categories.get(currentCategory) ?? [];
-        await interaction.update({
-          embeds: [buildCategoryEmbed(currentCategory, commands)],
-          components: [buildCommandSelect(commands), buildBackRow()],
-        });
+        await interaction.update(buildCategoryPayload(currentCategory, commands));
         return;
       }
 
-      // Commands
       if (interaction.customId === "help_command_select") {
         currentCommand = ctx.client.commands.get(interaction.values[0]);
         if (!currentCommand) return;
@@ -77,20 +67,13 @@ export default {
         const subs     = getSubcommands(currentCommand);
 
         if (subs.length > 0) {
-          await interaction.update({
-            embeds: [buildSubcommandEmbed(currentCommand, subs[0], 0, subs.length, prefix)],
-            components: [buildSubNav(0, subs.length), buildBackRow(currentCategory)],
-          });
+          await interaction.update(buildSubcommandPayload(currentCommand, subs[0], 0, subs.length, prefix, currentCategory));
         } else {
-          await interaction.update({
-            embeds: [buildCommandEmbed(currentCommand, prefix)],
-            components: [buildBackRow(currentCategory)],
-          });
+          await interaction.update(buildCommandPayload(currentCommand, prefix, currentCategory));
         }
         return;
       }
 
-      // Subcommand Nav
       if (interaction.customId === "help_sub_prev" || interaction.customId === "help_sub_next") {
         if (!currentCommand) return;
         const subs = getSubcommands(currentCommand);
@@ -98,14 +81,10 @@ export default {
           ? Math.max(0, subIndex - 1)
           : Math.min(subs.length - 1, subIndex + 1);
 
-        await interaction.update({
-          embeds: [buildSubcommandEmbed(currentCommand, subs[subIndex], subIndex, subs.length, prefix)],
-          components: [buildSubNav(subIndex, subs.length), buildBackRow(currentCategory)],
-        });
+        await interaction.update(buildSubcommandPayload(currentCommand, subs[subIndex], subIndex, subs.length, prefix, currentCategory));
         return;
       }
 
-      // Back nav
       if (interaction.customId.startsWith("help_back")) {
         const [, target] = interaction.customId.split(":");
         currentCommand   = null;
@@ -114,27 +93,19 @@ export default {
         if (target) {
           currentCategory  = target;
           const commands   = categories.get(target) ?? [];
-          await interaction.update({
-            embeds: [buildCategoryEmbed(target, commands)],
-            components: [buildCommandSelect(commands), buildBackRow()],
-          });
+          await interaction.update(buildCategoryPayload(target, commands));
         } else {
           currentCategory = null;
-          await interaction.update({
-            embeds: [buildHomeEmbed()],
-            components: [buildCategorySelect(categories)],
-          });
+          await interaction.update(buildHomePayload(categories));
         }
       }
     });
 
     collector.on("end", () => {
-      message.edit({ components: [] }).catch(() => {});
+      message.edit(cv2({ color: COLOR, description: "Help menu expired.", components: [] })).catch(() => {});
     });
   },
 };
-
-// Helpers
 
 function groupByCategory(commands) {
   const map = new Map();
@@ -154,63 +125,67 @@ function getSubcommands(command) {
   return (command.data.toJSON().options ?? []).filter((o) => o.type === 1);
 }
 
-// Embeds
+// CV2 payloads
 
-function buildHomeEmbed() {
-  const embed = new EmbedBuilder()
-    .setColor(COLOR)
-    .setTitle("Hitori-Chan — HELP")
-    .setDescription("Choose a category below to browse commands.")
-    .setFooter({ text: "Select a category to get started" });
-
-  if (BANNER_URL) embed.setImage(BANNER_URL);
-
-  return embed;
+function buildHomePayload(categories) {
+  return cv2({
+    color: COLOR,
+    title: "Hitori-Chan — HELP",
+    description: "Choose a category below to browse commands.",
+    footer: { text: "Select a category to get started" },
+    image: BANNER_URL,
+    components: [buildCategorySelect(categories)],
+  });
 }
 
-function buildCategoryEmbed(category, commands) {
+function buildCategoryPayload(category, commands) {
   const emoji = CATEGORY_EMOJIS[category] ?? "📁";
   const list  = commands.map((cmd) => `\`${cmd.data.name}\` — ${cmd.data.description}`).join("\n");
 
-  return new EmbedBuilder()
-    .setColor(COLOR)
-    .setTitle(`${emoji} ${categoryLabel(category)} Commands`)
-    .setDescription(list || "No commands in this category.")
-    .setFooter({ text: `${commands.length} command${commands.length !== 1 ? "s" : ""} • Select one for details` });
+  return cv2({
+    color: COLOR,
+    title: `${emoji} ${categoryLabel(category)} Commands`,
+    description: list || "No commands in this category.",
+    footer: { text: `${commands.length} command${commands.length !== 1 ? "s" : ""} • Select one for details` },
+    components: [buildCommandSelect(commands), buildBackRow()],
+  });
 }
 
-function buildCommandEmbed(command, prefix) {
+function buildCommandPayload(command, prefix, category) {
   const aliases = command.aliases?.length
     ? command.aliases.map((a) => `\`${prefix}${a}\``).join(", ")
     : "None";
   const syntax  = (command.syntax  ?? `{prefix}${command.data.name}`).replaceAll("{prefix}", prefix);
   const example = (command.example ?? syntax).replaceAll("{prefix}", prefix);
 
-  return new EmbedBuilder()
-    .setColor(COLOR)
-    .setTitle(`/${command.data.name}`)
-    .addFields(
+  return cv2({
+    color: COLOR,
+    title: `/${command.data.name}`,
+    fields: [
       { name: "Description", value: command.data.description },
       { name: "Aliases",     value: aliases,           inline: true },
       { name: "Syntax",      value: `\`${syntax}\``,   inline: true },
       { name: "Example",     value: `\`${example}\`` },
-    );
+    ],
+    components: [buildBackRow(category)],
+  });
 }
 
-function buildSubcommandEmbed(command, subcommand, index, total, prefix) {
+function buildSubcommandPayload(command, subcommand, index, total, prefix, category) {
   const options = (subcommand.options ?? [])
     .map((o) => `\`${o.name}\`${o.required ? "\\*" : ""} — ${o.description}`)
     .join("\n");
 
-  const embed = new EmbedBuilder()
-    .setColor(COLOR)
-    .setTitle(`/${command.data.name} ${subcommand.name}`)
-    .setDescription(subcommand.description)
-    .setFooter({ text: `Subcommand ${index + 1} of ${total}${options ? " • * = required" : ""}` });
+  const fields = options ? [{ name: "Options", value: options }] : [];
 
-  if (options) embed.addFields({ name: "Options", value: options });
-
-  return embed;
+  return cv2({
+    color: COLOR,
+    title: `/${command.data.name} ${subcommand.name}`,
+    description: subcommand.description,
+    footer: { text: `Subcommand ${index + 1} of ${total}${options ? " • * = required" : ""}` },
+    fields,
+    components: [buildSubNav(index, total), buildBackRow(category)],
+  });
 }
 
 // ── Components ─────────────────────────────────────────────────────────────────

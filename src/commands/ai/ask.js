@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 import { queryGroq } from "../../ai/groq.js";
 import { checkCooldown, clearCooldown } from "../../utils/cooldowns.js";
 import * as EconomyAccount from "../../models/EconomyAccount.js";
@@ -25,12 +26,11 @@ export default {
       const mins = Math.floor(cooldown / 60);
       const secs = cooldown % 60;
       const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-      await ctx.reply({
-        embeds: [new EmbedBuilder().setColor(0xff3333).setDescription(
-          `⏳ You're on cooldown! Try again in **${timeStr}**.${isBoosting ? "\n-# Booster discount applied ✨" : ""}`
-        )],
-        flags: MessageFlags.Ephemeral,
-      });
+      await ctx.reply(cv2({
+        color: 0xff3333,
+        description: `⏳ You're on cooldown! Try again in **${timeStr}**.${isBoosting ? "\n-# Booster discount applied ✨" : ""}`,
+        ephemeral: true,
+      }));
       return;
     }
 
@@ -38,12 +38,11 @@ export default {
 
     if (account.secondary < FOLT_COST) {
       clearCooldown(ctx.user.id, "ask");
-      await ctx.reply({
-        embeds: [new EmbedBuilder().setColor(0xff3333).setDescription(
-          `You need **${FOLT_COST} £T** to use this command.\nYour balance: **${account.secondary.toLocaleString()} £T**`
-        )],
-        flags: MessageFlags.Ephemeral,
-      });
+      await ctx.reply(cv2({
+        color: 0xff3333,
+        description: `You need **${FOLT_COST} £T** to use this command.\nYour balance: **${account.secondary.toLocaleString()} £T**`,
+        ephemeral: true,
+      }));
       return;
     }
 
@@ -53,10 +52,11 @@ export default {
 
     if (!question?.trim()) {
       clearCooldown(ctx.user.id, "ask");
-      await ctx.reply({
-        embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Please provide a question.")],
-        flags: MessageFlags.Ephemeral,
-      });
+      await ctx.reply(cv2({
+        color: COLOR,
+        description: "Please provide a question.",
+        ephemeral: true,
+      }));
       return;
     }
 
@@ -72,22 +72,22 @@ export default {
 
       await EconomyAccount.adjust(ctx.guild.id, ctx.user.id, "secondary", -FOLT_COST);
 
-      const embed = new EmbedBuilder()
-        .setColor(COLOR)
-        .setAuthor({ name: ctx.user.username, iconURL: ctx.user.displayAvatarURL() })
-        .addFields(
+      await ctx.editReply(cv2({
+        color: COLOR,
+        author: { name: ctx.user.username, iconURL: ctx.user.displayAvatarURL() },
+        fields: [
           { name: "Question", value: question.slice(0, 1024) },
-          { name: "Answer",   value: reply.slice(0, 1024) }
-        )
-        .setFooter({ text: `Cost: 750 £T${isBoosting ? " • Booster discount applied ✨" : ""}` });
-
-      await ctx.editReply({ embeds: [embed] });
+          { name: "Answer",   value: reply.slice(0, 1024) },
+        ],
+        footer: { text: `Cost: 750 £T${isBoosting ? " • Booster discount applied ✨" : ""}` },
+      }));
     } catch (err) {
       console.error("Ask command error:", err);
       clearCooldown(ctx.user.id, "ask");
-      await ctx.editReply({
-        embeds: [new EmbedBuilder().setColor(0xff3333).setDescription("❌ Something went wrong. You were not charged and your cooldown has been reset.")],
-      });
+      await ctx.editReply(cv2({
+        color: 0xff3333,
+        description: "❌ Something went wrong. You were not charged and your cooldown has been reset.",
+      }));
     }
   },
 };

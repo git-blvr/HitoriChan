@@ -20,7 +20,7 @@ export default {
 
     const target = await resolveTarget(ctx, 0);
     if (!target) {
-      await ctx.reply({ embeds: [buildEmbed("Please mention a valid member.")] });
+      await ctx.reply(buildEmbed("Please mention a valid member."));
       return;
     }
 
@@ -32,12 +32,12 @@ export default {
 
     const durationMs = parseDuration(rawDuration ?? "");
     if (!durationMs) {
-      await ctx.reply({ embeds: [buildEmbed("Invalid duration. Use formats like `1h`, `30m`, `1d`.")] });
+      await ctx.reply(buildEmbed("Invalid duration. Use formats like `1h`, `30m`, `1d`."));
       return;
     }
 
     if (durationMs > MAX_TIMEOUT_MS) {
-      await ctx.reply({ embeds: [buildEmbed("Duration cannot exceed 28 days.")] });
+      await ctx.reply(buildEmbed("Duration cannot exceed 28 days."));
       return;
     }
 
@@ -60,7 +60,7 @@ export default {
     await notifyTarget(target, "muted", reason, doc.caseId);
 
     const embed = buildEmbed(`${target} has been **muted** for ${formatted} | ${reason}\nCase ID: \`${doc.caseId}\``, "mute");
-    await ctx.reply({ embeds: [embed] });
+    await ctx.reply(embed);
 
     const logEmbed = buildEmbed(
       `**Mute** | Case \`${doc.caseId}\`\n**Target:** ${target} (${target.id})\n**Moderator:** <@${ctx.user.id}>\n**Duration:** ${formatted}\n**Reason:** ${reason}${attachment ? `\n**Attachment:** ${attachment}` : ""}`,

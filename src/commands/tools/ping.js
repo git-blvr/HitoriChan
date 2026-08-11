@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -12,14 +13,13 @@ export default {
     const sent = Date.now();
     await ctx.deferReply();
 
-    const embed = new EmbedBuilder()
-      .setColor(0x5865f2)
-      .setTitle("Pong!")
-      .addFields(
+    await ctx.editReply(cv2({
+      color: 0x5865f2,
+      title: "Pong!",
+      fields: [
         { name: "Latency", value: `${Date.now() - sent}ms`, inline: true },
-        { name: "API Latency", value: `${Math.round(ctx.client.ws.ping)}ms`, inline: true }
-      );
-
-    await ctx.editReply({ embeds: [embed] });
+        { name: "API Latency", value: `${Math.round(ctx.client.ws.ping)}ms`, inline: true },
+      ],
+    }));
   },
 };

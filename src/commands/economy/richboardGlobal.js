@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 import { getGlobalLeaderboard, formatMoney } from "../../utils/economyManager.js";
 
 export default {
@@ -19,11 +20,10 @@ export default {
       return `${index + 1}. <@${entry._id}> — coins ${formatMoney(entry.totalPrimary)}`;
     });
 
-    const embed = new EmbedBuilder()
-      .setColor(0x5865f2)
-      .setTitle("Global Richboard")
-      .setDescription(rows.join("\n"));
-
-    await ctx.reply({ embeds: [embed] });
+    await ctx.reply(cv2({
+      color: 0x5865f2,
+      title: "Global Richboard",
+      description: rows.join("\n"),
+    }));
   },
 };

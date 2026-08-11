@@ -1,6 +1,7 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
+import { cv2 } from "../../helpers/cv2.js";
 import { transferBalance, getGuildEconomyConfig, CURRENCY_TYPES } from "../../utils/economyManager.js";
-import { createBasicEmbed, createDescBasicEmbed } from "../../utils/basicEmbed.js";
+import { createDescBasicEmbed } from "../../utils/basicEmbed.js";
 
 const currencyChoices = [
   { name: "coins", value: CURRENCY_TYPES.PRIMARY },
@@ -25,9 +26,7 @@ export default {
   example: "{prefix}pay @friend 100 $C",
   async execute(ctx) {
     if (!ctx.guild) {
-      await ctx.reply(
-        createDescBasicEmbed("This command only works in a server.")
-      )
+      await ctx.reply(createDescBasicEmbed("This command only works in a server."));
       return;
     }
 
@@ -37,40 +36,34 @@ export default {
     const recipient = await resolveRecipient(ctx, recipientOption);
 
     if (!recipient) {
-      await ctx.reply({ embeds: [createDescBasicEmbed("Could not find that recipient.")] });
+      await ctx.reply(createDescBasicEmbed("Could not find that recipient."));
       return;
     }
 
     const amount = Number(amountOption);
     if (!Number.isFinite(amount) || amount <= 0) {
-      await ctx.reply({ embeds: [createDescBasicEmbed("Please provide a valid amount greater than zero.")] });
+      await ctx.reply(createDescBasicEmbed("Please provide a valid amount greater than zero."));
       return;
     }
 
     if (recipient.id === ctx.user.id) {
-      await ctx.reply({ embeds: [createDescBasicEmbed("You cannot pay yourself.")] });
+      await ctx.reply(createDescBasicEmbed("You cannot pay yourself."));
       return;
     }
 
     try {
       const config = await getGuildEconomyConfig(ctx.guild.id);
       const currencyName = currencyOption === CURRENCY_TYPES.SECONDARY ? config.secondary.name : config.primary.name;
-      const currencySymbol = currencyOption === CURRENCY_TYPES.SECONDARY ? config.secondary.symbol : config.primary.symbol;
 
       await transferBalance(ctx.guild.id, ctx.user.id, recipient.id, amount, currencyOption);
 
-      await ctx.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(0xff61a5)
-            .setTitle("Payment Sent!")
-            .setDescription(
-              `You sent ${amount.toLocaleString()} ${currencyName} to ${recipient.user?.username ?? recipient.username}.`
-            ),
-        ],
-      });
+      await ctx.reply(cv2({
+        color: 0xff61a5,
+        title: "Payment Sent!",
+        description: `You sent ${amount.toLocaleString()} ${currencyName} to ${recipient.user?.username ?? recipient.username}.`,
+      }));
     } catch (error) {
-      await ctx.reply({ embeds: [createDescBasicEmbed(error.message || "Could not complete the payment.")] });
+      await ctx.reply(createDescBasicEmbed(error.message || "Could not complete the payment."));
     }
   },
 };

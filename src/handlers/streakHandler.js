@@ -1,4 +1,4 @@
-import { EmbedBuilder } from "discord.js";
+import { cv2 } from "../helpers/cv2.js";
 import * as StreakProfile from "../models/StreakProfile.js";
 import * as StreakSettings from "../models/StreakSettings.js";
 import * as EconomyAccount from "../models/EconomyAccount.js";
@@ -45,24 +45,25 @@ function buildStreakEmbed(member, streak, isMilestone, wasReset, foltBonus) {
     !wasReset ? `-# Keep messaging daily to maintain your streak!` : null,
   ].filter((l) => l !== null).join("\n");
 
-  return new EmbedBuilder()
-    .setColor(color)
-    .setTitle(title)
-    .setDescription(lines)
-    .setThumbnail(member.user.displayAvatarURL())
-    .setFooter({ text: `Longest streak: ${Math.max(streak, 0)} days` });
+  return cv2({
+    color,
+    title,
+    description: lines,
+    thumbnail: member.user.displayAvatarURL(),
+    footer: { text: `Longest streak: ${Math.max(streak, 0)} days` },
+  });
 }
 
 function buildCapEmbed(member) {
-  return new EmbedBuilder()
-    .setColor(0xf5c542)
-    .setTitle("📨 Daily Message Cap Reached!")
-    .setDescription(
+  return cv2({
+    color: 0xf5c542,
+    title: "📨 Daily Message Cap Reached!",
+    description:
       `**${member.displayName}** sent **${MSG_FOLT_CAP_MESSAGES.toLocaleString()} messages** today!\n\n` +
       `🎰 +**${MSG_FOLT_MAX_BONUS.toLocaleString()} £T** total message bonus earned.\n` +
-      `-# You've hit the daily cap — no more bonus £T until tomorrow.`
-    )
-    .setThumbnail(member.user.displayAvatarURL());
+      `-# You've hit the daily cap — no more bonus £T until tomorrow.`,
+    thumbnail: member.user.displayAvatarURL(),
+  });
 }
 
 export async function handleStreak(message) {
@@ -102,7 +103,7 @@ export async function handleStreak(message) {
 
     if (profile.dailyMessageCount === MSG_FOLT_CAP_MESSAGES) {
       if (notifyChannel?.isTextBased()) {
-        await notifyChannel.send({ embeds: [buildCapEmbed(member)] }).catch(() => {});
+        await notifyChannel.send(buildCapEmbed(member)).catch(() => {});
       }
     }
   }
@@ -123,7 +124,7 @@ export async function handleStreak(message) {
     const embed = buildStreakEmbed(member, profile.currentStreak, isMilestone, wasReset && profile.currentStreak === 1, foltBonus);
 
     if (notifyChannel?.isTextBased()) {
-      await notifyChannel.send({ embeds: [embed] }).catch(() => {});
+      await notifyChannel.send(embed).catch(() => {});
     }
 
     await StreakProfile.save(profile);
