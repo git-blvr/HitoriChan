@@ -103,11 +103,15 @@
         </form>
       </div>
 
-      <div class="panel" id="emoji-picker" hidden>
-        <h2 id="emoji-picker-title">Emoji Picker</h2>
-        <div id="emoji-defaults" class="emoji-grid"></div>
-        <h3 id="emoji-guild-heading" hidden>Server Emojis</h3>
-        <div id="emoji-guild" class="emoji-grid"></div>
+      <div class="emoji-picker" id="emoji-picker" hidden>
+        <div class="emoji-picker-header">
+          <button type="button" class="emoji-tab active" data-tab="discord">Discord</button>
+          <button type="button" class="emoji-tab" data-tab="server">Server</button>
+        </div>
+        <div class="emoji-picker-body">
+          <div id="emoji-defaults" class="emoji-tab-content active"></div>
+          <div id="emoji-guild" class="emoji-tab-content"></div>
+        </div>
       </div>
 
       <div class="panel">

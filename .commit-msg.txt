@@ -1,0 +1,12 @@
+Redesign emoji picker to look like Discord's picker.
+
+- New floating emoji picker with "Discord" and "Server" tabs.
+- Default tab shows a larger grid of currency-friendly emojis.
+- Server tab fetches and shows the selected guild's custom emojis.
+- Picker positions itself below the focused currency emoji input.
+- Clicking outside the picker closes it.
+- Updated economy page HTML, CSS, and JS.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

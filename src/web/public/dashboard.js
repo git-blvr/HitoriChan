@@ -349,11 +349,37 @@ guildSelect.addEventListener("change", async (e) => {
 
 let activeEmojiInput = null;
 
+const DEFAULT_EMOJIS = [
+  "🪙", "💰", "💵", "💶", "💷", "💴", "💎", "🔮", "⭐", "🌟",
+  "✨", "🏆", "🥇", "🥈", "🎖️", "🏅", "🎗️", "🎁", "🎀", "🎟️",
+  "🧧", "🍀", "🌸", "🌺", "🌻", "🌹", "🌷", "💐", "🌼", "🌵",
+  "🍎", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", "🍒",
+  "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💖",
+  "🔥", "⚡", "💧", "🌊", "☀️", "🌙", "⭐", "🌈", "☁️", "❄️",
+];
+
+function showEmojiTab(tab) {
+  document.querySelectorAll(".emoji-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll(".emoji-tab-content").forEach((c) => c.classList.toggle("active", c.id === `emoji-${tab === "discord" ? "defaults" : "guild"}`));
+}
+
+document.querySelectorAll(".emoji-tab").forEach((tab) => {
+  tab.addEventListener("click", () => showEmojiTab(tab.dataset.tab));
+});
+
+function positionPicker(input) {
+  const picker = document.getElementById("emoji-picker");
+  const rect = input.getBoundingClientRect();
+  const economy = document.getElementById("economy");
+  const econRect = economy.getBoundingClientRect();
+  picker.style.top = `${rect.bottom - econRect.top + 8}px`;
+  picker.style.left = `${rect.left - econRect.left}px`;
+}
+
 async function loadEmojiPicker(guildId) {
   const picker = document.getElementById("emoji-picker");
   const defaultsEl = document.getElementById("emoji-defaults");
   const guildEl = document.getElementById("emoji-guild");
-  const guildHeading = document.getElementById("emoji-guild-heading");
 
   defaultsEl.innerHTML = "";
   guildEl.innerHTML = "";
@@ -363,9 +389,7 @@ async function loadEmojiPicker(guildId) {
     return;
   }
 
-  const { defaults, guild } = await json(`/api/emojis/${guildId}`);
-
-  for (const emoji of defaults) {
+  for (const emoji of DEFAULT_EMOJIS) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "emoji-btn";
@@ -374,19 +398,29 @@ async function loadEmojiPicker(guildId) {
     defaultsEl.appendChild(btn);
   }
 
-  if (guild && guild.length) {
-    guildHeading.hidden = false;
-    for (const emoji of guild) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "emoji-btn";
-      btn.textContent = emoji.value;
-      btn.title = emoji.name;
-      btn.addEventListener("click", () => pickEmoji(emoji.value, btn));
-      guildEl.appendChild(btn);
+  try {
+    const { guild } = await json(`/api/emojis/${guildId}`);
+    if (guild && guild.length) {
+      for (const emoji of guild) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "emoji-btn";
+        btn.textContent = emoji.value;
+        btn.title = emoji.name;
+        btn.addEventListener("click", () => pickEmoji(emoji.value, btn));
+        guildEl.appendChild(btn);
+      }
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "emoji-empty";
+      empty.textContent = "No server emojis";
+      guildEl.appendChild(empty);
     }
-  } else {
-    guildHeading.hidden = true;
+  } catch {
+    const empty = document.createElement("p");
+    empty.className = "emoji-empty";
+    empty.textContent = "No server emojis";
+    guildEl.appendChild(empty);
   }
 }
 
@@ -403,10 +437,18 @@ for (const id of ["econ-primary-emoji", "econ-secondary-emoji"]) {
   const input = document.getElementById(id);
   input.addEventListener("focus", () => {
     activeEmojiInput = input;
-    document.getElementById("emoji-picker").hidden = false;
-    document.getElementById("emoji-picker-title").textContent = `Pick emoji for ${id.includes("primary") ? "primary" : "secondary"} currency`;
+    const picker = document.getElementById("emoji-picker");
+    picker.hidden = false;
+    positionPicker(input);
+    showEmojiTab("discord");
   });
 }
+
+document.getElementById("economy").addEventListener("click", (e) => {
+  if (!e.target.closest(".emoji-picker") && !e.target.classList.contains("emoji-input")) {
+    document.getElementById("emoji-picker").hidden = true;
+  }
+});
 
 document.getElementById("economy-form").addEventListener("submit", async (e) => {
   e.preventDefault();
