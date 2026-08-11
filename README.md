@@ -59,6 +59,10 @@ GUILD_ID=your_test_guild_id
 
 # Optional: skip auto-deploy on startup
 SKIP_AUTO_DEPLOY=false
+
+# Optional dashboard settings
+WEB_PORT=3000
+JWT_SECRET=change_me
 ```
 
 ## Configuration
@@ -99,6 +103,17 @@ Force-deploy all current commands manually:
 ```bash
 node src/scripts/deployCommands.js
 ```
+
+## Web Dashboard
+
+The bot now starts a web dashboard at `http://localhost:3000` (or `WEB_PORT`).
+
+- Default login: `Admin` with a 6-digit password printed to the console on startup.
+- Sessions last 24 hours.
+- Layout: left navigation, top header, main content area.
+- Supports Economy, AI Config, Streak Config, Moderation Config, Triggers, and Logs.
+
+Put a `login-bg.jpg` image in `src/web/public/assets/` to customize the login background.
 
 ## Commands structure and metadata
 

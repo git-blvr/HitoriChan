@@ -6,6 +6,9 @@ import { createCtx } from "../utils/ctx.js";
 import { getPrefix } from "../utils/prefixManager.js";
 import { handleStreak } from "./streakHandler.js";
 import { handleChat } from "./chatHandler.js";
+import { handleTrigger } from "./triggerHandler.js";
+import * as CommandLog from "../models/CommandLog.js";
+import * as MessageLog from "../models/MessageLog.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -48,8 +51,29 @@ export function registerCommandListeners(client) {
 
     try {
       await command.execute(ctx);
+      await CommandLog.create({
+        guildId: ctx.guild?.id,
+        channelId: ctx.channel?.id,
+        userId: ctx.user.id,
+        userName: ctx.user.username,
+        commandName: command.data.name,
+        source: "slash",
+        input: interaction.options.data.map((o) => `${o.name}: ${o.value}`).join(", "),
+        success: true,
+      });
     } catch (error) {
       console.error(error);
+      await CommandLog.create({
+        guildId: ctx.guild?.id,
+        channelId: ctx.channel?.id,
+        userId: ctx.user.id,
+        userName: ctx.user.username,
+        commandName: command.data.name,
+        source: "slash",
+        input: interaction.options.data.map((o) => `${o.name}: ${o.value}`).join(", "),
+        success: false,
+        errorMessage: error.message,
+      });
       const payload = { content: "Something went wrong running that command.", flags: MessageFlags.Ephemeral };
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp(payload);
@@ -62,8 +86,10 @@ export function registerCommandListeners(client) {
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) return;
 
+    await logMessage(message);
     await handleStreak(message);
     await handleChat(message);
+    await handleTrigger(message);
 
     const prefix = await getPrefix(message.guild.id);
     if (!message.content.startsWith(prefix)) return;
@@ -79,9 +105,47 @@ export function registerCommandListeners(client) {
 
     try {
       await command.execute(ctx);
+      await CommandLog.create({
+        guildId: ctx.guild?.id,
+        channelId: ctx.channel?.id,
+        userId: ctx.user.id,
+        userName: ctx.user.username,
+        commandName: command.data.name,
+        source: "prefix",
+        input: args.join(" "),
+        success: true,
+      });
     } catch (error) {
       console.error(error);
+      await CommandLog.create({
+        guildId: ctx.guild?.id,
+        channelId: ctx.channel?.id,
+        userId: ctx.user.id,
+        userName: ctx.user.username,
+        commandName: command.data.name,
+        source: "prefix",
+        input: args.join(" "),
+        success: false,
+        errorMessage: error.message,
+      });
       await message.reply("Something went wrong running that command.");
     }
   });
+}
+
+async function logMessage(message) {
+  try {
+    await MessageLog.create({
+      guildId: message.guild.id,
+      channelId: message.channel.id,
+      messageId: message.id,
+      userId: message.author.id,
+      userName: message.author.username,
+      content: message.content,
+      attachments: message.attachments.map((a) => a.url),
+    });
+    MessageLog.prune(5000);
+  } catch (error) {
+    console.error("Failed to log message:", error.message);
+  }
 }

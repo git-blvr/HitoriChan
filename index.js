@@ -3,6 +3,7 @@ import { Client, GatewayIntentBits, Partials } from "discord.js";
 import { closeDatabase } from "./src/database/db.js";
 import { loadCommands, registerCommandListeners } from "./src/handlers/commandHandler.js";
 import { loadEvents } from "./src/handlers/eventHandler.js";
+import { startWebServer } from "./src/web/server.js";
 
 const client = new Client({
   intents: [
@@ -23,6 +24,7 @@ async function main() {
   registerCommandListeners(client);
 
   await client.login(process.env.TOKEN);
+  await startWebServer(client);
 }
 
 process.on("SIGINT", () => {

@@ -11,6 +11,7 @@
 - Dev hot-reload: `npm run dev` (requires `nodemon` installed globally or in deps)
 - Auto-deploy slash commands: restart the bot (only deploys when local commands differ)
 - Force deploy all commands: `node src/scripts/deployCommands.js`
+- Web dashboard: `http://localhost:3000` (starts with the bot)
 
 ## Project structure
 - `index.js` — bot entry point
@@ -28,9 +29,13 @@
 - `GUILD_ID` — optional test guild ID for instant guild command updates
 - `GROQ_MODEL` — optional Groq model override
 - `DB_PATH` — optional SQLite database path
+- `WEB_PORT` — optional dashboard port (default `3000`)
+- `JWT_SECRET` — optional secret for dashboard session tokens
 - `SKIP_AUTO_DEPLOY` — set to `true` to disable auto-deploy on startup
 
 ## Notes
 - The bot auto-migrates the SQLite schema on startup.
 - The `data/` directory is ignored by git.
 - AI behavior can be customized per server with `/aiconfig prompt`.
+- The dashboard initial login is `Admin` with a 6-digit password printed to console on startup.
+- Put a `login-bg.jpg` image in `src/web/public/assets/` to customize the login background.

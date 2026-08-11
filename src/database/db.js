@@ -107,6 +107,49 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_moderation_cases_lookup ON moderation_cases(guild_id, target_id, active);
     `,
   },
+  {
+    version: 2,
+    sql: `
+      CREATE TABLE IF NOT EXISTS command_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT,
+        channel_id TEXT,
+        user_id TEXT NOT NULL,
+        user_name TEXT,
+        command_name TEXT NOT NULL,
+        source TEXT NOT NULL DEFAULT 'prefix',
+        input TEXT,
+        success INTEGER NOT NULL DEFAULT 1,
+        error_message TEXT,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+      CREATE INDEX IF NOT EXISTS idx_command_logs_guild_created ON command_logs(guild_id, created_at);
+
+      CREATE TABLE IF NOT EXISTS message_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        channel_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        user_name TEXT,
+        content TEXT,
+        attachments TEXT DEFAULT '[]',
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+      CREATE INDEX IF NOT EXISTS idx_message_logs_guild_created ON message_logs(guild_id, created_at);
+      CREATE INDEX IF NOT EXISTS idx_message_logs_message_id ON message_logs(message_id);
+
+      CREATE TABLE IF NOT EXISTS triggers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        keyword TEXT NOT NULL,
+        command_name TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        UNIQUE(guild_id, keyword)
+      );
+      CREATE INDEX IF NOT EXISTS idx_triggers_guild ON triggers(guild_id);
+    `,
+  },
 ];
 
 export function migrate() {

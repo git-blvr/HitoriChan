@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HitoriChan Dashboard</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body class="dashboard-body">
+  <aside class="nav">
+    <div class="nav-title">HitoriChan</div>
+    <nav class="nav-links">
+      <a href="#overview" data-section="overview" class="active">Overview</a>
+      <a href="#economy" data-section="economy">Economy</a>
+      <a href="#ai" data-section="ai">AI Config</a>
+      <a href="#streak" data-section="streak">Streak</a>
+      <a href="#moderation" data-section="moderation">Moderation</a>
+      <a href="#triggers" data-section="triggers">Triggers</a>
+      <a href="#logs" data-section="logs">Logs</a>
+    </nav>
+    <div class="nav-footer">
+      <button id="logout-btn" class="logout-btn">Logout</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <span id="section-title">Overview</span>
+      <div class="guild-picker">
+        <select id="guild-select">
+          <option value="">Select a server</option>
+        </select>
+      </div>
+    </header>
+
+    <section id="overview" class="content-section active">
+      <div class="cards">
+        <div class="card"><h3>Servers</h3><p id="stat-servers">-</p></div>
+        <div class="card"><h3>Users</h3><p id="stat-users">-</p></div>
+        <div class="card"><h3>Commands Today</h3><p id="stat-commands">-</p></div>
+        <div class="card"><h3>Messages Today</h3><p id="stat-messages">-</p></div>
+      </div>
+    </section>
+
+    <section id="economy" class="content-section">
+      <div class="panel">
+        <h2>Server Richboard</h2>
+        <table class="data-table" id="economy-table">
+          <thead><tr><th>User</th><th>Primary</th><th>Secondary</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="ai" class="content-section">
+      <div class="panel">
+        <h2>AI Chatbot Configuration</h2>
+        <form id="ai-form" class="config-form">
+          <label><input type="checkbox" id="ai-enabled" /> Enabled</label>
+          <label>Mode
+            <select id="ai-mode">
+              <option value="everywhere">Everywhere (mentions/replies)</option>
+              <option value="channel">Specific channel</option>
+            </select>
+          </label>
+          <label>Channel ID <input type="text" id="ai-channel" placeholder="Channel ID or blank" /></label>
+          <label>Custom Prompt <textarea id="ai-prompt" rows="6" placeholder="Custom instructions..."></textarea></label>
+          <button type="submit" class="save-btn">Save AI Settings</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="streak" class="content-section">
+      <div class="panel">
+        <h2>Streak Configuration</h2>
+        <form id="streak-form" class="config-form">
+          <label><input type="checkbox" id="streak-enabled" /> Enabled</label>
+          <label>Track Channel ID <input type="text" id="streak-track" placeholder="Channel ID or blank for all" /></label>
+          <label>Notify Channel ID <input type="text" id="streak-notify" placeholder="Channel ID or blank for same" /></label>
+          <button type="submit" class="save-btn">Save Streak Settings</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="moderation" class="content-section">
+      <div class="panel">
+        <h2>Moderation Configuration</h2>
+        <form id="moderation-form" class="config-form">
+          <label>Log Channel ID <input type="text" id="mod-log" placeholder="Channel ID" /></label>
+          <label>Mod Role ID <input type="text" id="mod-role" placeholder="Role ID" /></label>
+          <button type="submit" class="save-btn">Save Moderation Settings</button>
+        </form>
+      </div>
+      <div class="panel">
+        <h2>Command Prefix</h2>
+        <form id="prefix-form" class="config-form">
+          <label>Prefix <input type="text" id="prefix" maxlength="5" /></label>
+          <button type="submit" class="save-btn">Save Prefix</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="triggers" class="content-section">
+      <div class="panel">
+        <h2>Keyword Triggers</h2>
+        <form id="trigger-form" class="inline-form">
+          <input type="text" id="trigger-keyword" placeholder="keyword" required />
+          <input type="text" id="trigger-command" placeholder="command name" required />
+          <button type="submit" class="save-btn">Add Trigger</button>
+        </form>
+        <table class="data-table" id="triggers-table">
+          <thead><tr><th>Keyword</th><th>Command</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="logs" class="content-section">
+      <div class="panel">
+        <h2>Command Logs</h2>
+        <table class="data-table" id="command-logs-table">
+          <thead><tr><th>Time</th><th>User</th><th>Command</th><th>Source</th><th>Success</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h2>Message Logs</h2>
+        <table class="data-table" id="message-logs-table">
+          <thead><tr><th>Time</th><th>User</th><th>Channel</th><th>Content</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/dashboard.js"></script>
+</body>
+</html>
