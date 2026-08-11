@@ -219,7 +219,7 @@ body {
   border-left: 6px solid var(--container);
   border-radius: var(--radius);
   padding: 20px 24px;
-  margin-bottom: 20px;
+  margin: 20px 0;
 }
 
 .panel h2 {
