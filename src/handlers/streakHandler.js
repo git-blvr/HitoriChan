@@ -1,7 +1,8 @@
 import { EmbedBuilder } from "discord.js";
-import StreakProfile from "../models/StreakProfile.js";
-import StreakSettings from "../models/StreakSettings.js";
-import EconomyProfile from "../models/EconomyAccount.js";
+import * as StreakProfile from "../models/StreakProfile.js";
+import * as StreakSettings from "../models/StreakSettings.js";
+import * as EconomyAccount from "../models/EconomyAccount.js";
+import { toDateString, getYesterday } from "../helpers/time.js";
 
 const MILESTONES = new Set([3, 7, 14, 30, 60, 100, 200, 365]);
 
@@ -19,24 +20,10 @@ const MILESTONE_MESSAGES = {
 const STREAK_BASE_FOLTS      = 1_000;
 const MSG_FOLT_PER_MESSAGE   = 100;
 const MSG_FOLT_CAP_MESSAGES  = 1_000;
-const MSG_FOLT_MAX_BONUS     = MSG_FOLT_PER_MESSAGE * MSG_FOLT_CAP_MESSAGES; // 100,000
-
-function toDateString(date) {
-  return date.toISOString().split("T")[0];
-}
-
-function getYesterday() {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return toDateString(d);
-}
+const MSG_FOLT_MAX_BONUS     = MSG_FOLT_PER_MESSAGE * MSG_FOLT_CAP_MESSAGES;
 
 async function awardFolts(userId, guildId, amount) {
-  await EconomyProfile.findOneAndUpdate(
-    { userId, guildId },
-    { $inc: { folts: amount } },
-    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
-  );
+  await EconomyAccount.adjust(guildId, userId, "secondary", amount);
 }
 
 function buildStreakEmbed(member, streak, isMilestone, wasReset, foltBonus) {
@@ -83,18 +70,15 @@ export async function handleStreak(message) {
 
   const { guild, author, channel } = message;
 
-  const settings = await StreakSettings.findOne({ guildId: guild.id });
+  const settings = await StreakSettings.get(guild.id);
   if (!settings?.enabled) return;
 
   if (settings.trackChannelId && channel.id !== settings.trackChannelId) return;
 
-  const today = toDateString(new Date());
+  const today = toDateString();
   const yesterday = getYesterday();
 
-  let profile = await StreakProfile.findOne({ userId: author.id, guildId: guild.id });
-  if (!profile) {
-    profile = new StreakProfile({ userId: author.id, guildId: guild.id });
-  }
+  const profile = await StreakProfile.getOrCreate(author.id, guild.id);
 
   const member = await guild.members.fetch(author.id).catch(() => null);
   if (!member) return;
@@ -103,10 +87,10 @@ export async function handleStreak(message) {
     ? await guild.channels.fetch(settings.notifyChannelId).catch(() => null)
     : channel;
 
-  // ── Per-message FOLT bonus ─────────────────────────────────────────────────
   if (profile.dailyMessageDate !== today) {
     profile.dailyMessageCount = 0;
     profile.dailyMessageDate = today;
+    await StreakProfile.save(profile);
   }
 
   const alreadyCapped = profile.dailyMessageCount >= MSG_FOLT_CAP_MESSAGES;
@@ -114,6 +98,7 @@ export async function handleStreak(message) {
   if (!alreadyCapped) {
     profile.dailyMessageCount += 1;
     await awardFolts(author.id, guild.id, MSG_FOLT_PER_MESSAGE);
+    await StreakProfile.save(profile);
 
     if (profile.dailyMessageCount === MSG_FOLT_CAP_MESSAGES) {
       if (notifyChannel?.isTextBased()) {
@@ -122,7 +107,6 @@ export async function handleStreak(message) {
     }
   }
 
-  // ── Daily streak credit ────────────────────────────────────────────────────
   const lastDate = profile.lastStreakDate ? toDateString(new Date(profile.lastStreakDate)) : null;
 
   if (lastDate !== today) {
@@ -141,7 +125,7 @@ export async function handleStreak(message) {
     if (notifyChannel?.isTextBased()) {
       await notifyChannel.send({ embeds: [embed] }).catch(() => {});
     }
-  }
 
-  await profile.save();
+    await StreakProfile.save(profile);
+  }
 }

@@ -1,4 +1,4 @@
-import EconomyAccount from "../models/EconomyAccount.js";
+import * as EconomyAccount from "../models/EconomyAccount.js";
 import { getGuildSettings, setGuildCurrencies as updateGuildCurrencies } from "./prefixManager.js";
 
 export const CURRENCY_TYPES = {
@@ -44,55 +44,27 @@ export function formatCurrency(amount, currencyConfig) {
 }
 
 export async function getEconomyAccount(guildId, userId) {
-  return EconomyAccount.findOneAndUpdate(
-    { guildId, userId },
-    { $setOnInsert: { primary: 0, secondary: 0, lastDaily: null } },
-    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
-  );
+  return EconomyAccount.getOrCreate(guildId, userId);
 }
 
 export async function adjustBalance(guildId, userId, currency, amount) {
   if (!Object.values(CURRENCY_TYPES).includes(currency)) {
     throw new Error("Invalid economy currency type.");
   }
-
-  return EconomyAccount.findOneAndUpdate(
-    { guildId, userId },
-    {
-      $inc: { [currency]: amount },
-      $setOnInsert: { lastDaily: null },
-    },
-    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
-  );
+  return EconomyAccount.adjust(guildId, userId, currency, amount);
 }
 
 export async function transferBalance(guildId, fromUserId, toUserId, amount, currency) {
   if (!Object.values(CURRENCY_TYPES).includes(currency)) {
     throw new Error("Invalid economy currency type.");
   }
-
   if (fromUserId === toUserId) {
     throw new Error("You cannot pay yourself.");
   }
-
-  const [fromAccount, toAccount] = await Promise.all([
-    getEconomyAccount(guildId, fromUserId),
-    getEconomyAccount(guildId, toUserId),
-  ]);
-
   if (amount <= 0) {
     throw new Error("Amount must be greater than zero.");
   }
-
-  if (fromAccount[currency] < amount) {
-    throw new Error("Insufficient funds.");
-  }
-
-  fromAccount[currency] -= amount;
-  toAccount[currency] += amount;
-
-  await Promise.all([fromAccount.save(), toAccount.save()]);
-  return { fromAccount, toAccount };
+  return EconomyAccount.transfer(guildId, fromUserId, toUserId, amount, currency);
 }
 
 export function canClaimDaily(account) {
@@ -112,8 +84,7 @@ export async function claimDaily(guildId, userId) {
   const account = await getEconomyAccount(guildId, userId);
   account.primary += DAILY_REWARD.primary;
   account.lastDaily = new Date();
-  await account.save();
-  return account;
+  return EconomyAccount.save(account);
 }
 
 export async function convertPrimaryToSecondary(guildId, userId, amount) {
@@ -131,9 +102,9 @@ export async function convertPrimaryToSecondary(guildId, userId, amount) {
 
   account.primary -= amount;
   account.secondary += converted;
-  await account.save();
+  const saved = await EconomyAccount.save(account);
 
-  return { account, converted, rate };
+  return { account: saved, converted, rate };
 }
 
 export async function convertSecondaryToPrimary(guildId, userId, amount) {
@@ -155,26 +126,17 @@ export async function convertSecondaryToPrimary(guildId, userId, amount) {
 
   account.secondary -= amount;
   account.primary += converted;
-  await account.save();
+  const saved = await EconomyAccount.save(account);
 
-  return { account, converted, rate };
+  return { account: saved, converted, rate };
 }
 
 export async function getLeaderboard(guildId, limit = 10) {
-  return EconomyAccount.find({ guildId }).sort({ primary: -1 }).limit(limit).lean();
+  return EconomyAccount.getLeaderboard(guildId, limit);
 }
 
 export async function getGlobalLeaderboard(limit = 10) {
-  return EconomyAccount.aggregate([
-    {
-      $group: {
-        _id: "$userId",
-        totalPrimary: { $sum: "$primary" },
-      },
-    },
-    { $sort: { totalPrimary: -1 } },
-    { $limit: limit },
-  ]);
+  return EconomyAccount.getGlobalLeaderboard(limit);
 }
 
 export async function setGuildCurrencies(guildId, values) {

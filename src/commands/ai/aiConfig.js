@@ -1,22 +1,14 @@
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from "discord.js";
-import AISettings from "../../models/AISettings.js";
+import * as AISettings from "../../models/AISettings.js";
 
 const COLOR = 0x5865f2;
-const SUBCOMMANDS = new Set(["toggle", "mode", "channel", "view"]);
+const SUBCOMMANDS = new Set(["toggle", "mode", "channel", "view", "prompt", "clearprompt"]);
 
 function getSub(ctx) {
   const slash = ctx.source?.options?.getSubcommand?.();
   if (slash) return slash;
   const first = ctx.args?.[0]?.toLowerCase();
   return SUBCOMMANDS.has(first) ? first : null;
-}
-
-async function getOrCreate(guildId) {
-  return AISettings.findOneAndUpdate(
-    { guildId },
-    {},
-    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
-  );
 }
 
 export default {
@@ -45,11 +37,19 @@ export default {
         .addChannelOption((o) => o.setName("channel").setDescription("AI chat channel").setRequired(true))
     )
     .addSubcommand((s) =>
+      s.setName("prompt")
+        .setDescription("Add a custom server-wide system prompt note")
+        .addStringOption((o) => o.setName("text").setDescription("Custom prompt instructions").setRequired(true).setMaxLength(1000))
+    )
+    .addSubcommand((s) =>
+      s.setName("clearprompt").setDescription("Remove the custom prompt note")
+    )
+    .addSubcommand((s) =>
       s.setName("view").setDescription("View current AI settings")
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
   prefixName: "aiconfig",
-  syntax: "{prefix}aiconfig <toggle|mode|channel|view>",
+  syntax: "{prefix}aiconfig <toggle|mode|channel|prompt|clearprompt|view>",
   example: "{prefix}aiconfig toggle",
   async execute(ctx) {
     if (!ctx.member?.permissions?.has(PermissionFlagsBits.ManageGuild)) {
@@ -59,12 +59,12 @@ export default {
 
     const sub = getSub(ctx);
     if (!sub) {
-      await ctx.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Usage: `aiconfig <toggle|mode|channel|view>`")] });
+      await ctx.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Usage: `aiconfig <toggle|mode|channel|prompt|clearprompt|view>`")] });
       return;
     }
 
     if (sub === "view") {
-      const s = await getOrCreate(ctx.guild.id);
+      const s = await AISettings.getOrCreate(ctx.guild.id);
       await ctx.reply({
         embeds: [
           new EmbedBuilder()
@@ -74,6 +74,7 @@ export default {
               { name: "Status",   value: s.enabled ? "✅ Enabled" : "❌ Disabled", inline: true },
               { name: "Mode",     value: s.mode === "channel" ? "📌 Specific channel" : "🌐 Everywhere", inline: true },
               { name: "Channel",  value: s.channelId ? `<#${s.channelId}>` : "Not set", inline: true },
+              { name: "Custom Prompt", value: s.customPrompt ? s.customPrompt.slice(0, 1000) : "None" },
             )
             .setFooter({ text: "Use /aiconfig mode to change how the bot triggers" }),
         ],
@@ -82,9 +83,7 @@ export default {
     }
 
     if (sub === "toggle") {
-      const s = await getOrCreate(ctx.guild.id);
-      s.enabled = !s.enabled;
-      await s.save();
+      const s = await AISettings.toggle(ctx.guild.id);
       await ctx.reply({
         embeds: [new EmbedBuilder().setColor(COLOR).setDescription(`AI chatbot is now **${s.enabled ? "enabled ✅" : "disabled ❌"}**.`)],
       });
@@ -101,7 +100,7 @@ export default {
         return;
       }
 
-      await AISettings.findOneAndUpdate({ guildId: ctx.guild.id }, { mode }, { upsert: true });
+      await AISettings.setMode(ctx.guild.id, mode);
 
       const desc = mode === "everywhere"
         ? "Bocchi will now respond to **mentions and replies** in any channel."
@@ -126,9 +125,34 @@ export default {
         return;
       }
 
-      await AISettings.findOneAndUpdate({ guildId: ctx.guild.id }, { channelId, mode: "channel" }, { upsert: true });
+      await AISettings.setChannel(ctx.guild.id, channelId);
       await ctx.reply({
         embeds: [new EmbedBuilder().setColor(COLOR).setDescription(`AI chat channel set to <#${channelId}>.\nMode automatically switched to **channel**. `)],
+      });
+      return;
+    }
+
+    if (sub === "prompt") {
+      const text = ctx.isInteraction
+        ? ctx.source?.options?.getString("text")
+        : ctx.args?.slice(1).join(" ");
+
+      if (!text?.trim()) {
+        await ctx.reply({ embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Please provide prompt text.")] });
+        return;
+      }
+
+      await AISettings.setCustomPrompt(ctx.guild.id, text.trim());
+      await ctx.reply({
+        embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Custom prompt saved. Bocchi will keep it in mind when replying.")],
+      });
+      return;
+    }
+
+    if (sub === "clearprompt") {
+      await AISettings.setCustomPrompt(ctx.guild.id, null);
+      await ctx.reply({
+        embeds: [new EmbedBuilder().setColor(COLOR).setDescription("Custom prompt removed.")],
       });
     }
   },

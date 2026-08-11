@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { buildEmbed } from "./moderationHelpers.js";
-import ModerationSettings from "../../models/ModerationSettings.js";
+import * as ModerationSettings from "../../models/ModerationSettings.js";
 
 const SUBCOMMANDS = new Set(["logchannel", "modrole", "view"]);
 
@@ -9,14 +9,6 @@ function getSubcommand(ctx) {
   if (slash) return slash;
   const first = ctx.args?.[0]?.toLowerCase();
   return SUBCOMMANDS.has(first) ? first : null;
-}
-
-async function getOrCreate(guildId) {
-  return ModerationSettings.findOneAndUpdate(
-    { guildId },
-    {},
-    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
-  );
 }
 
 export default {
@@ -54,7 +46,7 @@ export default {
     }
 
     if (sub === "view") {
-      const settings = await getOrCreate(ctx.guild.id);
+      const settings = await ModerationSettings.getOrCreate(ctx.guild.id);
       const logChannel = settings.logChannelId ? `<#${settings.logChannelId}>` : "Not set";
       const modRole = settings.modRoleId ? `<@&${settings.modRoleId}>` : "Not set";
       await ctx.reply({ embeds: [buildEmbed(`**Moderation Settings**\n\n**Log Channel:** ${logChannel}\n**Mod Role:** ${modRole}`)] });
@@ -76,7 +68,7 @@ export default {
         return;
       }
 
-      await ModerationSettings.findOneAndUpdate({ guildId: ctx.guild.id }, { logChannelId: channelId }, { upsert: true });
+      await ModerationSettings.set(ctx.guild.id, { logChannelId: channelId });
       await ctx.reply({ embeds: [buildEmbed(`Log channel set to <#${channelId}>.`)] });
       return;
     }
@@ -96,7 +88,7 @@ export default {
         return;
       }
 
-      await ModerationSettings.findOneAndUpdate({ guildId: ctx.guild.id }, { modRoleId: roleId }, { upsert: true });
+      await ModerationSettings.set(ctx.guild.id, { modRoleId: roleId });
       await ctx.reply({ embeds: [buildEmbed(`Mod role set to <@&${roleId}>.`)] });
     }
   },

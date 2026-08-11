@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from "discord.js";
 import { queryGroq } from "../../ai/groq.js";
 import { checkCooldown, clearCooldown } from "../../utils/cooldowns.js";
-import EconomyAccount from "../../models/EconomyAccount.js";
+import * as EconomyAccount from "../../models/EconomyAccount.js";
 
 const FOLT_COST   = 750;
 const COOLDOWN_MS = 5 * 60 * 1000;
@@ -34,14 +34,13 @@ export default {
       return;
     }
 
-    const profile = await EconomyAccount.findOne({ userId: ctx.user.id, guildId: ctx.guild.id });
-    const balance = profile?.secondary ?? 0;
+    const account = await EconomyAccount.getOrCreate(ctx.guild.id, ctx.user.id);
 
-    if (balance < FOLT_COST) {
+    if (account.secondary < FOLT_COST) {
       clearCooldown(ctx.user.id, "ask");
       await ctx.reply({
         embeds: [new EmbedBuilder().setColor(0xff3333).setDescription(
-          `You need **${FOLT_COST} £T** to use this command.\nYour balance: **${balance.toLocaleString()} £T**`
+          `You need **${FOLT_COST} £T** to use this command.\nYour balance: **${account.secondary.toLocaleString()} £T**`
         )],
         flags: MessageFlags.Ephemeral,
       });
@@ -64,12 +63,14 @@ export default {
     await ctx.deferReply();
 
     try {
-      const reply = await queryGroq([{ role: "user", content: question }], 512);
+      const reply = await queryGroq({
+        messages: [{ role: "user", content: question }],
+        maxTokens: 512,
+        guildId: ctx.guild?.id,
+        userName: ctx.user.username,
+      });
 
-      await EconomyAccount.findOneAndUpdate(
-        { userId: ctx.user.id, guildId: ctx.guild.id },
-        { $inc: { folts: -FOLT_COST } }
-      );
+      await EconomyAccount.adjust(ctx.guild.id, ctx.user.id, "secondary", -FOLT_COST);
 
       const embed = new EmbedBuilder()
         .setColor(COLOR)

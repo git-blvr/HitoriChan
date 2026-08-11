@@ -133,3 +133,9 @@ dist
 
 # bot logs
 src/logs/
+
+# local SQLite database and WAL files
+data/
+*.db
+*.db-shm
+*.db-wal

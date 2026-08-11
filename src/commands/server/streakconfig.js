@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from "discord.js";
-import StreakSettings from "../../models/StreakSettings.js";
+import * as StreakSettings from "../../models/StreakSettings.js";
 
 const COLOR = 0xf5c542;
 const SUBCOMMANDS = new Set(["toggle", "trackchannel", "notifychannel", "view"]);
@@ -17,14 +17,6 @@ function resolveChannelId(ctx, slashOption, argIndex) {
   if (!raw) return null;
   const match = String(raw).match(/<#(\d+)>/);
   return match?.[1] ?? raw;
-}
-
-async function getOrCreate(guildId) {
-  return StreakSettings.findOneAndUpdate(
-    { guildId },
-    {},
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
 }
 
 export default {
@@ -64,7 +56,7 @@ export default {
     }
 
     if (sub === "view") {
-      const settings = await getOrCreate(ctx.guild.id);
+      const settings = await StreakSettings.getOrCreate(ctx.guild.id);
       await ctx.reply({
         embeds: [
           new EmbedBuilder()
@@ -73,7 +65,7 @@ export default {
             .addFields(
               { name: "Status", value: settings.enabled ? "✅ Enabled" : "❌ Disabled", inline: true },
               { name: "Track Channel", value: settings.trackChannelId ? `<#${settings.trackChannelId}>` : "All channels", inline: true },
-              { name: "Notify Channel", value: settings.notifyChannelId ? `<#${settings.notifyChannelId}>` : "Same as message", inline: true },
+              { name: "Notify Channel", value: settings.notifyChannelId ? `<#${settings.notifyChannelId}>` : "Same channel", inline: true },
             ),
         ],
       });
@@ -81,9 +73,7 @@ export default {
     }
 
     if (sub === "toggle") {
-      const settings = await getOrCreate(ctx.guild.id);
-      settings.enabled = !settings.enabled;
-      await settings.save();
+      const settings = await StreakSettings.toggle(ctx.guild.id);
       await ctx.reply({
         embeds: [new EmbedBuilder().setColor(COLOR).setDescription(`Streak system is now **${settings.enabled ? "enabled ✅" : "disabled ❌"}**.`)],
       });
@@ -92,11 +82,7 @@ export default {
 
     if (sub === "trackchannel") {
       const channelId = resolveChannelId(ctx, "channel", 1);
-      await StreakSettings.findOneAndUpdate(
-        { guildId: ctx.guild.id },
-        { trackChannelId: channelId ?? null },
-        { upsert: true }
-      );
+      await StreakSettings.set(ctx.guild.id, { trackChannelId: channelId });
       await ctx.reply({
         embeds: [new EmbedBuilder().setColor(COLOR).setDescription(
           channelId ? `Streaks will now only be tracked in <#${channelId}>.` : "Streaks will now be tracked in **all channels**."
@@ -107,11 +93,7 @@ export default {
 
     if (sub === "notifychannel") {
       const channelId = resolveChannelId(ctx, "channel", 1);
-      await StreakSettings.findOneAndUpdate(
-        { guildId: ctx.guild.id },
-        { notifyChannelId: channelId ?? null },
-        { upsert: true }
-      );
+      await StreakSettings.set(ctx.guild.id, { notifyChannelId: channelId });
       await ctx.reply({
         embeds: [new EmbedBuilder().setColor(COLOR).setDescription(
           channelId ? `Streak notifications will be sent to <#${channelId}>.` : "Streak notifications will be sent in the **same channel** as the message."

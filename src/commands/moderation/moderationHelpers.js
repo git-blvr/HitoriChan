@@ -1,6 +1,7 @@
 import { EmbedBuilder } from "discord.js";
-import ModerationCase from "../../models/ModerationCase.js";
-import ModerationSettings from "../../models/ModerationSettings.js";
+import { parseDuration, formatDuration } from "../../helpers/time.js";
+import * as ModerationCase from "../../models/ModerationCase.js";
+import * as ModerationSettings from "../../models/ModerationSettings.js";
 
 const ACTION_COLORS = {
   warn: 0xf5a623,
@@ -18,25 +19,19 @@ export function buildEmbed(description, action = "default") {
 }
 
 export async function createCase(data) {
-  const doc = await ModerationCase.create(data);
-  return doc;
+  return ModerationCase.create(data);
 }
 
 export async function deleteCase(guildId, caseId) {
-  const doc = await ModerationCase.findOneAndUpdate(
-    { guildId, caseId, active: true },
-    { active: false },
-    { returnDocument: "after" }
-  );
-  return doc;
+  return ModerationCase.deactivate(guildId, caseId);
 }
 
 export async function getCasesForUser(guildId, targetId) {
-  return ModerationCase.find({ guildId, targetId, active: true }).sort({ createdAt: -1 });
+  return ModerationCase.getForUser(guildId, targetId);
 }
 
 export async function getSettings(guildId) {
-  return ModerationSettings.findOne({ guildId });
+  return ModerationSettings.get(guildId);
 }
 
 export async function sendLog(client, guildId, embed) {
@@ -121,31 +116,4 @@ export async function notifyTarget(target, action, reason, caseId) {
   await target.send({ embeds: [embed] }).catch(() => {});
 }
 
-export function parseDuration(str) {
-  const units = { s: 1000, m: 60000, h: 3600000, d: 86400000, w: 604800000 };
-  const regex = /(\d+)(s|m|h|d|w)/gi;
-  let total = 0;
-  let match;
-  while ((match = regex.exec(str)) !== null) {
-    total += parseInt(match[1]) * (units[match[2].toLowerCase()] ?? 0);
-  }
-  return total || null;
-}
-
-export function formatDuration(ms) {
-  const units = [
-    [604800000, "w"],
-    [86400000, "d"],
-    [3600000, "h"],
-    [60000, "m"],
-    [1000, "s"],
-  ];
-  const parts = [];
-  for (const [value, label] of units) {
-    if (ms >= value) {
-      parts.push(`${Math.floor(ms / value)}${label}`);
-      ms %= value;
-    }
-  }
-  return parts.join(" ") || "0s";
-}
+export { parseDuration, formatDuration } from "../../helpers/time.js";

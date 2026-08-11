@@ -1,5 +1,5 @@
 import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
-import { getEconomyAccount, getGuildEconomyConfig, formatCurrency } from "../../utils/economyManager.js";
+import { getEconomyAccount, getGuildEconomyConfig, formatCurrency, adjustBalance } from "../../utils/economyManager.js";
 import { createDescBasicEmbed } from "../../utils/basicEmbed.js";
 
 const VALID_SIDES = ["heads", "tails"];
@@ -24,16 +24,16 @@ export default {
   example: "{prefix}coinflip 100 heads",
 
   async execute(ctx) {
-    const amount = ctx.getOption("amount", 0);
-    const side   = ctx.getOption("side", 1)?.toLowerCase();
+    const amount = Number(ctx.getOption("amount", 0));
+    const side   = String(ctx.getOption("side", 1) ?? "").toLowerCase();
 
-    if (!VALID_SIDES.includes(side)) {
-      await ctx.reply(createDescBasicEmbed(`Invalid side. Choose "heads" or "tails".`, 0xff0000));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      await ctx.reply(createDescBasicEmbed(`Please enter a valid amount greater than 0.`, 0xff0000));
       return;
     }
 
-    if (!amount || amount <= 0) {
-      await ctx.reply(createDescBasicEmbed(`Please enter a valid amount greater than 0.`, 0xff0000));
+    if (!VALID_SIDES.includes(side)) {
+      await ctx.reply(createDescBasicEmbed(`Invalid side. Choose "heads" or "tails".`, 0xff0000));
       return;
     }
 
@@ -42,10 +42,10 @@ export default {
       getEconomyAccount(ctx.guild.id, ctx.user.id),
     ]);
 
-    if (account.starryCoins < amount) {
+    if (account.primary < amount) {
       await ctx.reply(
         createDescBasicEmbed(
-          `You don't have enough ${formatCurrency(amount, "starryCoin", config)}.\nBalance: ${formatCurrency(account.starryCoins, "starryCoin", config)}`,
+          `You don't have enough ${formatCurrency(amount, config.primary)}.\nBalance: ${formatCurrency(account.primary, config.primary)}`,
           0xff0000
         )
       );
@@ -55,13 +55,8 @@ export default {
     const result = VALID_SIDES[Math.floor(Math.random() * VALID_SIDES.length)];
     const won    = result === side;
 
-    if (won) {
-      account.starryCoins += amount;
-    } else {
-      account.starryCoins -= amount;
-    }
-
-    await account.save();
+    await adjustBalance(ctx.guild.id, ctx.user.id, "primary", won ? amount : -amount);
+    const updated = await getEconomyAccount(ctx.guild.id, ctx.user.id);
 
     const embed = new EmbedBuilder()
       .setColor(won ? 0x57f287 : 0xff3333)
@@ -70,12 +65,12 @@ export default {
       .addFields(
         {
           name: won ? "You earned" : "You lost",
-          value: formatCurrency(amount, "starryCoin", config),
+          value: formatCurrency(amount, config.primary),
           inline: true,
         },
         {
           name: "New balance",
-          value: formatCurrency(account.starryCoins, "starryCoin", config),
+          value: formatCurrency(updated.primary, config.primary),
           inline: true,
         }
       );

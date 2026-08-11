@@ -1,20 +1,13 @@
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
-import StreakProfile from "../../models/StreakProfile.js";
+import * as StreakProfile from "../../models/StreakProfile.js";
+import { toDateString, getYesterday } from "../../helpers/time.js";
 
 const COLOR = 0xf5c542;
 
-function toDateString(date) {
-  return date.toISOString().split("T")[0];
-}
-
 function streakStatus(profile) {
   if (!profile || profile.currentStreak === 0) return "No active streak";
-  const today = toDateString(new Date());
-  const yesterday = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return toDateString(d);
-  })();
+  const today = toDateString();
+  const yesterday = getYesterday();
   const last = profile.lastStreakDate ? toDateString(new Date(profile.lastStreakDate)) : null;
   if (last === today) return `🔥 Active — credited today`;
   if (last === yesterday) return `⚠️ Active — message today to keep it!`;
@@ -45,7 +38,7 @@ export default {
       return;
     }
 
-    const profile = await StreakProfile.findOne({ userId: target.id, guildId: ctx.guild.id });
+    const profile = await StreakProfile.get(target.id, ctx.guild.id);
 
     const current = profile?.currentStreak ?? 0;
     const longest = profile?.longestStreak ?? 0;
