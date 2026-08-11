@@ -1,0 +1,12 @@
+Improve auto slash-command deployment.
+
+- Refactored command deployment into `src/helpers/commands.js`.
+- Auto-deploy now uses a bulk `PUT` only when local and remote commands differ.
+- Supports guild-scoped deploy via `GUILD_ID` for instant dev updates.
+- Supports `SKIP_AUTO_DEPLOY` to disable deploy on startup.
+- Updated `src/events/ready.js` and `src/scripts/deployCommands.js` to share the same logic.
+- Updated README and AGENTS.md with the new env variables.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

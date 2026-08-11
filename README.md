@@ -50,8 +50,15 @@ npm install
 
 ```env
 TOKEN=your_discord_bot_token
+CLIENT_ID=your_application_id
 GROQ_API=your_groq_api_key
 DB_PATH=optional_path_to_sqlite_database
+
+# Optional: deploy commands to a single guild for instant testing
+GUILD_ID=your_test_guild_id
+
+# Optional: skip auto-deploy on startup
+SKIP_AUTO_DEPLOY=false
 ```
 
 ## Configuration
@@ -81,10 +88,17 @@ pm2 logs HitoriChan
 
 ## Re-registering application commands (important)
 
-The bot registers application commands when it emits the `ready` event (see `src/events/ready.js`). If you change command metadata (options, choices, or add `category`/`examples` fields), you must restart the bot so the registration handler runs and updates commands with Discord.
+The bot syncs application commands on `ready` (see `src/events/ready.js` and `src/helpers/commands.js`). It only deploys when it detects a difference between local and remote commands.
 
-- For guild-scoped commands (development), updates apply almost immediately after the handler runs.
-- For global commands, Discord can take up to an hour to propagate changes.
+- Set `GUILD_ID` to deploy to a single guild for instant updates during development.
+- Leave `GUILD_ID` unset to deploy globally. Global commands can take up to an hour to propagate.
+- Set `SKIP_AUTO_DEPLOY=true` to disable auto-deploy on startup.
+
+Force-deploy all current commands manually:
+
+```bash
+node src/scripts/deployCommands.js
+```
 
 ## Commands structure and metadata
 

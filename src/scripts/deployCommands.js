@@ -1,33 +1,35 @@
 import "dotenv/config";
-import { REST, Routes } from "discord.js";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
-import { walkDirectory } from "../utils/fileWalker.js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { REST } from "discord.js";
+import { loadLocalCommands, getDeployRoute } from "../helpers/commands.js";
 
 async function main() {
-  const commandsPath = join(__dirname, "..", "commands");
-  const files = walkDirectory(commandsPath);
-  const body = [];
-
-  for (const file of files) {
-    const imported = await import(`file://${file}`);
-    const command = imported.default;
-    if (command?.data?.name) {
-      body.push(command.data.toJSON());
-    }
+  if (!process.env.TOKEN) {
+    console.error("Missing TOKEN environment variable.");
+    process.exit(1);
   }
 
-  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+  if (!process.env.CLIENT_ID) {
+    console.error("Missing CLIENT_ID environment variable.");
+    process.exit(1);
+  }
 
-  if (process.env.GUILD_ID) {
-    await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), { body });
-    console.log(`Registered ${body.length} guild commands`);
-  } else {
-    await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), { body });
-    console.log(`Registered ${body.length} global commands`);
+  const localMap = await loadLocalCommands();
+  const body = [...localMap.values()];
+  const route = getDeployRoute(process.env.CLIENT_ID);
+  const scope = process.env.GUILD_ID ? `guild ${process.env.GUILD_ID}` : "global";
+
+  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+  await rest.put(route, { body });
+
+  console.log(`🚀 Force-deployed ${body.length} ${scope} command(s):`);
+  console.log(body.map((c) => `  /${c.name}`).join("\n"));
+
+  if (!process.env.GUILD_ID) {
+    console.log("⚠️  Global commands can take up to an hour to fully propagate.");
   }
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

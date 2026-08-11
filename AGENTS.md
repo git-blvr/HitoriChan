@@ -9,7 +9,8 @@
 ## Commands
 - Start: `node index.js`
 - Dev hot-reload: `npm run dev` (requires `nodemon` installed globally or in deps)
-- Deploy/re-register slash commands: restart the bot (handled in `src/events/ready.js`)
+- Auto-deploy slash commands: restart the bot (only deploys when local commands differ)
+- Force deploy all commands: `node src/scripts/deployCommands.js`
 
 ## Project structure
 - `index.js` — bot entry point
@@ -23,8 +24,11 @@
 ## Environment variables
 - `TOKEN` — Discord bot token (required)
 - `GROQ_API` — Groq API key (required for AI)
+- `CLIENT_ID` — Discord application ID (used for command deployment)
+- `GUILD_ID` — optional test guild ID for instant guild command updates
 - `GROQ_MODEL` — optional Groq model override
 - `DB_PATH` — optional SQLite database path
+- `SKIP_AUTO_DEPLOY` — set to `true` to disable auto-deploy on startup
 
 ## Notes
 - The bot auto-migrates the SQLite schema on startup.
