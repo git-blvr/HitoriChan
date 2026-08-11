@@ -37,15 +37,31 @@ function formatDate(ts) {
 
 // ── Sections ──
 
+let activityChart = null;
+
 const sections = {
   overview: async () => {
-    const client = await json("/api/guilds");
-    document.getElementById("stat-servers").textContent = client.length;
-    let users = 0;
-    for (const g of client) users += g.memberCount || 0;
-    document.getElementById("stat-users").textContent = users;
-    document.getElementById("stat-commands").textContent = "-";
-    document.getElementById("stat-messages").textContent = "-";
+    const [overview, guilds] = await Promise.all([json("/api/overview"), json("/api/guilds")]);
+
+    document.getElementById("stat-servers").textContent = overview.bot.guilds;
+    document.getElementById("stat-users").textContent = overview.bot.users;
+    document.getElementById("stat-messages").textContent = overview.totals.messages.toLocaleString();
+    document.getElementById("stat-voice").textContent = overview.totals.voiceHours.toLocaleString();
+    document.getElementById("stat-collaborators").textContent = overview.totals.collaborators.toLocaleString();
+    document.getElementById("stat-uptime").textContent = formatDuration(overview.bot.uptime);
+
+    document.getElementById("sys-bot").textContent = overview.bot.tag;
+    document.getElementById("sys-status").textContent = overview.bot.status;
+    document.getElementById("sys-node").textContent = overview.system.node;
+    document.getElementById("sys-platform").textContent = overview.system.platform;
+    document.getElementById("sys-cpus").textContent = overview.system.cpuCount;
+
+    const usedGB = (overview.system.memoryUsed / 1024 / 1024 / 1024).toFixed(2);
+    const totalGB = (overview.system.memoryTotal / 1024 / 1024 / 1024).toFixed(2);
+    const freePercent = Math.round((overview.system.memoryFree / overview.system.memoryTotal) * 100);
+    document.getElementById("sys-memory").textContent = `${usedGB} / ${totalGB} GB (${freePercent}% free)`;
+
+    await renderChart(currentGuild || "", document.getElementById("chart-range").value);
   },
 
   economy: async () => {
@@ -148,10 +164,7 @@ navLinks.forEach((link) => {
   });
 });
 
-guildSelect.addEventListener("change", (e) => {
-  currentGuild = e.target.value;
-  refreshSection();
-});
+
 
 document.getElementById("logout-btn").addEventListener("click", async () => {
   await api("/api/logout", { method: "POST" });
@@ -230,6 +243,85 @@ window.deleteTrigger = async (keyword) => {
   await json(`/api/triggers/${currentGuild}/${encodeURIComponent(keyword)}`, { method: "DELETE" });
   refreshSection();
 };
+
+function formatDuration(seconds) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const parts = [];
+  if (d) parts.push(`${d}d`);
+  if (h) parts.push(`${h}h`);
+  if (m) parts.push(`${m}m`);
+  return parts.join(" ") || "0m";
+}
+
+async function renderChart(guildId, days) {
+  const url = guildId ? `/api/stats/${guildId}?days=${days}` : `/api/stats?days=${days}`;
+  const { data } = await json(url);
+
+  const ctx = document.getElementById("activity-chart").getContext("2d");
+
+  if (activityChart) {
+    activityChart.destroy();
+  }
+
+  activityChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: data.map((d) => escapeHtml(d.name || d.guildId)),
+      datasets: [
+        {
+          label: "Messages",
+          data: data.map((d) => d.messages),
+          backgroundColor: "#f472b6",
+          borderRadius: 6,
+        },
+        {
+          label: "Voice Hours",
+          data: data.map((d) => d.voiceHours),
+          backgroundColor: "#c084fc",
+          borderRadius: 6,
+        },
+        {
+          label: "Collaborators",
+          data: data.map((d) => d.collaborators),
+          backgroundColor: "#22d3ee",
+          borderRadius: 6,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: "#fff0f5" } },
+      },
+      scales: {
+        x: {
+          ticks: { color: "#a89bb8" },
+          grid: { color: "rgba(255, 255, 255, 0.05)" },
+        },
+        y: {
+          ticks: { color: "#a89bb8" },
+          grid: { color: "rgba(255, 255, 255, 0.05)" },
+        },
+      },
+    },
+  });
+}
+
+document.getElementById("chart-range").addEventListener("change", async (e) => {
+  await renderChart(currentGuild || "", e.target.value);
+});
+
+guildSelect.addEventListener("change", async (e) => {
+  currentGuild = e.target.value;
+  if (currentSection === "overview") {
+    await renderChart(currentGuild || "", document.getElementById("chart-range").value);
+  } else {
+    refreshSection();
+  }
+});
 
 // ── Init ──
 

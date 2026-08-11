@@ -1,0 +1,13 @@
+Add overview page with bot/system status and activity chart.
+
+- New database migration v3 for `voice_sessions` table.
+- New `VoiceSession` model and `voiceStateUpdate` event to track voice hours.
+- New `/api/overview` endpoint with bot status, system status, and totals.
+- New `/api/stats` and `/api/stats/:guildId` endpoints for chart data.
+- Updated overview UI with stat cards, system status grid, and Chart.js bar chart.
+- Chart displays three bars per server: Messages, Voice Hours, and Collaborators.
+- Range selector (7/30/90 days) and guild selector filter the chart.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

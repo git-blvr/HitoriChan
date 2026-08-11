@@ -150,6 +150,23 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_triggers_guild ON triggers(guild_id);
     `,
   },
+  {
+    version: 3,
+    sql: `
+      CREATE TABLE IF NOT EXISTS voice_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        channel_id TEXT NOT NULL,
+        joined_at INTEGER NOT NULL,
+        left_at INTEGER,
+        duration_seconds INTEGER,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+      CREATE INDEX IF NOT EXISTS idx_voice_sessions_lookup ON voice_sessions(guild_id, user_id, left_at);
+      CREATE INDEX IF NOT EXISTS idx_voice_sessions_guild_created ON voice_sessions(guild_id, joined_at);
+    `,
+  },
 ];
 
 export function migrate() {

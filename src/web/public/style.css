@@ -342,3 +342,52 @@ body {
 
 .status-ok { color: #4ade80; }
 .status-err { color: #be123c; }
+
+.chart-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.chart-header select {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input);
+  color: var(--text);
+}
+
+#activity-chart {
+  flex: 1;
+  min-height: 320px;
+}
+
+.sys-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.sys-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sys-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.sys-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}

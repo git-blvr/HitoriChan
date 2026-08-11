@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HitoriChan Dashboard</title>
   <link rel="stylesheet" href="/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
 </head>
 <body class="dashboard-body">
   <aside class="nav">
@@ -37,8 +38,36 @@
       <div class="cards">
         <div class="card"><h3>Servers</h3><p id="stat-servers">-</p></div>
         <div class="card"><h3>Users</h3><p id="stat-users">-</p></div>
-        <div class="card"><h3>Commands Today</h3><p id="stat-commands">-</p></div>
-        <div class="card"><h3>Messages Today</h3><p id="stat-messages">-</p></div>
+        <div class="card"><h3>Total Messages</h3><p id="stat-messages">-</p></div>
+        <div class="card"><h3>Voice Hours</h3><p id="stat-voice">-</p></div>
+        <div class="card"><h3>Collaborators</h3><p id="stat-collaborators">-</p></div>
+        <div class="card"><h3>Uptime</h3><p id="stat-uptime">-</p></div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="chart-header">
+          <h2>Server Activity</h2>
+          <label>Range
+            <select id="chart-range">
+              <option value="7" selected>Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+            </select>
+          </label>
+        </div>
+        <canvas id="activity-chart"></canvas>
+      </div>
+
+      <div class="panel">
+        <h2>System Status</h2>
+        <div class="sys-grid" id="system-status">
+          <div><span class="sys-label">Bot</span><span class="sys-value" id="sys-bot">-</span></div>
+          <div><span class="sys-label">Status</span><span class="sys-value" id="sys-status">-</span></div>
+          <div><span class="sys-label">Node</span><span class="sys-value" id="sys-node">-</span></div>
+          <div><span class="sys-label">Platform</span><span class="sys-value" id="sys-platform">-</span></div>
+          <div><span class="sys-label">Memory</span><span class="sys-value" id="sys-memory">-</span></div>
+          <div><span class="sys-label">CPUs</span><span class="sys-value" id="sys-cpus">-</span></div>
+        </div>
       </div>
     </section>
 

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import os from "os";
 import * as EconomyAccount from "../../models/EconomyAccount.js";
 import * as AISettings from "../../models/AISettings.js";
 import * as StreakSettings from "../../models/StreakSettings.js";
@@ -7,6 +8,7 @@ import * as ModerationSettings from "../../models/ModerationSettings.js";
 import * as GuildSettings from "../../models/GuildSettings.js";
 import * as CommandLog from "../../models/CommandLog.js";
 import * as MessageLog from "../../models/MessageLog.js";
+import * as VoiceSession from "../../models/VoiceSession.js";
 import * as Trigger from "../../models/Trigger.js";
 
 const router = Router();
@@ -106,6 +108,83 @@ router.post("/triggers/:guildId", requireAuth, async (req, res) => {
 router.delete("/triggers/:guildId/:keyword", requireAuth, async (req, res) => {
   await Trigger.removeByKeyword(req.params.guildId, req.params.keyword);
   res.json({ ok: true });
+});
+
+// Overview
+router.get("/overview", requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const now = Date.now();
+  const oneDay = 24 * 60 * 60 * 1000;
+  const oneWeek = 7 * oneDay;
+
+  const msgStats = MessageLog.getStats(null, now - oneWeek);
+  const voiceStats = VoiceSession.getVoiceStats(null, now - oneWeek);
+
+  res.json({
+    bot: {
+      tag: client.user?.tag,
+      status: client.user?.status ?? "online",
+      guilds: client.guilds.cache.size,
+      users: Array.from(client.guilds.cache.values()).reduce((acc, g) => acc + (g.memberCount || 0), 0),
+      uptime: Math.floor(process.uptime()),
+    },
+    system: {
+      platform: process.platform,
+      node: process.version,
+      memoryUsed: process.memoryUsage().heapUsed,
+      memoryTotal: os.totalmem(),
+      memoryFree: os.freemem(),
+      cpuCount: os.cpus().length,
+    },
+    totals: {
+      messages: msgStats.total,
+      collaborators: msgStats.uniqueUsers,
+      voiceHours: voiceStats.hours,
+    },
+  });
+});
+
+// Stats for chart
+router.get("/stats", requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const { days = "7" } = req.query;
+  const daysNum = Math.min(Math.max(Number(days) || 7, 1), 90);
+  const since = Date.now() - daysNum * 24 * 60 * 60 * 1000;
+
+  const guilds = Array.from(client.guilds.cache.values());
+  const data = await Promise.all(guilds.map(async (g) => {
+    const msgStats = MessageLog.getStats(g.id, since);
+    const voiceStats = VoiceSession.getVoiceStats(g.id, since);
+    return {
+      guildId: g.id,
+      name: g.name,
+      messages: msgStats.total,
+      voiceHours: voiceStats.hours,
+      collaborators: msgStats.uniqueUsers,
+    };
+  }));
+
+  res.json({ days: daysNum, since, data });
+});
+
+router.get("/stats/:guildId", requireAuth, async (req, res) => {
+  const { days = "7" } = req.query;
+  const daysNum = Math.min(Math.max(Number(days) || 7, 1), 90);
+  const since = Date.now() - daysNum * 24 * 60 * 60 * 1000;
+
+  const msgStats = MessageLog.getStats(req.params.guildId, since);
+  const voiceStats = VoiceSession.getVoiceStats(req.params.guildId, since);
+
+  res.json({
+    days: daysNum,
+    since,
+    data: [{
+      guildId: req.params.guildId,
+      messages: msgStats.total,
+      voiceHours: voiceStats.hours,
+      collaborators: msgStats.uniqueUsers,
+    }],
+  });
 });
 
 export default router;

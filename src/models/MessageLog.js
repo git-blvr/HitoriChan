@@ -47,6 +47,20 @@ export function prune(maxTotal = 5000) {
   return deleteOld.run(maxTotal);
 }
 
+const countStmt = db.prepare(`
+  SELECT
+    COUNT(*) AS total,
+    COUNT(DISTINCT user_id) AS unique_users
+  FROM message_logs
+  WHERE ((? IS NULL) OR (guild_id = ?))
+    AND created_at >= ?
+`);
+
+export function getStats(guildId, since = 0) {
+  const row = countStmt.get(guildId ?? null, guildId ?? null, since);
+  return { total: row.total || 0, uniqueUsers: row.unique_users || 0 };
+}
+
 function parse(row) {
   return {
     id: row.id,
