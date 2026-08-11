@@ -405,7 +405,13 @@ async function loadEmojiPicker(guildId) {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "emoji-btn";
-        btn.textContent = emoji.value;
+        const img = document.createElement("img");
+        img.src = emoji.url;
+        img.alt = emoji.name;
+        img.className = "emoji-img";
+        img.width = 22;
+        img.height = 22;
+        btn.appendChild(img);
         btn.title = emoji.name;
         btn.addEventListener("click", () => pickEmoji(emoji.value, btn));
         guildEl.appendChild(btn);
