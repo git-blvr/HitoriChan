@@ -1,13 +1,13 @@
 :root {
-  --bg: #0b0812;
-  --nav: #1a1125;
-  --header: #1f1630;
-  --container: #7c3aed;
-  --text: #f3eff8;
-  --muted: #a89bb8;
-  --card: #151020;
-  --border: #2d1f3d;
-  --input: #231834;
+  --bg: #080305;
+  --nav: linear-gradient(160deg, #f9a8d4 0%, #f472b6 100%);
+  --header: linear-gradient(160deg, #f9a8d4 0%, #f472b6 100%);
+  --container: #980a51;
+  --text: #fff0f5;
+  --muted: #d45284;
+  --card: #0d0508;
+  --border: #4a1d30;
+  --input: #1a0c11;
   --radius: 12px;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
@@ -17,8 +17,9 @@
 body {
   margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--bg);
+  background: radial-gradient(circle at 15% 25%, #2a0a18 0%, #050203 40%, #000000 100%);
   color: var(--text);
+  min-height: 100vh;
 }
 
 /* Login */
@@ -44,7 +45,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(20, 14, 30, 0.93);
+  background: rgba(15, 5, 10, 0.95);
   backdrop-filter: blur(12px);
   padding: 32px;
 }
@@ -85,8 +86,8 @@ body {
 
 .login-form input:focus {
   outline: none;
-  border-color: #a78bfa;
-  box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.25);
+  border-color: #df4997;
+  box-shadow: 0 0 0 2px rgba(244, 114, 182, 0.35);
 }
 
 .login-btn {
@@ -102,10 +103,10 @@ body {
   font-size: 1rem;
 }
 
-.login-btn:hover { background: #6d28d9; }
+.login-btn:hover { background: #db2777; }
 
 .login-error {
-  color: #f87171;
+  color: #f43f5e;
   font-size: 0.9rem;
   margin-top: 12px;
 }
@@ -135,14 +136,15 @@ body {
   padding: 0 20px 20px;
   font-size: 1.4rem;
   font-weight: 800;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  color: #1a0a0e;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
   margin-bottom: 12px;
 }
 
 .nav-links a {
   display: block;
   padding: 12px 20px;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(26, 10, 14, 0.85);
   text-decoration: none;
   font-weight: 600;
   transition: background 0.15s;
@@ -150,8 +152,8 @@ body {
 
 .nav-links a:hover,
 .nav-links a.active {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
+  background: rgba(26, 10, 14, 0.15);
+  color: #1a0a0e;
 }
 
 .nav-footer {
@@ -162,10 +164,10 @@ body {
 .logout-btn {
   width: 100%;
   padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(26, 10, 14, 0.25);
   border-radius: 8px;
   background: transparent;
-  color: white;
+  color: #1a0a0e;
   cursor: pointer;
   font-weight: 600;
 }
@@ -185,15 +187,15 @@ body {
   padding: 16px 24px;
   font-weight: 700;
   font-size: 1.25rem;
-  color: white;
+  color: #1a0a0e;
 }
 
 .guild-picker select {
   padding: 8px 12px;
   border: none;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.2);
-  color: white;
+  background: rgba(26, 10, 14, 0.2);
+  color: #1a0a0e;
   font-size: 0.95rem;
   min-width: 180px;
 }
@@ -289,7 +291,10 @@ body {
   cursor: pointer;
 }
 
-.save-btn:hover { background: #6d28d9; }
+.login-btn { background: var(--header); }
+
+.save-btn:hover,
+.login-btn:hover { background: #db2777; }
 
 .inline-form {
   display: flex;
@@ -330,7 +335,7 @@ body {
   padding: 6px 10px;
   border: none;
   border-radius: 6px;
-  background: #dc2626;
+  background: #ec4899;
   color: white;
   cursor: pointer;
 }
