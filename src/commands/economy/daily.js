@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
-import { getEconomyAccount, claimDaily, getGuildEconomyConfig, DAILY_REWARD, canClaimDaily, getDailyCooldown } from "../../utils/economyManager.js";
+import { getEconomyAccount, claimDaily, getGuildEconomyConfig, canClaimDaily, getDailyCooldown } from "../../utils/economyManager.js";
 
 const THUMBNAIL = "https://cdn.discordapp.com/attachments/1376242032619684061/1523470888056651919/Untitled1677_20260706022904.png?ex=6a576f14&is=6a561d94&hm=c5f57d89258cd24008d05d65f53ec7d7b57eb9e15a9cc15253344a59d8eb371e";
 
