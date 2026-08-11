@@ -1,0 +1,11 @@
+Make dashboard layout "floating" with rounded cards.
+
+Restructured the dashboard CSS to use CSS grid so the nav, header, and
+main content area are separate rounded, shadowed cards with gaps between
+them instead of edge-to-edge bars. The main content section is now a single
+large floating card, matching the diagram's layout while keeping the dark
+purple color theme.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>
