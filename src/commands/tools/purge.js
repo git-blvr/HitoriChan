@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { buildEmbed, requireModerator, sendLog } from "../moderation/moderationHelpers.js";
+import { embErr, embWrn } from "../../helpers/embeds.js";
 
 const MAX_PURGE = 100;
 const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
@@ -25,7 +26,7 @@ export default {
       : parseInt(ctx.args?.[0]);
 
     if (!amount || isNaN(amount) || amount < 1 || amount > MAX_PURGE) {
-      await ctx.reply(buildEmbed(`Please provide a number between 1 and ${MAX_PURGE}.`));
+      await ctx.reply(embErr(`Please provide a number between 1 and ${MAX_PURGE}.`));
       return;
     }
 
@@ -42,7 +43,7 @@ export default {
       .first(amount);
 
     if (!messages.length) {
-      await ctx.reply(buildEmbed("No eligible messages found. Messages older than 14 days cannot be deleted."));
+      await ctx.reply(embWrn("No eligible messages found. Messages older than 14 days cannot be deleted."));
       return;
     }
 

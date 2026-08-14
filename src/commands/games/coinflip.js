@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { getEconomyAccount, getGuildEconomyConfig, formatCurrency, adjustBalance } from "../../utils/economyManager.js";
-import { createDescBasicEmbed } from "../../utils/basicEmbed.js";
+import { embErr } from "../../helpers/embeds.js";
 
 const VALID_SIDES = ["heads", "tails"];
 
@@ -29,12 +29,12 @@ export default {
     const side   = String(ctx.getOption("side", 1) ?? "").toLowerCase();
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      await ctx.reply(createDescBasicEmbed(`Please enter a valid amount greater than 0.`, 0xff0000));
+      await ctx.reply(embErr(`Please enter a valid amount greater than 0.`));
       return;
     }
 
     if (!VALID_SIDES.includes(side)) {
-      await ctx.reply(createDescBasicEmbed(`Invalid side. Choose "heads" or "tails".`, 0xff0000));
+      await ctx.reply(embErr(`Invalid side. Choose "heads" or "tails".`));
       return;
     }
 
@@ -45,9 +45,8 @@ export default {
 
     if (account.primary < amount) {
       await ctx.reply(
-        createDescBasicEmbed(
-          `You don't have enough ${formatCurrency(amount, config.primary)}.\nBalance: ${formatCurrency(account.primary, config.primary)}`,
-          0xff0000
+        embErr(
+          `You don't have enough ${formatCurrency(amount, config.primary)}.\nBalance: ${formatCurrency(account.primary, config.primary)}`
         )
       );
       return;

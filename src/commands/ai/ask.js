@@ -3,6 +3,7 @@ import { cv2 } from "../../helpers/cv2.js";
 import { queryGroq } from "../../ai/groq.js";
 import { checkCooldown, clearCooldown } from "../../utils/cooldowns.js";
 import * as EconomyAccount from "../../models/EconomyAccount.js";
+import { embErr, embWrn } from "../../helpers/embeds.js";
 
 const FOLT_COST   = 750;
 const COOLDOWN_MS = 5 * 60 * 1000;
@@ -26,11 +27,7 @@ export default {
       const mins = Math.floor(cooldown / 60);
       const secs = cooldown % 60;
       const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-      await ctx.reply(cv2({
-        color: 0xff3333,
-        description: `⏳ You're on cooldown! Try again in **${timeStr}**.${isBoosting ? "\n-# Booster discount applied ✨" : ""}`,
-        ephemeral: true,
-      }));
+      await ctx.reply(embWrn(`⏳ You're on cooldown! Try again in **${timeStr}**.${isBoosting ? "\n-# Booster discount applied ✨" : ""}`, undefined, "cv2", true));
       return;
     }
 
@@ -38,11 +35,7 @@ export default {
 
     if (account.secondary < FOLT_COST) {
       clearCooldown(ctx.user.id, "ask");
-      await ctx.reply(cv2({
-        color: 0xff3333,
-        description: `You need **${FOLT_COST} £T** to use this command.\nYour balance: **${account.secondary.toLocaleString()} £T**`,
-        ephemeral: true,
-      }));
+      await ctx.reply(embErr(`You need **${FOLT_COST} £T** to use this command.\nYour balance: **${account.secondary.toLocaleString()} £T**`, undefined, "cv2", true));
       return;
     }
 
@@ -52,11 +45,7 @@ export default {
 
     if (!question?.trim()) {
       clearCooldown(ctx.user.id, "ask");
-      await ctx.reply(cv2({
-        color: COLOR,
-        description: "Please provide a question.",
-        ephemeral: true,
-      }));
+      await ctx.reply(embWrn("Please provide a question.", undefined, "cv2", true));
       return;
     }
 
@@ -84,10 +73,7 @@ export default {
     } catch (err) {
       console.error("Ask command error:", err);
       clearCooldown(ctx.user.id, "ask");
-      await ctx.editReply(cv2({
-        color: 0xff3333,
-        description: "❌ Something went wrong. You were not charged and your cooldown has been reset.",
-      }));
+      await ctx.editReply(embErr("❌ Something went wrong. You were not charged and your cooldown has been reset."));
     }
   },
 };

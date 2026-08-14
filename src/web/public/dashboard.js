@@ -4,6 +4,8 @@ const navLinks = document.querySelectorAll(".nav-links a");
 
 let currentGuild = "";
 let currentSection = "overview";
+let allGuilds = [];
+let activityChart = null;
 
 function api(path, options = {}) {
   return fetch(path, { credentials: "same-origin", ...options });
@@ -21,10 +23,24 @@ async function json(path, options = {}) {
   return res.json();
 }
 
+function showToast(message, type = "info") {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add("toast-out");
+    toast.addEventListener("animationend", () => toast.remove());
+  }, 3500);
+}
+
 async function loadGuilds() {
-  const guilds = await json("/api/guilds");
+  allGuilds = await json("/api/guilds");
   guildSelect.innerHTML = '<option value="">Select a server</option>' +
-    guilds.map((g) => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join("");
+    allGuilds.map((g) => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join("");
+  return allGuilds;
 }
 
 function escapeHtml(str) {
@@ -34,10 +50,6 @@ function escapeHtml(str) {
 function formatDate(ts) {
   return new Date(ts).toLocaleString();
 }
-
-// ── Sections ──
-
-let activityChart = null;
 
 const sections = {
   overview: async () => {
@@ -115,6 +127,22 @@ const sections = {
     document.getElementById("prefix").value = prefix.prefix;
   },
 
+  cases: async () => {
+    if (!currentGuild) return;
+    const rows = await json(`/api/moderation/cases/${currentGuild}`);
+    const tbody = document.querySelector("#cases-table tbody");
+    tbody.innerHTML = rows.map((c) => `
+      <tr>
+        <td>${escapeHtml(c.caseId)}</td>
+        <td>${escapeHtml(c.action)}</td>
+        <td>${escapeHtml(c.targetId)}</td>
+        <td>${escapeHtml(c.moderatorId)}</td>
+        <td>${escapeHtml(c.reason)}</td>
+        <td>${formatDate(c.createdAt)}</td>
+      </tr>
+    `).join("") || '<tr><td colspan="6">No cases</td></tr>';
+  },
+
   triggers: async () => {
     if (!currentGuild) return;
     const rows = await json(`/api/triggers/${currentGuild}`);
@@ -130,34 +158,63 @@ const sections = {
 
   logs: async () => {
     if (!currentGuild) return;
-    const cmdLogs = await json(`/api/logs/commands/${currentGuild}?limit=50`);
-    const msgLogs = await json(`/api/logs/messages/${currentGuild}?limit=50`);
-
-    const cmdBody = document.querySelector("#command-logs-table tbody");
-    cmdBody.innerHTML = cmdLogs.map((l) => `
-      <tr>
-        <td>${formatDate(l.createdAt)}</td>
-        <td>${escapeHtml(l.userName || l.userId)}</td>
-        <td>${escapeHtml(l.commandName)}</td>
-        <td>${escapeHtml(l.source)}</td>
-        <td class="${l.success ? 'status-ok' : 'status-err'}">${l.success ? 'Yes' : 'No'}</td>
-      </tr>
-    `).join("") || '<tr><td colspan="5">No command logs</td></tr>';
-
-    const msgBody = document.querySelector("#message-logs-table tbody");
-    msgBody.innerHTML = msgLogs.map((l) => `
-      <tr>
-        <td>${formatDate(l.createdAt)}</td>
-        <td>${escapeHtml(l.userName || l.userId)}</td>
-        <td>${l.channelId}</td>
-        <td>${escapeHtml(l.content)}</td>
-      </tr>
-    `).join("") || '<tr><td colspan="4">No message logs</td></tr>';
+    await Promise.all([loadCommandLogs(), loadMessageLogs()]);
   },
 };
 
+async function loadCommandLogs() {
+  if (!currentGuild) return;
+  const params = new URLSearchParams({ limit: "50" });
+  const user = document.getElementById("cmd-filter-user").value.trim();
+  const command = document.getElementById("cmd-filter-command").value.trim();
+  const success = document.getElementById("cmd-filter-success").value;
+  if (user) params.set("user", user);
+  if (command) params.set("command", command);
+  if (success !== "all") params.set("success", success);
+
+  const cmdLogs = await json(`/api/logs/commands/${currentGuild}?${params}`);
+
+  const cmdBody = document.querySelector("#command-logs-table tbody");
+  cmdBody.innerHTML = cmdLogs.map((l) => `
+    <tr>
+      <td>${formatDate(l.createdAt)}</td>
+      <td>${escapeHtml(l.userName || l.userId)}</td>
+      <td>${escapeHtml(l.commandName)}</td>
+      <td>${escapeHtml(l.source)}</td>
+      <td class="${l.success ? 'status-ok' : 'status-err'}">${l.success ? 'Yes' : 'No'}</td>
+    </tr>
+  `).join("") || '<tr><td colspan="5">No command logs</td></tr>';
+}
+
+async function loadMessageLogs() {
+  if (!currentGuild) return;
+  const params = new URLSearchParams({ limit: "50" });
+  const user = document.getElementById("msg-filter-user").value.trim();
+  const content = document.getElementById("msg-filter-content").value.trim();
+  if (user) params.set("user", user);
+  if (content) params.set("content", content);
+
+  const msgLogs = await json(`/api/logs/messages/${currentGuild}?${params}`);
+
+  const msgBody = document.querySelector("#message-logs-table tbody");
+  msgBody.innerHTML = msgLogs.map((l) => `
+    <tr>
+      <td>${formatDate(l.createdAt)}</td>
+      <td>${escapeHtml(l.userName || l.userId)}</td>
+      <td>${l.channelId}</td>
+      <td>${escapeHtml(l.content)}</td>
+    </tr>
+  `).join("") || '<tr><td colspan="4">No message logs</td></tr>';
+}
+
 async function refreshSection() {
-  if (sections[currentSection]) await sections[currentSection]();
+  if (sections[currentSection]) {
+    try {
+      await sections[currentSection]();
+    } catch (err) {
+      showToast(err.message || "Failed to refresh", "error");
+    }
+  }
 }
 
 function showSection(name) {
@@ -176,15 +233,12 @@ navLinks.forEach((link) => {
   });
 });
 
-
-
 document.getElementById("logout-btn").addEventListener("click", async () => {
   await api("/api/logout", { method: "POST" });
   window.location.href = "/";
 });
 
-// ── Forms ──
-
+// Forms
 document.getElementById("ai-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!currentGuild) return;
@@ -197,7 +251,7 @@ document.getElementById("ai-form").addEventListener("submit", async (e) => {
       customPrompt: document.getElementById("ai-prompt").value.trim() || null,
     }),
   });
-  alert("AI settings saved");
+  showToast("AI settings saved", "success");
 });
 
 document.getElementById("streak-form").addEventListener("submit", async (e) => {
@@ -211,7 +265,7 @@ document.getElementById("streak-form").addEventListener("submit", async (e) => {
       notifyChannelId: document.getElementById("streak-notify").value.trim() || null,
     }),
   });
-  alert("Streak settings saved");
+  showToast("Streak settings saved", "success");
 });
 
 document.getElementById("moderation-form").addEventListener("submit", async (e) => {
@@ -224,7 +278,7 @@ document.getElementById("moderation-form").addEventListener("submit", async (e) 
       modRoleId: document.getElementById("mod-role").value.trim() || null,
     }),
   });
-  alert("Moderation settings saved");
+  showToast("Moderation settings saved", "success");
 });
 
 document.getElementById("prefix-form").addEventListener("submit", async (e) => {
@@ -234,7 +288,7 @@ document.getElementById("prefix-form").addEventListener("submit", async (e) => {
     method: "POST",
     body: JSON.stringify({ prefix: document.getElementById("prefix").value.trim() }),
   });
-  alert("Prefix saved");
+  showToast("Prefix saved", "success");
 });
 
 document.getElementById("trigger-form").addEventListener("submit", async (e) => {
@@ -248,13 +302,43 @@ document.getElementById("trigger-form").addEventListener("submit", async (e) => 
   });
   document.getElementById("trigger-form").reset();
   refreshSection();
+  showToast("Trigger added", "success");
 });
 
 window.deleteTrigger = async (keyword) => {
   if (!currentGuild) return;
   await json(`/api/triggers/${currentGuild}/${encodeURIComponent(keyword)}`, { method: "DELETE" });
   refreshSection();
+  showToast("Trigger deleted", "success");
 };
+
+document.getElementById("economy-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+
+  const min = Number(document.getElementById("econ-daily-min").value);
+  const max = Number(document.getElementById("econ-daily-max").value);
+  if (min > max) {
+    showToast("Daily Min cannot be greater than Daily Max", "error");
+    return;
+  }
+
+  await json(`/api/economy/${currentGuild}`, {
+    method: "POST",
+    body: JSON.stringify({
+      primaryName: document.getElementById("econ-primary-name").value.trim(),
+      primarySymbol: document.getElementById("econ-primary-symbol").value.trim(),
+      primaryEmoji: document.getElementById("econ-primary-emoji").value.trim() || null,
+      secondaryName: document.getElementById("econ-secondary-name").value.trim(),
+      secondarySymbol: document.getElementById("econ-secondary-symbol").value.trim(),
+      secondaryEmoji: document.getElementById("econ-secondary-emoji").value.trim() || null,
+      dailyMin: min,
+      dailyMax: max,
+    }),
+  });
+  showToast("Economy settings saved", "success");
+  refreshSection();
+});
 
 function formatDuration(seconds) {
   const d = Math.floor(seconds / 86400);
@@ -285,19 +369,19 @@ async function renderChart(guildId, days) {
         {
           label: "Messages",
           data: data.map((d) => d.messages),
-          backgroundColor: "#f472b6",
+          backgroundColor: "#7c3aed",
           borderRadius: 6,
         },
         {
           label: "Voice Hours",
           data: data.map((d) => d.voiceHours),
-          backgroundColor: "#c084fc",
+          backgroundColor: "#22c55e",
           borderRadius: 6,
         },
         {
           label: "Collaborators",
           data: data.map((d) => d.collaborators),
-          backgroundColor: "#22d3ee",
+          backgroundColor: "#3b82f6",
           borderRadius: 6,
         },
       ],
@@ -306,12 +390,12 @@ async function renderChart(guildId, days) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: "#fff0f5" } },
+        legend: { labels: { color: "#f3f4f6" } },
       },
       scales: {
         x: {
           ticks: {
-            color: "#a89bb8",
+            color: "#9ca3af",
             maxRotation: 45,
             minRotation: 0,
             callback(value) {
@@ -321,11 +405,11 @@ async function renderChart(guildId, days) {
               return value;
             },
           },
-          grid: { color: "rgba(255, 255, 255, 0.05)" },
+          grid: { color: "rgba(255, 255, 255, 0.06)" },
         },
         y: {
-          ticks: { color: "#a89bb8" },
-          grid: { color: "rgba(255, 255, 255, 0.05)" },
+          ticks: { color: "#9ca3af" },
+          grid: { color: "rgba(255, 255, 255, 0.06)" },
         },
       },
     },
@@ -336,8 +420,26 @@ document.getElementById("chart-range").addEventListener("change", async (e) => {
   await renderChart(currentGuild || "", e.target.value);
 });
 
+function updateGuildIcon(guildId) {
+  const iconEl = document.getElementById("guild-icon");
+  if (!iconEl) return;
+  if (!guildId) {
+    iconEl.hidden = true;
+    return;
+  }
+  const g = allGuilds.find((x) => x.id === guildId);
+  if (g && g.icon) {
+    iconEl.src = g.icon;
+    iconEl.alt = g.name;
+    iconEl.hidden = false;
+  } else {
+    iconEl.hidden = true;
+  }
+}
+
 guildSelect.addEventListener("change", async (e) => {
   currentGuild = e.target.value;
+  updateGuildIcon(currentGuild);
   if (currentSection === "overview") {
     await renderChart(currentGuild || "", document.getElementById("chart-range").value);
   } else {
@@ -345,8 +447,23 @@ guildSelect.addEventListener("change", async (e) => {
   }
 });
 
-// ── Emoji picker ──
+const refreshBtn = document.getElementById("refresh-btn");
+if (refreshBtn) {
+  refreshBtn.addEventListener("click", async () => {
+    refreshBtn.classList.add("spin");
+    await refreshSection();
+    refreshBtn.classList.remove("spin");
+    showToast("Refreshed", "success");
+  });
+}
 
+const cmdFilterBtn = document.getElementById("cmd-filter-btn");
+if (cmdFilterBtn) cmdFilterBtn.addEventListener("click", loadCommandLogs);
+
+const msgFilterBtn = document.getElementById("msg-filter-btn");
+if (msgFilterBtn) msgFilterBtn.addEventListener("click", loadMessageLogs);
+
+// Emoji picker
 let activeEmojiInput = null;
 
 const DEFAULT_EMOJIS = [
@@ -456,34 +573,5 @@ document.getElementById("economy").addEventListener("click", (e) => {
   }
 });
 
-document.getElementById("economy-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (!currentGuild) return;
-
-  const min = Number(document.getElementById("econ-daily-min").value);
-  const max = Number(document.getElementById("econ-daily-max").value);
-  if (min > max) {
-    alert("Daily Min cannot be greater than Daily Max");
-    return;
-  }
-
-  await json(`/api/economy/${currentGuild}`, {
-    method: "POST",
-    body: JSON.stringify({
-      primaryName: document.getElementById("econ-primary-name").value.trim(),
-      primarySymbol: document.getElementById("econ-primary-symbol").value.trim(),
-      primaryEmoji: document.getElementById("econ-primary-emoji").value.trim() || null,
-      secondaryName: document.getElementById("econ-secondary-name").value.trim(),
-      secondarySymbol: document.getElementById("econ-secondary-symbol").value.trim(),
-      secondaryEmoji: document.getElementById("econ-secondary-emoji").value.trim() || null,
-      dailyMin: min,
-      dailyMax: max,
-    }),
-  });
-  alert("Economy settings saved");
-  refreshSection();
-});
-
-// ── Init ──
-
+// Init
 loadGuilds().then(() => showSection("overview"));

@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { buildEmbed, createCase, resolveReason, requireModerator, sendLog } from "./moderationHelpers.js";
+import { embErr } from "../../helpers/embeds.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -16,13 +17,13 @@ export default {
 
     const userId = ctx.isInteraction ? ctx.source?.options?.getString("user_id") : ctx.args?.[0];
     if (!userId) {
-      await ctx.reply(buildEmbed("Please provide a valid user ID."));
+      await ctx.reply(embErr("Please provide a valid user ID."));
       return;
     }
 
     const ban = await ctx.guild.bans.fetch(userId).catch(() => null);
     if (!ban) {
-      await ctx.reply(buildEmbed(`No ban found for user ID \`${userId}\`.`));
+      await ctx.reply(embErr(`No ban found for user ID \`${userId}\`.`));
       return;
     }
 

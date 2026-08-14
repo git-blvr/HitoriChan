@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { buildEmbed, createCase, resolveTarget, resolveReason, resolveAttachment, requireModerator, checkHierarchy, notifyTarget, sendLog, parseDuration, formatDuration } from "./moderationHelpers.js";
+import { embErr } from "../../helpers/embeds.js";
 
 const MAX_TIMEOUT_MS = 28 * 24 * 60 * 60 * 1000;
 
@@ -20,7 +21,7 @@ export default {
 
     const target = await resolveTarget(ctx, 0);
     if (!target) {
-      await ctx.reply(buildEmbed("Please mention a valid member."));
+      await ctx.reply(embErr("Please mention a valid member."));
       return;
     }
 
@@ -32,12 +33,12 @@ export default {
 
     const durationMs = parseDuration(rawDuration ?? "");
     if (!durationMs) {
-      await ctx.reply(buildEmbed("Invalid duration. Use formats like `1h`, `30m`, `1d`."));
+      await ctx.reply(embErr("Invalid duration. Use formats like `1h`, `30m`, `1d`."));
       return;
     }
 
     if (durationMs > MAX_TIMEOUT_MS) {
-      await ctx.reply(buildEmbed("Duration cannot exceed 28 days."));
+      await ctx.reply(embErr("Duration cannot exceed 28 days."));
       return;
     }
 

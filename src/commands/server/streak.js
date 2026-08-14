@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import * as StreakProfile from "../../models/StreakProfile.js";
 import { toDateString, getYesterday } from "../../helpers/time.js";
+import { embErr } from "../../helpers/embeds.js";
 
 const COLOR = 0xf5c542;
 
@@ -35,7 +36,7 @@ export default {
     }
 
     if (!target) {
-      await ctx.reply(cv2({ color: COLOR, description: "Couldn't find that member." }));
+      await ctx.reply(embErr("Couldn't find that member."));
       return;
     }
 

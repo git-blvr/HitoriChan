@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { buildEmbed, getCasesForUser, resolveTarget, requireModerator } from "./moderationHelpers.js";
+import { embErr, embWrn } from "../../helpers/embeds.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -15,13 +16,13 @@ export default {
 
     const target = await resolveTarget(ctx, 0);
     if (!target) {
-      await ctx.reply(buildEmbed("Please mention a valid member."));
+      await ctx.reply(embErr("Please mention a valid member."));
       return;
     }
 
     const cases = (await getCasesForUser(ctx.guild.id, target.id)).filter((c) => c.action === "warn");
     if (!cases.length) {
-      await ctx.reply(buildEmbed(`${target} has no active warnings.`));
+      await ctx.reply(embWrn(`${target} has no active warnings.`));
       return;
     }
 

@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { buildEmbed } from "./moderationHelpers.js";
+import { embErr, embWrn } from "../../helpers/embeds.js";
 import * as ModerationSettings from "../../models/ModerationSettings.js";
 
 const SUBCOMMANDS = new Set(["logchannel", "modrole", "view"]);
@@ -35,13 +36,13 @@ export default {
   example: "{prefix}modconfig logchannel #mod-logs",
   async execute(ctx) {
     if (!ctx.member?.permissions?.has(PermissionFlagsBits.ManageGuild)) {
-      await ctx.reply(buildEmbed("You need the Manage Server permission to use this command."));
+      await ctx.reply(embErr("You need the Manage Server permission to use this command."));
       return;
     }
 
     const sub = getSubcommand(ctx);
     if (!sub) {
-      await ctx.reply(buildEmbed("Usage: `modconfig <logchannel|modrole|view>`"));
+      await ctx.reply(embWrn("Usage: `modconfig <logchannel|modrole|view>`"));
       return;
     }
 
@@ -64,7 +65,7 @@ export default {
       }
 
       if (!channelId) {
-        await ctx.reply(buildEmbed("Please mention a valid channel."));
+        await ctx.reply(embWrn("Please mention a valid channel."));
         return;
       }
 
@@ -84,7 +85,7 @@ export default {
       }
 
       if (!roleId) {
-        await ctx.reply(buildEmbed("Please mention a valid role."));
+        await ctx.reply(embWrn("Please mention a valid role."));
         return;
       }
 

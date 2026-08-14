@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { getLeaderboard, getGuildEconomyConfig, formatCurrency } from "../../utils/economyManager.js";
+import { embErr, embWrn } from "../../helpers/embeds.js";
 
 export default {
   data: new SlashCommandBuilder().setName("richboard").setDescription("Show the top Starry Coins balances in this server"),
@@ -10,7 +11,7 @@ export default {
   example: "{prefix}richboard",
   async execute(ctx) {
     if (!ctx.guild) {
-      await ctx.reply("This command only works in a server.");
+      await ctx.reply(embErr("This command only works in a server."));
       return;
     }
 
@@ -18,7 +19,7 @@ export default {
     const leaderboard = await getLeaderboard(ctx.guild.id, 10);
 
     if (!leaderboard.length) {
-      await ctx.reply("No economy data available yet.");
+      await ctx.reply(embWrn("No economy data available yet."));
       return;
     }
 

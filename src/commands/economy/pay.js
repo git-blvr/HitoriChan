@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { transferBalance, getGuildEconomyConfig, CURRENCY_TYPES } from "../../utils/economyManager.js";
-import { createDescBasicEmbed } from "../../utils/basicEmbed.js";
+import { embErr } from "../../helpers/embeds.js";
 
 const currencyChoices = [
   { name: "coins", value: CURRENCY_TYPES.PRIMARY },
@@ -26,7 +26,7 @@ export default {
   example: "{prefix}pay @friend 100 $C",
   async execute(ctx) {
     if (!ctx.guild) {
-      await ctx.reply(createDescBasicEmbed("This command only works in a server."));
+      await ctx.reply(embErr("This command only works in a server."));
       return;
     }
 
@@ -36,18 +36,18 @@ export default {
     const recipient = await resolveRecipient(ctx, recipientOption);
 
     if (!recipient) {
-      await ctx.reply(createDescBasicEmbed("Could not find that recipient."));
+      await ctx.reply(embErr("Could not find that recipient."));
       return;
     }
 
     const amount = Number(amountOption);
     if (!Number.isFinite(amount) || amount <= 0) {
-      await ctx.reply(createDescBasicEmbed("Please provide a valid amount greater than zero."));
+      await ctx.reply(embErr("Please provide a valid amount greater than zero."));
       return;
     }
 
     if (recipient.id === ctx.user.id) {
-      await ctx.reply(createDescBasicEmbed("You cannot pay yourself."));
+      await ctx.reply(embErr("You cannot pay yourself."));
       return;
     }
 
@@ -63,7 +63,7 @@ export default {
         description: `You sent ${amount.toLocaleString()} ${currencyName} to ${recipient.user?.username ?? recipient.username}.`,
       }));
     } catch (error) {
-      await ctx.reply(createDescBasicEmbed(error.message || "Could not complete the payment."));
+      await ctx.reply(embErr(error.message || "Could not complete the payment."));
     }
   },
 };

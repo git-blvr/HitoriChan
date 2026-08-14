@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { buildEmbed, deleteCase, requireModerator, sendLog } from "./moderationHelpers.js";
+import { embErr, embWrn } from "../../helpers/embeds.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -16,13 +17,13 @@ export default {
 
     const caseId = ctx.isInteraction ? ctx.source?.options?.getString("case_id") : (ctx.args?.[0] ?? null);
     if (!caseId) {
-      await ctx.reply(buildEmbed("Please provide a valid case ID."));
+      await ctx.reply(embErr("Please provide a valid case ID."));
       return;
     }
 
     const removed = await deleteCase(ctx.guild.id, caseId.toUpperCase());
     if (!removed) {
-      await ctx.reply(buildEmbed(`No active warning found with case ID \`${caseId}\`.`));
+      await ctx.reply(embWrn(`No active warning found with case ID \`${caseId}\`.`));
       return;
     }
 

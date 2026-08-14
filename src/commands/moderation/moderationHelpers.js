@@ -1,4 +1,5 @@
 import { cv2 } from "../../helpers/cv2.js";
+import { embErr } from "../../helpers/embeds.js";
 import * as ModerationCase from "../../models/ModerationCase.js";
 import * as ModerationSettings from "../../models/ModerationSettings.js";
 
@@ -51,7 +52,7 @@ export async function requireModerator(ctx) {
   const hasPermission = member?.permissions?.has("ModerateMembers");
 
   if (!hasModRole && !hasPermission) {
-    await ctx.reply(buildEmbed("You don't have permission to use moderation commands."));
+    await ctx.reply(embErr("You don't have permission to use moderation commands."));
     return false;
   }
   return true;
@@ -60,19 +61,19 @@ export async function requireModerator(ctx) {
 export async function checkHierarchy(ctx, target) {
   const botMember = ctx.guild.members.me;
   if (target.id === ctx.user.id) {
-    await ctx.reply(buildEmbed("You cannot moderate yourself."));
+    await ctx.reply(embErr("You cannot moderate yourself."));
     return false;
   }
   if (target.id === ctx.guild.ownerId) {
-    await ctx.reply(buildEmbed("You cannot moderate the server owner."));
+    await ctx.reply(embErr("You cannot moderate the server owner."));
     return false;
   }
   if (botMember.roles.highest.comparePositionTo(target.roles.highest) <= 0) {
-    await ctx.reply(buildEmbed("My role is too low to moderate that member."));
+    await ctx.reply(embErr("My role is too low to moderate that member."));
     return false;
   }
   if (ctx.member.roles.highest.comparePositionTo(target.roles.highest) <= 0) {
-    await ctx.reply(buildEmbed("Your role is too low to moderate that member."));
+    await ctx.reply(embErr("Your role is too low to moderate that member."));
     return false;
   }
   return true;

@@ -10,6 +10,7 @@ import * as CommandLog from "../../models/CommandLog.js";
 import * as MessageLog from "../../models/MessageLog.js";
 import * as VoiceSession from "../../models/VoiceSession.js";
 import * as Trigger from "../../models/Trigger.js";
+import * as ModerationCase from "../../models/ModerationCase.js";
 
 const router = Router();
 
@@ -94,6 +95,13 @@ router.post("/streak/:guildId", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Moderation cases
+router.get("/moderation/cases/:guildId", requireAuth, async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 100, 1000);
+  const rows = await ModerationCase.getForGuild(req.params.guildId, limit);
+  res.json(rows);
+});
+
 // Moderation settings
 router.get("/moderation/:guildId", requireAuth, async (req, res) => {
   const settings = await ModerationSettings.getOrCreate(req.params.guildId);
@@ -121,13 +129,18 @@ router.post("/prefix/:guildId", requireAuth, async (req, res) => {
 // Logs
 router.get("/logs/commands/:guildId", requireAuth, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 100, 1000);
-  const rows = await CommandLog.getForGuild(req.params.guildId, limit);
+  const { user, command, success } = req.query;
+  let successVal;
+  if (success === "yes") successVal = true;
+  else if (success === "no") successVal = false;
+  const rows = await CommandLog.getForGuild(req.params.guildId, { limit, user, command, success: successVal });
   res.json(rows);
 });
 
 router.get("/logs/messages/:guildId", requireAuth, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 100, 1000);
-  const rows = await MessageLog.getForGuild(req.params.guildId, limit);
+  const { user, content } = req.query;
+  const rows = await MessageLog.getForGuild(req.params.guildId, { limit, user, content });
   res.json(rows);
 });
 

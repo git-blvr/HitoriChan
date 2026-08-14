@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { getEconomyAccount, getGuildEconomyConfig, getExchangeRate } from "../../utils/economyManager.js";
+import { embErr } from "../../helpers/embeds.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -13,14 +14,14 @@ export default {
   example: "{prefix}balance",
   async execute(ctx) {
     if (!ctx.guild) {
-      await ctx.reply("This command only works in a server.");
+      await ctx.reply(embErr("This command only works in a server."));
       return;
     }
 
     const userOption = ctx.getOption("user", 0);
     const target = await resolveTarget(ctx, userOption);
     if (!target) {
-      await ctx.reply("Could not find that member.");
+      await ctx.reply(embErr("Could not find that member."));
       return;
     }
 

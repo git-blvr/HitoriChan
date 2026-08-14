@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { getGlobalLeaderboard, formatMoney } from "../../utils/economyManager.js";
+import { embWrn } from "../../helpers/embeds.js";
 
 export default {
   data: new SlashCommandBuilder().setName("richboardglobal").setDescription("Show the top Starry Coins balances across all servers"),
@@ -12,7 +13,7 @@ export default {
     const leaderboard = await getGlobalLeaderboard(10);
 
     if (!leaderboard.length) {
-      await ctx.reply("No global economy data available yet.");
+      await ctx.reply(embWrn("No global economy data available yet."));
       return;
     }
 

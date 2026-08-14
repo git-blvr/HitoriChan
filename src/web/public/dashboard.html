@@ -16,6 +16,7 @@
       <a href="#ai" data-section="ai">AI Config</a>
       <a href="#streak" data-section="streak">Streak</a>
       <a href="#moderation" data-section="moderation">Moderation</a>
+      <a href="#cases" data-section="cases">Cases</a>
       <a href="#triggers" data-section="triggers">Triggers</a>
       <a href="#logs" data-section="logs">Logs</a>
     </nav>
@@ -27,10 +28,18 @@
   <main class="main">
     <header class="topbar">
       <span id="section-title">Overview</span>
-      <div class="guild-picker">
-        <select id="guild-select">
-          <option value="">Select a server</option>
-        </select>
+      <div class="guild-controls">
+        <img id="guild-icon" hidden alt="Guild icon" />
+        <div class="guild-picker">
+          <select id="guild-select">
+            <option value="">Select a server</option>
+          </select>
+        </div>
+        <button id="refresh-btn" class="refresh-btn" type="button" title="Refresh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2.5 12a9.5 9.5 0 0 1 15.6-7.2l-4.1 4.1M21.5 12a9.5 9.5 0 0 1-15.6 7.2l4.1-4.1" />
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -171,6 +180,16 @@
       </div>
     </section>
 
+    <section id="cases" class="content-section">
+      <div class="panel">
+        <h2>Moderation Cases</h2>
+        <table class="data-table" id="cases-table">
+          <thead><tr><th>Case ID</th><th>Action</th><th>Target</th><th>Moderator</th><th>Reason</th><th>Date</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
     <section id="triggers" class="content-section">
       <div class="panel">
         <h2>Keyword Triggers</h2>
@@ -189,6 +208,16 @@
     <section id="logs" class="content-section">
       <div class="panel">
         <h2>Command Logs</h2>
+        <div class="filter-bar">
+          <input type="text" id="cmd-filter-user" placeholder="User" />
+          <input type="text" id="cmd-filter-command" placeholder="Command" />
+          <select id="cmd-filter-success">
+            <option value="all" selected>All</option>
+            <option value="yes">Success</option>
+            <option value="no">Failed</option>
+          </select>
+          <button type="button" id="cmd-filter-btn" class="save-btn">Filter</button>
+        </div>
         <table class="data-table" id="command-logs-table">
           <thead><tr><th>Time</th><th>User</th><th>Command</th><th>Source</th><th>Success</th></tr></thead>
           <tbody></tbody>
@@ -196,6 +225,11 @@
       </div>
       <div class="panel">
         <h2>Message Logs</h2>
+        <div class="filter-bar">
+          <input type="text" id="msg-filter-user" placeholder="User" />
+          <input type="text" id="msg-filter-content" placeholder="Content" />
+          <button type="button" id="msg-filter-btn" class="save-btn">Filter</button>
+        </div>
         <table class="data-table" id="message-logs-table">
           <thead><tr><th>Time</th><th>User</th><th>Channel</th><th>Content</th></tr></thead>
           <tbody></tbody>
@@ -204,6 +238,7 @@
     </section>
   </main>
 
+  <div id="toast-container"></div>
   <script src="/dashboard.js"></script>
 </body>
 </html>

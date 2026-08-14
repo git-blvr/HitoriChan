@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { getPrefix, setPrefix } from "../../utils/prefixManager.js";
+import { embErr } from "../../helpers/embeds.js";
 
 const COLOR = 0x5865f2;
 
@@ -17,7 +18,7 @@ export default {
   example: "{prefix}prefix ?",
   async execute(ctx) {
     if (!ctx.guild) {
-      await ctx.reply("This command only works in a server.");
+      await ctx.reply(embErr("This command only works in a server."));
       return;
     }
 
@@ -34,12 +35,12 @@ export default {
     }
 
     if (!ctx.member?.permissions?.has(PermissionFlagsBits.ManageGuild)) {
-      await ctx.reply("You need the Manage Server permission to change the prefix.");
+      await ctx.reply(embErr("You need the Manage Server permission to change the prefix."));
       return;
     }
 
     if (newPrefix.length > 5) {
-      await ctx.reply("Prefix must be 5 characters or fewer.");
+      await ctx.reply(embErr("Prefix must be 5 characters or fewer."));
       return;
     }
 

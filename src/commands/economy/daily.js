@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { getEconomyAccount, claimDaily, getGuildEconomyConfig, canClaimDaily, getDailyCooldown } from "../../utils/economyManager.js";
+import { embErr, embWrn } from "../../helpers/embeds.js";
 
 const THUMBNAIL = "https://cdn.discordapp.com/attachments/1376242032619684061/1523470888056651919/Untitled1677_20260706022904.png?ex=6a576f14&is=6a561d94&hm=c5f57d89258cd24008d05d65f53ec7d7b57eb9e15a9cc15253344a59d8eb371e";
 
@@ -11,7 +12,7 @@ export default {
   example: "{prefix}daily",
   async execute(ctx) {
     if (!ctx.guild) {
-      await ctx.reply("This command only works in a server.");
+      await ctx.reply(embErr("This command only works in a server."));
       return;
     }
 
@@ -22,11 +23,7 @@ export default {
       const minutes = Math.floor((remainingMs / 1000 / 60) % 60);
       const seconds = Math.floor((remainingMs / 1000) % 60);
 
-      await ctx.reply(cv2({
-        color: 0xed4245,
-        title: "Daily Reward Already Claimed",
-        description: `Come back in ${hours}h ${minutes}m ${seconds}s to claim again.`,
-      }));
+      await ctx.reply(embWrn(`**Daily Reward Already Claimed**\n\nCome back in ${hours}h ${minutes}m ${seconds}s to claim again.`));
       return;
     }
 

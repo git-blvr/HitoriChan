@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import * as StreakSettings from "../../models/StreakSettings.js";
+import { embErr, embWrn } from "../../helpers/embeds.js";
 
 const COLOR = 0xf5c542;
 const SUBCOMMANDS = new Set(["toggle", "trackchannel", "notifychannel", "view"]);
@@ -46,13 +47,13 @@ export default {
   example: "{prefix}streakconfig toggle",
   async execute(ctx) {
     if (!ctx.member?.permissions?.has(PermissionFlagsBits.ManageGuild)) {
-      await ctx.reply(cv2({ color: COLOR, description: "You need Manage Server permission." }));
+      await ctx.reply(embErr("You need Manage Server permission."));
       return;
     }
 
     const sub = getSub(ctx);
     if (!sub) {
-      await ctx.reply(cv2({ color: COLOR, description: "Usage: `streakconfig <toggle|trackchannel|notifychannel|view>`" }));
+      await ctx.reply(embWrn("Usage: `streakconfig <toggle|trackchannel|notifychannel|view>`"));
       return;
     }
 

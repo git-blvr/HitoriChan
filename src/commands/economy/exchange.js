@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { convertPrimaryToSecondary, convertSecondaryToPrimary, getGuildEconomyConfig, getExchangeRate } from "../../utils/economyManager.js";
+import { embErr } from "../../helpers/embeds.js";
 
 const FROM_CHOICES = [
   { name: "Convert from Starry Coins to FOLTs", value: "primary" },
@@ -24,7 +25,7 @@ export default {
   example: "{prefix}exchange 10 coins",
   async execute(ctx) {
     if (!ctx.guild) {
-      await ctx.reply("This command only works in a server.");
+      await ctx.reply(embErr("This command only works in a server."));
       return;
     }
 
@@ -33,7 +34,7 @@ export default {
     const from = String(rawFrom).toLowerCase().replace(/[^a-z0-9]/g, "");
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      await ctx.reply("Please provide a valid amount to convert.");
+      await ctx.reply(embErr("Please provide a valid amount to convert."));
       return;
     }
 
@@ -67,7 +68,7 @@ export default {
         ],
       }));
     } catch (error) {
-      await ctx.reply(error.message || "Could not complete exchange.");
+      await ctx.reply(embErr(error.message || "Could not complete exchange."));
     }
   },
 };

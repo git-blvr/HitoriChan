@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import * as AISettings from "../../models/AISettings.js";
+import { embErr, embWrn } from "../../helpers/embeds.js";
 
 const COLOR = 0x5865f2;
 const SUBCOMMANDS = new Set(["toggle", "mode", "channel", "view", "prompt", "clearprompt"]);
@@ -54,13 +55,13 @@ export default {
   example: "{prefix}aiconfig toggle",
   async execute(ctx) {
     if (!ctx.member?.permissions?.has(PermissionFlagsBits.ManageGuild)) {
-      await ctx.reply(cv2({ color: COLOR, description: "You need Manage Server permission." }));
+      await ctx.reply(embErr("You need Manage Server permission."));
       return;
     }
 
     const sub = getSub(ctx);
     if (!sub) {
-      await ctx.reply(cv2({ color: COLOR, description: "Usage: `aiconfig <toggle|mode|channel|prompt|clearprompt|view>`" }));
+      await ctx.reply(embWrn("Usage: `aiconfig <toggle|mode|channel|prompt|clearprompt|view>`"));
       return;
     }
 
@@ -95,7 +96,7 @@ export default {
         : ctx.args?.[1]?.toLowerCase();
 
       if (!["everywhere", "channel"].includes(mode)) {
-        await ctx.reply(cv2({ color: COLOR, description: "Mode must be `everywhere` or `channel`." }));
+        await ctx.reply(embErr("Mode must be `everywhere` or `channel`."));
         return;
       }
 
@@ -120,7 +121,7 @@ export default {
       }
 
       if (!channelId) {
-        await ctx.reply(cv2({ color: COLOR, description: "Please mention a valid channel." }));
+        await ctx.reply(embWrn("Please mention a valid channel."));
         return;
       }
 
@@ -138,7 +139,7 @@ export default {
         : ctx.args?.slice(1).join(" ");
 
       if (!text?.trim()) {
-        await ctx.reply(cv2({ color: COLOR, description: "Please provide prompt text." }));
+        await ctx.reply(embWrn("Please provide prompt text."));
         return;
       }
 

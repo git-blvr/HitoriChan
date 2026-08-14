@@ -1,3 +1,5 @@
+import { embErr } from "./embeds.js";
+
 export async function resolveMember(ctx, argIndex = 0) {
   if (ctx.isInteraction) {
     const user = ctx.source?.options?.getUser?.("target") ?? ctx.source?.options?.getUser?.("user");
@@ -46,7 +48,7 @@ export function resolveAttachment(ctx) {
 
 export async function requireServer(ctx) {
   if (!ctx.guild) {
-    await ctx.reply("This command only works in a server.");
+    await ctx.reply(embErr("This command only works in a server."));
     return false;
   }
   return true;
@@ -55,19 +57,19 @@ export async function requireServer(ctx) {
 export async function checkHierarchy(ctx, target) {
   const botMember = ctx.guild.members.me;
   if (target.id === ctx.user.id) {
-    await ctx.reply("You cannot moderate yourself.");
+    await ctx.reply(embErr("You cannot moderate yourself."));
     return false;
   }
   if (target.id === ctx.guild.ownerId) {
-    await ctx.reply("You cannot moderate the server owner.");
+    await ctx.reply(embErr("You cannot moderate the server owner."));
     return false;
   }
   if (botMember.roles.highest.comparePositionTo(target.roles.highest) <= 0) {
-    await ctx.reply("My role is too low to moderate that member.");
+    await ctx.reply(embErr("My role is too low to moderate that member."));
     return false;
   }
   if (ctx.member.roles.highest.comparePositionTo(target.roles.highest) <= 0) {
-    await ctx.reply("Your role is too low to moderate that member.");
+    await ctx.reply(embErr("Your role is too low to moderate that member."));
     return false;
   }
   return true;

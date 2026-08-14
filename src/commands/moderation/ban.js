@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { buildEmbed, createCase, resolveTarget, resolveReason, resolveAttachment, requireModerator, checkHierarchy, notifyTarget, sendLog } from "./moderationHelpers.js";
+import { embErr } from "../../helpers/embeds.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -18,12 +19,12 @@ export default {
 
     const target = await resolveTarget(ctx, 0);
     if (!target) {
-      await ctx.reply(buildEmbed("Please mention a valid member."));
+      await ctx.reply(embErr("Please mention a valid member."));
       return;
     }
 
     if (!target.bannable) {
-      await ctx.reply(buildEmbed("I cannot ban that member."));
+      await ctx.reply(embErr("I cannot ban that member."));
       return;
     }
 

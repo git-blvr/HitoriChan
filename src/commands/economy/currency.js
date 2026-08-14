@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { getGuildEconomyConfig, setGuildCurrencies } from "../../utils/economyManager.js";
+import { embErr } from "../../helpers/embeds.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -26,7 +27,7 @@ export default {
 
   async execute(ctx) {
     if (!ctx.guild) {
-      await ctx.reply("This command only works in a server.");
+      await ctx.reply(embErr("This command only works in a server."));
       return;
     }
 
@@ -51,7 +52,7 @@ export default {
     }
 
     if (!ctx.member?.permissions?.has(PermissionFlagsBits.ManageGuild)) {
-      await ctx.reply("You need the Manage Server permission to update currency settings.");
+      await ctx.reply(embErr("You need the Manage Server permission to update currency settings."));
       return;
     }
 

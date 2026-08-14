@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { buildEmbed, createCase, resolveTarget, resolveReason, requireModerator, checkHierarchy, notifyTarget, sendLog } from "./moderationHelpers.js";
+import { embErr } from "../../helpers/embeds.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -16,12 +17,12 @@ export default {
 
     const target = await resolveTarget(ctx, 0);
     if (!target) {
-      await ctx.reply(buildEmbed("Please mention a valid member."));
+      await ctx.reply(embErr("Please mention a valid member."));
       return;
     }
 
     if (!target.isCommunicationDisabled()) {
-      await ctx.reply(buildEmbed(`${target} is not currently muted.`));
+      await ctx.reply(embErr(`${target} is not currently muted.`));
       return;
     }
 

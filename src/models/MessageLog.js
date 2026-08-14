@@ -13,6 +13,21 @@ const listRecent = db.prepare(`
   SELECT * FROM message_logs ORDER BY created_at DESC LIMIT ?
 `);
 
+function buildFilteredQuery({ user, content }) {
+  const clauses = ["guild_id = ?"];
+  const params = [];
+  if (user) {
+    clauses.push("(user_name LIKE ? OR user_id LIKE ?)");
+    params.push(`%${user}%`, `%${user}%`);
+  }
+  if (content) {
+    clauses.push("content LIKE ?");
+    params.push(`%${content}%`);
+  }
+  const where = clauses.join(" AND ");
+  return { sql: `SELECT * FROM message_logs WHERE ${where} ORDER BY created_at DESC LIMIT ?`, params };
+}
+
 const deleteOld = db.prepare(`
   DELETE FROM message_logs WHERE id NOT IN (
     SELECT id FROM message_logs ORDER BY created_at DESC LIMIT ?
@@ -33,8 +48,18 @@ export function create(data) {
   );
 }
 
-export function getForGuild(guildId, limit = 100) {
-  const rows = listForGuild.all(guildId, limit);
+export function getForGuild(guildId, options = 100) {
+  if (typeof options === "number") options = { limit: options };
+  const { limit = 100, user, content } = options;
+
+  if (!user && !content) {
+    const rows = listForGuild.all(guildId, limit);
+    return rows.map(parse);
+  }
+
+  const { sql, params } = buildFilteredQuery({ user, content });
+  const stmt = db.prepare(sql);
+  const rows = stmt.all(guildId, ...params, limit);
   return rows.map(parse);
 }
 

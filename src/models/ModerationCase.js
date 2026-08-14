@@ -3,6 +3,7 @@ import { db } from "../database/db.js";
 
 const getByCaseIdStmt = db.prepare("SELECT * FROM moderation_cases WHERE guild_id = ? AND case_id = ?");
 const getForUserStmt = db.prepare("SELECT * FROM moderation_cases WHERE guild_id = ? AND target_id = ? AND active = 1 ORDER BY created_at DESC");
+const getForGuildStmt = db.prepare("SELECT * FROM moderation_cases WHERE guild_id = ? AND active = 1 ORDER BY created_at DESC LIMIT ?");
 const insertStmt = db.prepare(`
   INSERT INTO moderation_cases (
     case_id, guild_id, action, moderator_id, target_id, reason, attachment, duration, active, created_at
@@ -43,6 +44,10 @@ export async function getForUser(guildId, targetId, { active = true } = {}) {
   return stmt.all(guildId, targetId).map(fromRow);
 }
 
+export async function getForGuild(guildId, limit = 100) {
+  return getForGuildStmt.all(guildId, limit).map(fromRow);
+}
+
 export async function create(data) {
   const caseId = generateCaseId();
   const now = Date.now();
@@ -66,4 +71,4 @@ export async function deactivate(guildId, caseId) {
   return getByCaseId(guildId, caseId);
 }
 
-export default { getByCaseId, getForUser, create, deactivate };
+export default { getByCaseId, getForUser, getForGuild, create, deactivate };
