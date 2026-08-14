@@ -14,6 +14,7 @@ export function startWebServer(client, port = process.env.WEB_PORT || 3000) {
 
   const app = express();
   app.set("client", client);
+  app.set("trust proxy", 1);
 
   app.use(express.json());
   app.use(cookieParser());
@@ -25,7 +26,7 @@ export function startWebServer(client, port = process.env.WEB_PORT || 3000) {
       return res.status(401).json({ error: "Invalid username or password" });
     }
     const token = createSessionToken();
-    res.cookie("token", token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: "strict" });
+    res.cookie("token", token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: "strict", secure: req.secure });
     res.json({ ok: true });
   });
 
@@ -45,9 +46,11 @@ export function startWebServer(client, port = process.env.WEB_PORT || 3000) {
   });
 
   const host = "0.0.0.0";
+  const publicUrl = process.env.PUBLIC_URL;
   return new Promise((resolve) => {
     const server = app.listen(port, host, () => {
-      console.log(`🌐 Dashboard running at http://${host}:${port}`);
+      const url = publicUrl || `http://${host}:${port}`;
+      console.log(`🌐 Dashboard running at ${url}`);
       resolve(server);
     });
   });

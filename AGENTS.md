@@ -30,6 +30,7 @@
 - `GROQ_MODEL` — optional Groq model override
 - `DB_PATH` — optional SQLite database path
 - `WEB_PORT` — optional dashboard port (default `3000`)
+- `PUBLIC_URL` — optional public URL (e.g. `https://hitori.wispbyte.org`) used for the console message
 - `JWT_SECRET` — optional secret for dashboard session tokens
 - `SKIP_AUTO_DEPLOY` — set to `true` to disable auto-deploy on startup
 
