@@ -11,7 +11,7 @@
 - Dev hot-reload: `npm run dev` (requires `nodemon` installed globally or in deps)
 - Auto-deploy slash commands: restart the bot (only deploys when local commands differ)
 - Force deploy all commands: `node src/scripts/deployCommands.js`
-- Web dashboard: `http://localhost:3000` (starts with the bot)
+- Web dashboard: `http://0.0.0.0:3000` (starts with the bot; set `WEB_PORT` to change port)
 
 ## Project structure
 - `index.js` — bot entry point

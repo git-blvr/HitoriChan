@@ -44,9 +44,10 @@ export function startWebServer(client, port = process.env.WEB_PORT || 3000) {
     res.sendFile(join(PUBLIC_DIR, "index.html"));
   });
 
+  const host = "0.0.0.0";
   return new Promise((resolve) => {
-    const server = app.listen(port, () => {
-      console.log(`🌐 Dashboard running at http://localhost:${port}`);
+    const server = app.listen(port, host, () => {
+      console.log(`🌐 Dashboard running at http://${host}:${port}`);
       resolve(server);
     });
   });

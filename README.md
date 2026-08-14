@@ -106,7 +106,7 @@ node src/scripts/deployCommands.js
 
 ## Web Dashboard
 
-The bot now starts a web dashboard at `http://localhost:3000` (or `WEB_PORT`).
+The bot now starts a web dashboard at `http://0.0.0.0:3000` (set `WEB_PORT` to use a different port).
 
 - Default login: `Admin` with a 6-digit password printed to the console on startup.
 - Sessions last 24 hours.
