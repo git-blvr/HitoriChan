@@ -1,9 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { embErr } from "../../helpers/embeds.js";
-import { extractImageColor } from "../../utils/image_color.js";
-
-const DEFAULT_ACCENT = 0x5865f2;
+import { get_dominant_color } from "../../utils/color_utils.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -32,12 +30,11 @@ export default {
     });
 
     try {
-      const accent = await extractImageColor(avatarUrl).catch(() => null);
-      const finalAccent = accent ?? target.user?.accentColor ?? target.accentColor ?? DEFAULT_ACCENT;
+      const accent = await get_dominant_color(avatarUrl);
 
       await ctx.reply(
         cv2({
-          color: finalAccent,
+          color: accent,
           title: `Avatar of ${displayName}`,
           image: { url: avatarUrl },
         })
