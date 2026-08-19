@@ -49,15 +49,7 @@ export default {
         image: { url: avatarUrl },
       });
 
-      if (!ctx.isInteraction) {
-        payload.allowedMentions = { repliedUser: false };
-      }
-
-      if (refMessage && !ctx.isInteraction) {
-        await refMessage.reply(payload);
-      } else {
-        await ctx.reply(payload);
-      }
+      await ctx.reply(payload, refMessage);
     } catch (error) {
       console.error("Avatar command error:", error);
       await ctx.reply(embErr("Could not load that avatar. Please try again later."));

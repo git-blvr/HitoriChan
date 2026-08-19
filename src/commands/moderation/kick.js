@@ -16,7 +16,7 @@ export default {
   async execute(ctx) {
     if (!(await requireModerator(ctx))) return;
 
-    const { target, consumed } = await resolveTarget(ctx, 0);
+    const { target, consumed, refMessage } = await resolveTarget(ctx, 0);
     if (!target) {
       await ctx.reply(embErr("Please mention a valid member."));
       return;
@@ -45,7 +45,7 @@ export default {
     });
 
     const embed = buildEmbed(`${target} has been **kicked** | ${reason}\nCase ID: \`${doc.caseId}\``, "kick");
-    await ctx.reply(embed);
+    await ctx.reply(embed, refMessage);
 
     const logEmbed = buildEmbed(
       `**Kick** | Case \`${doc.caseId}\`\n**Target:** ${target} (${target.id})\n**Moderator:** <@${ctx.user.id}>\n**Reason:** ${reason}${attachment ? `\n**Attachment:** ${attachment}` : ""}`,

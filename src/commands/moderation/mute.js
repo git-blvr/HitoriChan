@@ -19,7 +19,7 @@ export default {
   async execute(ctx) {
     if (!(await requireModerator(ctx))) return;
 
-    const { target, consumed } = await resolveTarget(ctx, 0);
+    const { target, consumed, refMessage } = await resolveTarget(ctx, 0);
     if (!target) {
       await ctx.reply(embErr("Please mention a valid member."));
       return;
@@ -59,7 +59,7 @@ export default {
     await notifyTarget(target, "muted", reason, doc.caseId);
 
     const embed = buildEmbed(`${target} has been **muted** for ${formatted} | ${reason}\nCase ID: \`${doc.caseId}\``, "mute");
-    await ctx.reply(embed);
+    await ctx.reply(embed, refMessage);
 
     const logEmbed = buildEmbed(
       `**Mute** | Case \`${doc.caseId}\`\n**Target:** ${target} (${target.id})\n**Moderator:** <@${ctx.user.id}>\n**Duration:** ${formatted}\n**Reason:** ${reason}${attachment ? `\n**Attachment:** ${attachment}` : ""}`,

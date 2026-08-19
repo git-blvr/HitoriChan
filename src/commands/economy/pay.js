@@ -31,7 +31,7 @@ export default {
       return;
     }
 
-    const { target: recipient, consumed } = await resolveTarget(ctx, {
+    const { target: recipient, consumed, refMessage } = await resolveTarget(ctx, {
       optionName: "user",
       argIndex: 0,
       fallbackToAuthor: false,
@@ -68,7 +68,7 @@ export default {
         color: 0xff61a5,
         title: "Payment Sent!",
         description: `You sent ${amount.toLocaleString()} ${currencyName} to ${recipient.user?.username ?? recipient.username}.`,
-      }));
+      }), refMessage);
     } catch (error) {
       await ctx.reply(embErr(error.message || "Could not complete the payment."));
     }

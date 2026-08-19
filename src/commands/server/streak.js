@@ -26,7 +26,7 @@ export default {
   syntax: "{prefix}streak [@member]",
   example: "{prefix}streak",
   async execute(ctx) {
-    const { target } = await resolveTarget(ctx, {
+    const { target, refMessage } = await resolveTarget(ctx, {
       optionName: "target",
       argIndex: 0,
       fallbackToAuthor: true,
@@ -56,6 +56,6 @@ export default {
         { name: "📅 Total Days",     value: `${total} day${total !== 1 ? "s" : ""}`, inline: true },
         { name: "Status", value: status },
       ],
-    }));
+    }), refMessage);
   },
 };

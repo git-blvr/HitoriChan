@@ -19,7 +19,7 @@ export default {
       return;
     }
 
-    const { target } = await resolveTarget(ctx, {
+    const { target, refMessage } = await resolveTarget(ctx, {
       optionName: "user",
       argIndex: 0,
       fallbackToAuthor: true,
@@ -67,6 +67,6 @@ export default {
       ],
       footer: { text: `Exchange Rate: 1 ${config.primary.name} = ${rate} ${config.secondary.name}` },
       timestamp: true,
-    }));
+    }), refMessage);
   },
 };

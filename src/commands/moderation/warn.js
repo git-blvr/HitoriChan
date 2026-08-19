@@ -16,7 +16,7 @@ export default {
   async execute(ctx) {
     if (!(await requireModerator(ctx))) return;
 
-    const { target, consumed } = await resolveTarget(ctx, 0);
+    const { target, consumed, refMessage } = await resolveTarget(ctx, 0);
     if (!target) {
       await ctx.reply(embErr("Please mention a valid member."));
       return;
@@ -39,7 +39,7 @@ export default {
     await notifyTarget(target, "warn", reason, doc.caseId);
 
     const embed = buildEmbed(`${target} has been **warned** | ${reason}\nCase ID: \`${doc.caseId}\``, "warn");
-    await ctx.reply(embed);
+    await ctx.reply(embed, refMessage);
 
     const logEmbed = buildEmbed(
       `**Warn** | Case \`${doc.caseId}\`\n**Target:** ${target} (${target.id})\n**Moderator:** <@${ctx.user.id}>\n**Reason:** ${reason}${attachment ? `\n**Attachment:** ${attachment}` : ""}`,

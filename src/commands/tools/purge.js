@@ -31,7 +31,7 @@ export default {
       return;
     }
 
-    const { target } = await resolveTarget(ctx, {
+    const { target, refMessage } = await resolveTarget(ctx, {
       optionName: "target",
       argIndex: 1,
       fallbackToAuthor: false,
@@ -50,7 +50,7 @@ export default {
       .first(amount);
 
     if (!messages.length) {
-      await ctx.reply(embWrn("No eligible messages found. Messages older than 14 days cannot be deleted."));
+      await ctx.reply(embWrn("No eligible messages found. Messages older than 14 days cannot be deleted."), refMessage);
       return;
     }
 

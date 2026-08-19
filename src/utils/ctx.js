@@ -15,14 +15,22 @@ export function createCtx(source, args = []) {
     args,
     client: source.client,
 
-    async reply(payload) {
-      const data = normalizePayload(payload);
+    async reply(payload, refMessage = null) {
+      const data = typeof payload === "string" ? { content: payload } : { ...payload };
+
       if (isInteraction) {
         if (source.deferred || source.replied) {
           return source.followUp(data);
         }
         return source.reply(data);
       }
+
+      if (refMessage) {
+        data.allowedMentions = { ...data.allowedMentions, repliedUser: true, users: [refMessage.author.id] };
+        return refMessage.reply(data);
+      }
+
+      data.allowedMentions = { ...data.allowedMentions, repliedUser: false };
       replyMessage = await source.reply(data);
       return replyMessage;
     },

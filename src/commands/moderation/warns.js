@@ -14,7 +14,7 @@ export default {
   async execute(ctx) {
     if (!(await requireModerator(ctx))) return;
 
-    const { target } = await resolveTarget(ctx, 0);
+    const { target, refMessage } = await resolveTarget(ctx, 0);
     if (!target) {
       await ctx.reply(embErr("Please mention a valid member."));
       return;
@@ -22,11 +22,11 @@ export default {
 
     const cases = (await getCasesForUser(ctx.guild.id, target.id)).filter((c) => c.action === "warn");
     if (!cases.length) {
-      await ctx.reply(embWrn(`${target} has no active warnings.`));
+      await ctx.reply(embWrn(`${target} has no active warnings.`), refMessage);
       return;
     }
 
     const lines = cases.map((c) => `\`${c.caseId}\` | <@${c.moderatorId}>: ${c.reason}`).join("\n");
-    await ctx.reply(buildEmbed(`**Warnings for ${target}**\n\n${lines}`));
+    await ctx.reply(buildEmbed(`**Warnings for ${target}**\n\n${lines}`), refMessage);
   },
 };
