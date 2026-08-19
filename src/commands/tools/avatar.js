@@ -20,7 +20,7 @@ export default {
   example: "{prefix}avatar @someone",
   async execute(ctx) {
     const raw = ctx.getOption("user", 0);
-    const target = await resolveTarget(ctx, raw);
+    const { target, refMessage } = await resolveTarget(ctx, raw);
 
     const displayName = target.displayName ?? target.globalName ?? target.username;
     const avatarUrl = target.displayAvatarURL({
@@ -32,13 +32,21 @@ export default {
     try {
       const accent = await get_dominant_color(avatarUrl);
 
-      await ctx.reply(
-        cv2({
-          color: accent,
-          title: `Avatar of ${displayName}`,
-          image: { url: avatarUrl },
-        })
-      );
+      const payload = cv2({
+        color: accent,
+        title: `Avatar of ${displayName}`,
+        image: { url: avatarUrl },
+      });
+
+      if (!ctx.isInteraction) {
+        payload.allowedMentions = { repliedUser: false };
+      }
+
+      if (refMessage && !ctx.isInteraction) {
+        await refMessage.reply(payload);
+      } else {
+        await ctx.reply(payload);
+      }
     } catch (error) {
       console.error("Avatar command error:", error);
       await ctx.reply(embErr("Could not load that avatar. Please try again later."));
@@ -47,7 +55,16 @@ export default {
 };
 
 async function resolveTarget(ctx, raw) {
-  if (!raw) return ctx.user;
+  if (!raw && !ctx.isInteraction && ctx.reference?.messageId) {
+    try {
+      const refMessage = await ctx.channel.messages.fetch(ctx.reference.messageId);
+      return { target: refMessage.author, refMessage };
+    } catch {
+      return { target: ctx.user, refMessage: null };
+    }
+  }
+
+  if (!raw) return { target: ctx.user, refMessage: null };
 
   let id;
   if (ctx.isInteraction) {
@@ -57,20 +74,20 @@ async function resolveTarget(ctx, raw) {
     id = mention ? mention[1] : raw;
   }
 
-  if (!/^\d{17,20}$/.test(id)) return ctx.user;
+  if (!/^\d{17,20}$/.test(id)) return { target: ctx.user, refMessage: null };
 
   try {
     if (ctx.guild) {
       const member = await ctx.guild.members.fetch(id);
-      return member;
+      return { target: member, refMessage: null };
     }
   } catch {
     // fall through to global user fetch
   }
 
   try {
-    return await ctx.client.users.fetch(id);
+    return { target: await ctx.client.users.fetch(id), refMessage: null };
   } catch {
-    return ctx.user;
+    return { target: ctx.user, refMessage: null };
   }
 }
