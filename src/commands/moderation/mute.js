@@ -19,7 +19,7 @@ export default {
   async execute(ctx) {
     if (!(await requireModerator(ctx))) return;
 
-    const target = await resolveTarget(ctx, 0);
+    const { target, consumed } = await resolveTarget(ctx, 0);
     if (!target) {
       await ctx.reply(embErr("Please mention a valid member."));
       return;
@@ -27,11 +27,9 @@ export default {
 
     if (!(await checkHierarchy(ctx, target))) return;
 
-    const rawDuration = ctx.isInteraction
-      ? ctx.source?.options?.getString("duration")
-      : ctx.args?.[1];
+    const rawDuration = ctx.getOption("duration", consumed) ?? "";
 
-    const durationMs = parseDuration(rawDuration ?? "");
+    const durationMs = parseDuration(rawDuration);
     if (!durationMs) {
       await ctx.reply(embErr("Invalid duration. Use formats like `1h`, `30m`, `1d`."));
       return;
@@ -42,7 +40,7 @@ export default {
       return;
     }
 
-    const reason = ctx.isInteraction ? resolveReason(ctx, 1) : (ctx.args ?? []).slice(2).join(" ").trim() || "No reason provided";
+    const reason = resolveReason(ctx, consumed + 1);
     const attachment = resolveAttachment(ctx);
     const formatted = formatDuration(durationMs);
 

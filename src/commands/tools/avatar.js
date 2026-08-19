@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { embErr } from "../../helpers/embeds.js";
 import { get_dominant_color } from "../../utils/color_utils.js";
+import { resolveTarget } from "../../utils/resolveTarget.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -19,8 +20,18 @@ export default {
   syntax: "{prefix}avatar [@user]",
   example: "{prefix}avatar @someone",
   async execute(ctx) {
-    const raw = ctx.getOption("user", 0);
-    const { target, refMessage } = await resolveTarget(ctx, raw);
+    const { target, refMessage } = await resolveTarget(ctx, {
+      optionName: "user",
+      argIndex: 0,
+      fallbackToAuthor: true,
+      allowReference: true,
+      allowUserFallback: true,
+    });
+
+    if (!target) {
+      await ctx.reply(embErr("Could not find that user."));
+      return;
+    }
 
     const displayName = target.displayName ?? target.globalName ?? target.username;
     const avatarUrl = target.displayAvatarURL({
@@ -53,41 +64,3 @@ export default {
     }
   },
 };
-
-async function resolveTarget(ctx, raw) {
-  if (!raw && !ctx.isInteraction && ctx.reference?.messageId) {
-    try {
-      const refMessage = await ctx.channel.messages.fetch(ctx.reference.messageId);
-      return { target: refMessage.author, refMessage };
-    } catch {
-      return { target: ctx.user, refMessage: null };
-    }
-  }
-
-  if (!raw) return { target: ctx.user, refMessage: null };
-
-  let id;
-  if (ctx.isInteraction) {
-    id = raw;
-  } else {
-    const mention = String(raw).match(/^<@!?(\d+)>$/);
-    id = mention ? mention[1] : raw;
-  }
-
-  if (!/^\d{17,20}$/.test(id)) return { target: ctx.user, refMessage: null };
-
-  try {
-    if (ctx.guild) {
-      const member = await ctx.guild.members.fetch(id);
-      return { target: member, refMessage: null };
-    }
-  } catch {
-    // fall through to global user fetch
-  }
-
-  try {
-    return { target: await ctx.client.users.fetch(id), refMessage: null };
-  } catch {
-    return { target: ctx.user, refMessage: null };
-  }
-}

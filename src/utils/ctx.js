@@ -11,6 +11,7 @@ export function createCtx(source, args = []) {
     guild: source.guild,
     channel: source.channel,
     reference: isInteraction ? null : source.reference ?? null,
+    source,
     args,
     client: source.client,
 

@@ -2,6 +2,7 @@ import { cv2 } from "../../helpers/cv2.js";
 import { embErr } from "../../helpers/embeds.js";
 import * as ModerationCase from "../../models/ModerationCase.js";
 import * as ModerationSettings from "../../models/ModerationSettings.js";
+import { resolveTarget as resolveTargetBase } from "../../utils/resolveTarget.js";
 
 const ACTION_COLORS = {
   warn: 0xf5a623,
@@ -80,18 +81,13 @@ export async function checkHierarchy(ctx, target) {
 }
 
 export async function resolveTarget(ctx, argIndex = 0) {
-  if (ctx.isInteraction) {
-    const user = ctx.source?.options?.getUser?.("target");
-    if (!user) return null;
-    return ctx.guild.members.fetch(user.id).catch(() => null);
-  }
-
-  const raw = ctx.args?.[argIndex];
-  if (!raw || !ctx.guild) return null;
-
-  const mentionMatch = String(raw).match(/<@!?(\d+)>$/);
-  const id = mentionMatch?.[1] ?? raw;
-  return ctx.guild.members.fetch(id).catch(() => null);
+  return resolveTargetBase(ctx, {
+    optionName: "target",
+    argIndex,
+    fallbackToAuthor: false,
+    allowReference: true,
+    allowUserFallback: false,
+  });
 }
 
 export function resolveReason(ctx, argIndex = 1) {

@@ -3,6 +3,7 @@ import { cv2 } from "../../helpers/cv2.js";
 import * as StreakProfile from "../../models/StreakProfile.js";
 import { toDateString, getYesterday } from "../../helpers/time.js";
 import { embErr } from "../../helpers/embeds.js";
+import { resolveTarget } from "../../utils/resolveTarget.js";
 
 const COLOR = 0xf5c542;
 
@@ -25,15 +26,13 @@ export default {
   syntax: "{prefix}streak [@member]",
   example: "{prefix}streak",
   async execute(ctx) {
-    let target = ctx.member;
-    if (ctx.isInteraction) {
-      const user = ctx.source?.options?.getUser("target");
-      if (user) target = await ctx.guild.members.fetch(user.id).catch(() => null);
-    } else if (ctx.args?.[0]) {
-      const match = String(ctx.args[0]).match(/<@!?(\d+)>/);
-      const id = match?.[1] ?? ctx.args[0];
-      target = await ctx.guild.members.fetch(id).catch(() => null);
-    }
+    const { target } = await resolveTarget(ctx, {
+      optionName: "target",
+      argIndex: 0,
+      fallbackToAuthor: true,
+      allowReference: true,
+      allowUserFallback: false,
+    });
 
     if (!target) {
       await ctx.reply(embErr("Couldn't find that member."));

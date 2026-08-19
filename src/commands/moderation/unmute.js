@@ -15,7 +15,7 @@ export default {
   async execute(ctx) {
     if (!(await requireModerator(ctx))) return;
 
-    const target = await resolveTarget(ctx, 0);
+    const { target, consumed } = await resolveTarget(ctx, 0);
     if (!target) {
       await ctx.reply(embErr("Please mention a valid member."));
       return;
@@ -28,7 +28,7 @@ export default {
 
     if (!(await checkHierarchy(ctx, target))) return;
 
-    const reason = resolveReason(ctx, 1);
+    const reason = resolveReason(ctx, consumed);
 
     await target.timeout(null, reason);
 

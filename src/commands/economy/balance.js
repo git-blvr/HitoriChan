@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { getEconomyAccount, getGuildEconomyConfig, getExchangeRate } from "../../utils/economyManager.js";
 import { embErr } from "../../helpers/embeds.js";
+import { resolveTarget } from "../../utils/resolveTarget.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -18,8 +19,13 @@ export default {
       return;
     }
 
-    const userOption = ctx.getOption("user", 0);
-    const target = await resolveTarget(ctx, userOption);
+    const { target } = await resolveTarget(ctx, {
+      optionName: "user",
+      argIndex: 0,
+      fallbackToAuthor: true,
+      allowReference: true,
+      allowUserFallback: true,
+    });
     if (!target) {
       await ctx.reply(embErr("Could not find that member."));
       return;
@@ -64,20 +70,3 @@ export default {
     }));
   },
 };
-
-async function resolveTarget(ctx, userOption) {
-  if (ctx.isInteraction && userOption) {
-    return userOption;
-  }
-
-  if (!ctx.guild) return null;
-
-  if (userOption) {
-    const raw = String(userOption);
-    const mentionMatch = raw.match(/^<@!?(\d+)>$/);
-    const id = mentionMatch ? mentionMatch[1] : raw;
-    return ctx.guild.members.fetch(id).catch(() => null);
-  }
-
-  return ctx.member;
-}

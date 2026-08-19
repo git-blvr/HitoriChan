@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import { transferBalance, getGuildEconomyConfig, CURRENCY_TYPES } from "../../utils/economyManager.js";
 import { embErr } from "../../helpers/embeds.js";
+import { resolveTarget } from "../../utils/resolveTarget.js";
 
 const currencyChoices = [
   { name: "coins", value: CURRENCY_TYPES.PRIMARY },
@@ -30,10 +31,16 @@ export default {
       return;
     }
 
-    const recipientOption = ctx.getOption("user", 0);
-    const amountOption = ctx.getOption("amount", 1);
-    const currencyOption = ctx.getOption("currency", 2) ?? CURRENCY_TYPES.PRIMARY;
-    const recipient = await resolveRecipient(ctx, recipientOption);
+    const { target: recipient, consumed } = await resolveTarget(ctx, {
+      optionName: "user",
+      argIndex: 0,
+      fallbackToAuthor: false,
+      allowReference: true,
+      allowUserFallback: true,
+    });
+
+    const amountOption = ctx.getOption("amount", consumed);
+    const currencyOption = ctx.getOption("currency", consumed + 1) ?? CURRENCY_TYPES.PRIMARY;
 
     if (!recipient) {
       await ctx.reply(embErr("Could not find that recipient."));
@@ -67,16 +74,3 @@ export default {
     }
   },
 };
-
-async function resolveRecipient(ctx, userOption) {
-  if (ctx.isInteraction && userOption) {
-    return userOption;
-  }
-
-  if (!ctx.guild) return null;
-
-  const raw = String(userOption ?? "");
-  const mentionMatch = raw.match(/^<@!?(\d+)>$/);
-  const id = mentionMatch ? mentionMatch[1] : raw;
-  return ctx.guild.members.fetch(id).catch(() => null);
-}

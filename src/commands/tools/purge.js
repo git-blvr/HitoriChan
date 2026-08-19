@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { buildEmbed, requireModerator, sendLog } from "../moderation/moderationHelpers.js";
 import { embErr, embWrn } from "../../helpers/embeds.js";
+import { resolveTarget } from "../../utils/resolveTarget.js";
 
 const MAX_PURGE = 100;
 const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
@@ -30,9 +31,15 @@ export default {
       return;
     }
 
-    const filterUserId = ctx.isInteraction
-      ? ctx.source?.options?.getUser("target")?.id
-      : ctx.args?.[1]?.match(/<@!?(\d+)>/)?.[1] ?? null;
+    const { target } = await resolveTarget(ctx, {
+      optionName: "target",
+      argIndex: 1,
+      fallbackToAuthor: false,
+      allowReference: true,
+      allowUserFallback: true,
+    });
+
+    const filterUserId = target?.id ?? null;
 
     const fetched = await ctx.channel.messages.fetch({ limit: MAX_PURGE });
     const now = Date.now();
