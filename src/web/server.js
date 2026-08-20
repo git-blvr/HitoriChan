@@ -46,11 +46,18 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
   });
 
   const host = "0.0.0.0";
-  const publicUrl = process.env.PUBLIC_URL;
+  const publicUrls = [
+    ...(process.env.PUBLIC_URL ? [process.env.PUBLIC_URL] : []),
+    ...(process.env.PUBLIC_URLS ? process.env.PUBLIC_URLS.split(",").map((u) => u.trim()).filter(Boolean) : []),
+  ];
+
   return new Promise((resolve) => {
     const server = app.listen(port, host, () => {
-      const url = publicUrl || `http://${host}:${port}`;
-      console.log(`🌐 Dashboard running at ${url}`);
+      console.log("🌐 Dashboard is ready:");
+      for (const url of publicUrls) {
+        console.log(`   - ${url}`);
+      }
+      console.log(`   - http://${host}:${port}`);
       resolve(server);
     });
   });
