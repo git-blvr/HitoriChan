@@ -17,6 +17,7 @@
       <a href="#streak" data-section="streak">Streak</a>
       <a href="#moderation" data-section="moderation">Moderation</a>
       <a href="#cases" data-section="cases">Cases</a>
+      <a href="#tickets" data-section="tickets">Tickets</a>
       <a href="#triggers" data-section="triggers">Triggers</a>
       <a href="#logs" data-section="logs">Logs</a>
     </nav>
@@ -207,6 +208,96 @@
           <thead><tr><th>Case ID</th><th>Action</th><th>Target</th><th>Moderator</th><th>Reason</th><th>Date</th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
+    </section>
+
+    <section id="tickets" class="content-section">
+      <div class="panel">
+        <h2>Ticket Panels</h2>
+        <table class="data-table" id="ticket-panels-table">
+          <thead>
+            <tr><th>Name</th><th>Type</th><th>Button</th><th>Category</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <button type="button" id="ticket-new-btn" class="save-btn" style="margin-top:12px">New Panel</button>
+      </div>
+
+      <div class="panel" id="ticket-editor" hidden>
+        <h2 id="ticket-editor-title">New Ticket Panel</h2>
+        <form id="ticket-form" class="config-form">
+          <input type="hidden" id="ticket-id" />
+
+          <div class="inline-fields">
+            <label class="grow">Name <input type="text" id="ticket-name" required /></label>
+            <label class="grow">Type
+              <select id="ticket-type">
+                <option value="embed">Embed</option>
+                <option value="cv2">Components V2</option>
+              </select>
+            </label>
+          </div>
+
+          <label>Title <input type="text" id="ticket-title" placeholder="Support tickets" /></label>
+          <label>Description <textarea id="ticket-description" rows="4" placeholder="Click the button below to open a ticket."></textarea></label>
+
+          <div class="inline-fields">
+            <label class="grow">Color <input type="color" id="ticket-color" value="#7c3aed" /></label>
+            <label class="grow">Use dominant color from attachment <input type="checkbox" id="ticket-use-dominant" /></label>
+          </div>
+
+          <div class="inline-fields">
+            <label class="grow">Image URL <input type="text" id="ticket-image" placeholder="https://..." /></label>
+            <label class="grow">Thumbnail URL <input type="text" id="ticket-thumbnail" placeholder="https://..." /></label>
+          </div>
+
+          <label>Attachment URL (for dominant color) <input type="text" id="ticket-attachment" placeholder="https://..." /></label>
+
+          <div class="inline-fields">
+            <label class="grow">Button Label <input type="text" id="ticket-button-label" value="Create Ticket" /></label>
+            <label class="grow">Button Color
+              <select id="ticket-button-color">
+                <option value="green">Green</option>
+                <option value="blue">Blue</option>
+                <option value="red">Red</option>
+                <option value="gray">Gray</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="inline-fields">
+            <label class="grow">Ticket Category
+              <select id="ticket-category">
+                <option value="">-- None --</option>
+              </select>
+            </label>
+            <label class="grow">Staff Role
+              <select id="ticket-staff-role">
+                <option value="">-- None --</option>
+              </select>
+            </label>
+          </div>
+
+          <label>Transcript Channel
+            <select id="ticket-transcript">
+              <option value="">-- None --</option>
+            </select>
+          </label>
+
+          <label>Welcome Message <textarea id="ticket-welcome" rows="3" placeholder="Message sent inside the ticket channel"></textarea></label>
+
+          <label>Send Panel To
+            <select id="ticket-send-channel">
+              <option value="">-- Select a channel --</option>
+            </select>
+          </label>
+
+          <div class="inline-form" style="margin-top:16px">
+            <button type="submit" class="save-btn">Save Panel</button>
+            <button type="button" id="ticket-send-btn" class="save-btn">Send to Channel</button>
+            <button type="button" id="ticket-cancel-btn" class="save-btn">Cancel</button>
+          </div>
+        </form>
       </div>
     </section>
 

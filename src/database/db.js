@@ -176,6 +176,46 @@ const MIGRATIONS = [
       ALTER TABLE guild_settings ADD COLUMN daily_max INTEGER DEFAULT 500;
     `,
   },
+  {
+    version: 5,
+    sql: `
+      CREATE TABLE IF NOT EXISTS ticket_panels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'embed',
+        title TEXT,
+        description TEXT,
+        color INTEGER,
+        image_url TEXT,
+        thumbnail_url TEXT,
+        attachment_url TEXT,
+        use_dominant_color INTEGER NOT NULL DEFAULT 0,
+        button_label TEXT NOT NULL DEFAULT 'Create Ticket',
+        button_color TEXT NOT NULL DEFAULT 'green',
+        category_id TEXT,
+        staff_role_id TEXT,
+        transcript_channel_id TEXT,
+        welcome_message TEXT,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        UNIQUE(guild_id, name)
+      );
+      CREATE INDEX IF NOT EXISTS idx_ticket_panels_guild ON ticket_panels(guild_id);
+
+      CREATE TABLE IF NOT EXISTS tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        panel_id INTEGER NOT NULL,
+        channel_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'open',
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        closed_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_tickets_guild_user ON tickets(guild_id, user_id, status);
+      CREATE INDEX IF NOT EXISTS idx_tickets_panel ON tickets(panel_id);
+    `,
+  },
 ];
 
 export function migrate() {

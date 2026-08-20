@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import os from "os";
+import {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelType,
+} from "discord.js";
 import * as EconomyAccount from "../../models/EconomyAccount.js";
 import * as AISettings from "../../models/AISettings.js";
 import * as StreakSettings from "../../models/StreakSettings.js";
@@ -11,6 +18,10 @@ import * as MessageLog from "../../models/MessageLog.js";
 import * as VoiceSession from "../../models/VoiceSession.js";
 import * as Trigger from "../../models/Trigger.js";
 import * as ModerationCase from "../../models/ModerationCase.js";
+import * as TicketPanel from "../../models/TicketPanel.js";
+import * as Ticket from "../../models/Ticket.js";
+import { cv2 } from "../../helpers/cv2.js";
+import { get_dominant_color } from "../../utils/color_utils.js";
 
 const router = Router();
 
@@ -293,6 +304,156 @@ router.get("/stats/:guildId", requireAuth, async (req, res) => {
       collaborators: msgStats.uniqueUsers,
     }],
   });
+});
+
+// Guild categories for ticket panels
+router.get("/guilds/:guildId/categories", requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const guild = client.guilds.cache.get(req.params.guildId);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  const categories = Array.from(guild.channels.cache.values())
+    .filter((c) => c.type === ChannelType.GuildCategory)
+    .sort((a, b) => a.position - b.position)
+    .map((c) => ({ id: c.id, name: c.name }));
+
+  res.json(categories);
+});
+
+// Ticket panels
+function parsePanelBody(body) {
+  return {
+    name: body.name?.trim(),
+    type: body.type === "cv2" ? "cv2" : "embed",
+    title: body.title?.trim() || null,
+    description: body.description?.trim() || null,
+    color: body.color !== undefined && body.color !== "" ? Number(body.color) : null,
+    imageUrl: body.imageUrl?.trim() || null,
+    thumbnailUrl: body.thumbnailUrl?.trim() || null,
+    attachmentUrl: body.attachmentUrl?.trim() || null,
+    useDominantColor: Boolean(body.useDominantColor),
+    buttonLabel: body.buttonLabel?.trim() || "Create Ticket",
+    buttonColor: body.buttonColor?.trim() || "green",
+    categoryId: body.categoryId?.trim() || null,
+    staffRoleId: body.staffRoleId?.trim() || null,
+    transcriptChannelId: body.transcriptChannelId?.trim() || null,
+    welcomeMessage: body.welcomeMessage?.trim() || null,
+  };
+}
+
+function panelButton(customId, label, color) {
+  const styleMap = {
+    green: ButtonStyle.Success,
+    red: ButtonStyle.Danger,
+    blue: ButtonStyle.Primary,
+    gray: ButtonStyle.Secondary,
+  };
+  return new ButtonBuilder()
+    .setCustomId(customId)
+    .setLabel(label)
+    .setStyle(styleMap[color] ?? ButtonStyle.Success);
+}
+
+async function resolvePanelColor(panel) {
+  if (!panel.useDominantColor || !panel.attachmentUrl) return panel.color;
+  try {
+    return await get_dominant_color(panel.attachmentUrl);
+  } catch {
+    return panel.color;
+  }
+}
+
+function buildTicketPanelPayload(panel, color, customId) {
+  const row = new ActionRowBuilder().addComponents(
+    panelButton(customId, panel.buttonLabel, panel.buttonColor)
+  );
+
+  if (panel.type === "cv2") {
+    return cv2({
+      color,
+      title: panel.title,
+      description: panel.description,
+      image: panel.imageUrl || panel.attachmentUrl,
+      thumbnail: panel.thumbnailUrl,
+      components: [row],
+    });
+  }
+
+  const embed = new EmbedBuilder();
+  if (panel.title) embed.setTitle(panel.title);
+  if (panel.description) embed.setDescription(panel.description);
+  if (color !== null && color !== undefined && color !== "") embed.setColor(Number(color));
+  if (panel.imageUrl || panel.attachmentUrl) embed.setImage(panel.imageUrl || panel.attachmentUrl);
+  if (panel.thumbnailUrl) embed.setThumbnail(panel.thumbnailUrl);
+
+  return { embeds: [embed], components: [row] };
+}
+
+router.get("/tickets/panels/:guildId", requireAuth, async (req, res) => {
+  const panels = await TicketPanel.getForGuild(req.params.guildId);
+  res.json(panels);
+});
+
+router.post("/tickets/panels/:guildId", requireAuth, async (req, res) => {
+  const data = parsePanelBody(req.body);
+  if (!data.name) return res.status(400).json({ error: "Panel name is required" });
+
+  const existing = await TicketPanel.getByName(req.params.guildId, data.name);
+  if (existing) return res.status(409).json({ error: "A panel with that name already exists" });
+
+  const panel = await TicketPanel.create({ ...data, guildId: req.params.guildId });
+  res.json(panel);
+});
+
+router.get("/tickets/panels/:guildId/:panelId", requireAuth, async (req, res) => {
+  const panel = await TicketPanel.get(req.params.panelId);
+  if (!panel || panel.guildId !== req.params.guildId) return res.status(404).json({ error: "Panel not found" });
+  res.json(panel);
+});
+
+router.post("/tickets/panels/:guildId/:panelId", requireAuth, async (req, res) => {
+  const panel = await TicketPanel.get(req.params.panelId);
+  if (!panel || panel.guildId !== req.params.guildId) return res.status(404).json({ error: "Panel not found" });
+
+  const data = parsePanelBody(req.body);
+  if (data.name) {
+    const existing = await TicketPanel.getByName(req.params.guildId, data.name);
+    if (existing && existing.id !== panel.id) return res.status(409).json({ error: "A panel with that name already exists" });
+  }
+
+  const updated = await TicketPanel.update(req.params.panelId, data);
+  res.json(updated);
+});
+
+router.delete("/tickets/panels/:guildId/:panelId", requireAuth, async (req, res) => {
+  const panel = await TicketPanel.get(req.params.panelId);
+  if (!panel || panel.guildId !== req.params.guildId) return res.status(404).json({ error: "Panel not found" });
+  await TicketPanel.remove(req.params.panelId);
+  res.json({ ok: true });
+});
+
+router.post("/tickets/panels/:guildId/:panelId/send", requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const panel = await TicketPanel.get(req.params.panelId);
+  if (!panel || panel.guildId !== req.params.guildId) return res.status(404).json({ error: "Panel not found" });
+
+  const { channelId } = req.body;
+  const channel = client.channels.cache.get(channelId);
+  if (!channel?.isTextBased()) return res.status(400).json({ error: "Invalid channel" });
+
+  const color = await resolvePanelColor(panel);
+  const customId = `ticket:create:${panel.id}`;
+  const payload = buildTicketPanelPayload(panel, color, customId);
+
+  await channel.send(payload);
+  res.json({ ok: true });
+});
+
+// Tickets
+router.get("/tickets/:guildId", requireAuth, async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 100, 1000);
+  const rows = await Ticket.getForGuild(req.params.guildId, limit);
+  res.json(rows);
 });
 
 export default router;

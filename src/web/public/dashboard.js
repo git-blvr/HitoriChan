@@ -55,17 +55,18 @@ async function loadGuilds() {
 
 async function loadGuildData(guildId) {
   if (!guildId) {
-    guildData = { id: null, channels: [], roles: [] };
+    guildData = { id: null, channels: [], roles: [], categories: [] };
     return;
   }
   if (guildData.id === guildId) return;
 
-  const [channels, roles] = await Promise.all([
+  const [channels, roles, categories] = await Promise.all([
     json(`/api/guilds/${guildId}/channels`),
     json(`/api/guilds/${guildId}/roles`),
+    json(`/api/guilds/${guildId}/categories`),
   ]);
 
-  guildData = { id: guildId, channels, roles };
+  guildData = { id: guildId, channels, roles, categories };
 }
 
 function populateChannels(selectId, selectedId, placeholder = "-- None --") {
@@ -82,6 +83,22 @@ function populateRoles(selectId, selectedId) {
   if (!select) return;
   const options = guildData.roles.map((r) =>
     `<option value="${r.id}" ${r.id === selectedId ? "selected" : ""}>${escapeHtml(r.name)}</option>`
+  ).join("");
+  select.innerHTML = '<option value="">-- None --</option>' + options;
+}
+
+async function loadGuildCategories(guildId) {
+  if (!guildId) return [];
+  if (guildData.id === guildId && guildData.categories) return guildData.categories;
+  guildData.categories = await json(`/api/guilds/${guildId}/categories`);
+  return guildData.categories;
+}
+
+function populateCategories(selectId, selectedId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const options = (guildData.categories || []).map((c) =>
+    `<option value="${c.id}" ${c.id === selectedId ? "selected" : ""}>${escapeHtml(c.name)}</option>`
   ).join("");
   select.innerHTML = '<option value="">-- None --</option>' + options;
 }
@@ -190,6 +207,27 @@ const sections = {
         <td>${formatDate(c.createdAt)}</td>
       </tr>
     `).join("") || '<tr><td colspan="6">No cases</td></tr>';
+  },
+
+  tickets: async () => {
+    if (!currentGuild) return;
+    await loadGuildData(currentGuild);
+    const panels = await json(`/api/tickets/panels/${currentGuild}`);
+    const tbody = document.querySelector("#ticket-panels-table tbody");
+    tbody.innerHTML = panels.map((p) => `
+      <tr>
+        <td>${escapeHtml(p.name)}</td>
+        <td>${escapeHtml(p.type)}</td>
+        <td>${escapeHtml(p.buttonLabel)}</td>
+        <td title="${escapeHtml(p.categoryId || "")}">${escapeHtml(guildData.categories.find((c) => c.id === p.categoryId)?.name || "—")}</td>
+        <td>
+          <button onclick="editTicketPanel(${p.id})">Edit</button>
+          <button onclick="deleteTicketPanel(${p.id})">Delete</button>
+        </td>
+      </tr>
+    `).join("") || '<tr><td colspan="5">No panels</td></tr>';
+
+    hideTicketEditor();
   },
 
   triggers: async () => {
@@ -649,6 +687,144 @@ document.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     document.getElementById("emoji-picker").hidden = true;
+  }
+});
+
+// Ticket panel editor
+const ticketForm = document.getElementById("ticket-form");
+const ticketEditor = document.getElementById("ticket-editor");
+
+function intToHex(color) {
+  if (!color) return "#7c3aed";
+  const hex = color.toString(16).padStart(6, "0");
+  return `#${hex}`;
+}
+
+function hexToInt(hex) {
+  return parseInt(hex.replace("#", ""), 16) || null;
+}
+
+function resetTicketEditor() {
+  ticketForm.reset();
+  document.getElementById("ticket-id").value = "";
+  document.getElementById("ticket-color").value = "#7c3aed";
+  document.getElementById("ticket-editor-title").textContent = "New Ticket Panel";
+  populateCategories("ticket-category", "");
+  populateRoles("ticket-staff-role", "");
+  populateChannels("ticket-transcript", "", "-- None --");
+  populateChannels("ticket-send-channel", "", "-- Select a channel --");
+  ticketEditor.hidden = false;
+}
+
+function hideTicketEditor() {
+  ticketEditor.hidden = true;
+  document.getElementById("ticket-form").reset();
+  document.getElementById("ticket-id").value = "";
+}
+
+function getTicketPanelPayload() {
+  return {
+    name: document.getElementById("ticket-name").value.trim(),
+    type: document.getElementById("ticket-type").value,
+    title: document.getElementById("ticket-title").value.trim() || null,
+    description: document.getElementById("ticket-description").value.trim() || null,
+    color: hexToInt(document.getElementById("ticket-color").value),
+    imageUrl: document.getElementById("ticket-image").value.trim() || null,
+    thumbnailUrl: document.getElementById("ticket-thumbnail").value.trim() || null,
+    attachmentUrl: document.getElementById("ticket-attachment").value.trim() || null,
+    useDominantColor: document.getElementById("ticket-use-dominant").checked,
+    buttonLabel: document.getElementById("ticket-button-label").value.trim() || "Create Ticket",
+    buttonColor: document.getElementById("ticket-button-color").value,
+    categoryId: document.getElementById("ticket-category").value || null,
+    staffRoleId: document.getElementById("ticket-staff-role").value || null,
+    transcriptChannelId: document.getElementById("ticket-transcript").value || null,
+    welcomeMessage: document.getElementById("ticket-welcome").value.trim() || null,
+  };
+}
+
+function fillTicketEditor(panel) {
+  document.getElementById("ticket-id").value = panel.id || "";
+  document.getElementById("ticket-name").value = panel.name || "";
+  document.getElementById("ticket-type").value = panel.type || "embed";
+  document.getElementById("ticket-title").value = panel.title || "";
+  document.getElementById("ticket-description").value = panel.description || "";
+  document.getElementById("ticket-color").value = intToHex(panel.color);
+  document.getElementById("ticket-image").value = panel.imageUrl || "";
+  document.getElementById("ticket-thumbnail").value = panel.thumbnailUrl || "";
+  document.getElementById("ticket-attachment").value = panel.attachmentUrl || "";
+  document.getElementById("ticket-use-dominant").checked = panel.useDominantColor;
+  document.getElementById("ticket-button-label").value = panel.buttonLabel || "Create Ticket";
+  document.getElementById("ticket-button-color").value = panel.buttonColor || "green";
+
+  populateCategories("ticket-category", panel.categoryId || "");
+  populateRoles("ticket-staff-role", panel.staffRoleId || "");
+  populateChannels("ticket-transcript", panel.transcriptChannelId || "", "-- None --");
+  populateChannels("ticket-send-channel", "", "-- Select a channel --");
+
+  document.getElementById("ticket-welcome").value = panel.welcomeMessage || "";
+  document.getElementById("ticket-editor-title").textContent = panel.id ? "Edit Ticket Panel" : "New Ticket Panel";
+  ticketEditor.hidden = false;
+}
+
+window.editTicketPanel = async (id) => {
+  if (!currentGuild) return;
+  const panel = await json(`/api/tickets/panels/${currentGuild}/${id}`);
+  fillTicketEditor(panel);
+};
+
+window.deleteTicketPanel = async (id) => {
+  if (!currentGuild) return;
+  await json(`/api/tickets/panels/${currentGuild}/${id}`, { method: "DELETE" });
+  refreshSection();
+  showToast("Panel deleted", "success");
+};
+
+document.getElementById("ticket-new-btn").addEventListener("click", () => {
+  resetTicketEditor();
+});
+
+document.getElementById("ticket-cancel-btn").addEventListener("click", hideTicketEditor);
+
+ticketForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+
+  const id = document.getElementById("ticket-id").value;
+  const payload = getTicketPanelPayload();
+  const url = id ? `/api/tickets/panels/${currentGuild}/${id}` : `/api/tickets/panels/${currentGuild}`;
+  const method = id ? "POST" : "POST";
+
+  try {
+    await json(url, { method, body: JSON.stringify(payload) });
+    showToast(id ? "Panel updated" : "Panel created", "success");
+    hideTicketEditor();
+    refreshSection();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+document.getElementById("ticket-send-btn").addEventListener("click", async () => {
+  if (!currentGuild) return;
+  const id = document.getElementById("ticket-id").value;
+  if (!id) {
+    showToast("Save the panel before sending", "error");
+    return;
+  }
+  const channelId = document.getElementById("ticket-send-channel").value;
+  if (!channelId) {
+    showToast("Select a channel to send the panel to", "error");
+    return;
+  }
+
+  try {
+    await json(`/api/tickets/panels/${currentGuild}/${id}/send`, {
+      method: "POST",
+      body: JSON.stringify({ channelId }),
+    });
+    showToast("Panel sent", "success");
+  } catch (err) {
+    showToast(err.message, "error");
   }
 });
 

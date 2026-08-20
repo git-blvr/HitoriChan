@@ -767,6 +767,29 @@ body {
   }
 }
 
+input[type="color"] {
+  width: 64px;
+  height: 40px;
+  padding: 2px;
+  border: 1px solid #252532;
+  border-radius: 8px;
+  background: var(--input);
+  cursor: pointer;
+}
+
+#ticket-editor {
+  transition: opacity 0.2s;
+}
+
+#ticket-editor[hidden] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#ticket-panels-table button {
+  margin-right: 6px;
+}
+
 /* Table extras */
 .user-cell {
   display: flex;
