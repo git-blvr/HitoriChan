@@ -28,9 +28,20 @@ router.get("/guilds", requireAuth, async (req, res) => {
 
 // Economy
 router.get("/economy/:guildId", requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const guild = client.guilds.cache.get(req.params.guildId);
   const top = await EconomyAccount.getLeaderboard(req.params.guildId, 50);
+  const leaderboard = top.map((r) => {
+    const user = client.users.cache.get(r.userId);
+    const member = guild?.members.cache.get(r.userId);
+    return {
+      ...r,
+      userName: member?.displayName ?? user?.username ?? r.userId,
+      userAvatar: user?.displayAvatarURL?.({ size: 128 }) ?? null,
+    };
+  });
   const settings = await GuildSettings.getOrCreate(req.params.guildId);
-  res.json({ settings, leaderboard: top });
+  res.json({ settings, leaderboard });
 });
 
 router.post("/economy/:guildId", requireAuth, async (req, res) => {
@@ -97,9 +108,24 @@ router.post("/streak/:guildId", requireAuth, async (req, res) => {
 
 // Moderation cases
 router.get("/moderation/cases/:guildId", requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const guild = client.guilds.cache.get(req.params.guildId);
   const limit = Math.min(Number(req.query.limit) || 100, 1000);
   const rows = await ModerationCase.getForGuild(req.params.guildId, limit);
-  res.json(rows);
+  const cases = rows.map((c) => {
+    const target = client.users.cache.get(c.targetId);
+    const moderator = client.users.cache.get(c.moderatorId);
+    const targetMember = guild?.members.cache.get(c.targetId);
+    const moderatorMember = guild?.members.cache.get(c.moderatorId);
+    return {
+      ...c,
+      targetName: targetMember?.displayName ?? target?.username ?? c.targetId,
+      targetAvatar: target?.displayAvatarURL?.({ size: 128 }) ?? null,
+      moderatorName: moderatorMember?.displayName ?? moderator?.username ?? c.moderatorId,
+      moderatorAvatar: moderator?.displayAvatarURL?.({ size: 128 }) ?? null,
+    };
+  });
+  res.json(cases);
 });
 
 // Moderation settings

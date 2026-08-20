@@ -40,6 +40,14 @@ async function loadGuilds() {
   allGuilds = await json("/api/guilds");
   guildSelect.innerHTML = '<option value="">Select a server</option>' +
     allGuilds.map((g) => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join("");
+
+  if (allGuilds.length === 1) {
+    const g = allGuilds[0];
+    currentGuild = g.id;
+    guildSelect.value = g.id;
+    updateGuildIcon(g.id);
+  }
+
   return allGuilds;
 }
 
@@ -94,7 +102,10 @@ const sections = {
     const tbody = document.querySelector("#economy-table tbody");
     tbody.innerHTML = leaderboard.map((r) => `
       <tr>
-        <td>${escapeHtml(r.userName || r.userId)}</td>
+        <td class="user-cell">
+          ${r.userAvatar ? `<img src="${escapeHtml(r.userAvatar)}" alt="" class="table-avatar" />` : ""}
+          <span>${escapeHtml(r.userName || r.userId)}</span>
+        </td>
         <td>${(settings.primaryCurrency.emoji ? `${settings.primaryCurrency.emoji} ` : "")}${r.primary.toLocaleString()}</td>
         <td>${(settings.secondaryCurrency.emoji ? `${settings.secondaryCurrency.emoji} ` : "")}${r.secondary.toLocaleString()}</td>
       </tr>
@@ -135,8 +146,8 @@ const sections = {
       <tr>
         <td>${escapeHtml(c.caseId)}</td>
         <td>${escapeHtml(c.action)}</td>
-        <td>${escapeHtml(c.targetId)}</td>
-        <td>${escapeHtml(c.moderatorId)}</td>
+        <td title="${escapeHtml(c.targetId)}">${escapeHtml(c.targetName || c.targetId)}</td>
+        <td title="${escapeHtml(c.moderatorId)}">${escapeHtml(c.moderatorName || c.moderatorId)}</td>
         <td>${escapeHtml(c.reason)}</td>
         <td>${formatDate(c.createdAt)}</td>
       </tr>
@@ -475,6 +486,12 @@ const DEFAULT_EMOJIS = [
   "🔥", "⚡", "💧", "🌊", "☀️", "🌙", "⭐", "🌈", "☁️", "❄️",
 ];
 
+function highlightEmoji(value) {
+  document.querySelectorAll(".emoji-btn").forEach((b) => {
+    b.classList.toggle("selected", b.dataset.value === value);
+  });
+}
+
 function showEmojiTab(tab) {
   document.querySelectorAll(".emoji-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
   document.querySelectorAll(".emoji-tab-content").forEach((c) => c.classList.toggle("active", c.id === `emoji-${tab === "discord" ? "defaults" : "guild"}`));
@@ -489,8 +506,16 @@ function positionPicker(input) {
   const rect = input.getBoundingClientRect();
   const economy = document.getElementById("economy");
   const econRect = economy.getBoundingClientRect();
-  picker.style.top = `${rect.bottom - econRect.top + 8}px`;
-  picker.style.left = `${rect.left - econRect.left}px`;
+  const padding = 8;
+  const pickerHeight = picker.offsetHeight || 320;
+
+  let top = rect.bottom - econRect.top + padding;
+  if (top + pickerHeight > economy.clientHeight) {
+    top = Math.max(0, rect.top - econRect.top - pickerHeight - padding);
+  }
+
+  picker.style.top = `${top}px`;
+  picker.style.left = `${Math.min(Math.max(0, rect.left - econRect.left), Math.max(0, economy.clientWidth - 340))}px`;
 }
 
 async function loadEmojiPicker(guildId) {
@@ -510,6 +535,7 @@ async function loadEmojiPicker(guildId) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "emoji-btn";
+    btn.dataset.value = emoji;
     btn.textContent = emoji;
     btn.addEventListener("click", () => pickEmoji(emoji, btn));
     defaultsEl.appendChild(btn);
@@ -522,6 +548,7 @@ async function loadEmojiPicker(guildId) {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "emoji-btn";
+        btn.dataset.value = emoji.value;
         const img = document.createElement("img");
         img.src = emoji.url;
         img.alt = emoji.name;
@@ -545,6 +572,8 @@ async function loadEmojiPicker(guildId) {
     empty.textContent = "No server emojis";
     guildEl.appendChild(empty);
   }
+
+  highlightEmoji(activeEmojiInput?.value);
 }
 
 function pickEmoji(emoji, btn) {
@@ -558,17 +587,28 @@ function pickEmoji(emoji, btn) {
 
 for (const id of ["econ-primary-emoji", "econ-secondary-emoji"]) {
   const input = document.getElementById(id);
-  input.addEventListener("focus", () => {
+  const openPicker = () => {
     activeEmojiInput = input;
     const picker = document.getElementById("emoji-picker");
     picker.hidden = false;
     positionPicker(input);
     showEmojiTab("discord");
-  });
+    highlightEmoji(input.value);
+  };
+  input.addEventListener("focus", openPicker);
+  input.addEventListener("click", openPicker);
 }
 
-document.getElementById("economy").addEventListener("click", (e) => {
+document.addEventListener("click", (e) => {
+  const picker = document.getElementById("emoji-picker");
+  if (picker.hidden) return;
   if (!e.target.closest(".emoji-picker") && !e.target.classList.contains("emoji-input")) {
+    picker.hidden = true;
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
     document.getElementById("emoji-picker").hidden = true;
   }
 });

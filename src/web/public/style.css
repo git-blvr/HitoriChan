@@ -767,6 +767,53 @@ body {
   }
 }
 
+/* Table extras */
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.table-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+/* Extra visual comfort */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--container);
+  box-shadow: var(--shadow);
+}
+
+.data-table th {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.data-table tbody tr:hover td {
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.config-form input[type="text"],
+.config-form input[type="number"],
+.config-form textarea,
+.config-form select {
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.content-section.active {
+  padding: 28px;
+}
+
 @media (max-width: 560px) {
   .login-wrapper { flex-direction: column; }
   .login-bg {
