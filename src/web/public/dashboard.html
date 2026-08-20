@@ -143,7 +143,11 @@
               <option value="channel">Specific channel</option>
             </select>
           </label>
-          <label>Channel ID <input type="text" id="ai-channel" placeholder="Channel ID or blank" /></label>
+          <label>Channel
+            <select id="ai-channel">
+              <option value="">-- None --</option>
+            </select>
+          </label>
           <label>Custom Prompt <textarea id="ai-prompt" rows="6" placeholder="Custom instructions..."></textarea></label>
           <button type="submit" class="save-btn">Save AI Settings</button>
         </form>
@@ -155,8 +159,16 @@
         <h2>Streak Configuration</h2>
         <form id="streak-form" class="config-form">
           <label><input type="checkbox" id="streak-enabled" /> Enabled</label>
-          <label>Track Channel ID <input type="text" id="streak-track" placeholder="Channel ID or blank for all" /></label>
-          <label>Notify Channel ID <input type="text" id="streak-notify" placeholder="Channel ID or blank for same" /></label>
+          <label>Track Channel
+            <select id="streak-track">
+              <option value="">-- All channels --</option>
+            </select>
+          </label>
+          <label>Notify Channel
+            <select id="streak-notify">
+              <option value="">-- Same as track --</option>
+            </select>
+          </label>
           <button type="submit" class="save-btn">Save Streak Settings</button>
         </form>
       </div>
@@ -166,8 +178,16 @@
       <div class="panel">
         <h2>Moderation Configuration</h2>
         <form id="moderation-form" class="config-form">
-          <label>Log Channel ID <input type="text" id="mod-log" placeholder="Channel ID" /></label>
-          <label>Mod Role ID <input type="text" id="mod-role" placeholder="Role ID" /></label>
+          <label>Log Channel
+            <select id="mod-log">
+              <option value="">-- None --</option>
+            </select>
+          </label>
+          <label>Mod Role
+            <select id="mod-role">
+              <option value="">-- None --</option>
+            </select>
+          </label>
           <button type="submit" class="save-btn">Save Moderation Settings</button>
         </form>
       </div>

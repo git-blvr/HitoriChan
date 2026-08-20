@@ -26,6 +26,33 @@ router.get("/guilds", requireAuth, async (req, res) => {
   res.json(guilds);
 });
 
+// Guild channels & roles for the dashboard dropdowns
+router.get("/guilds/:guildId/channels", requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const guild = client.guilds.cache.get(req.params.guildId);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  const channels = Array.from(guild.channels.cache.values())
+    .filter((c) => c.isTextBased())
+    .sort((a, b) => (a.position - b.position) || a.name.localeCompare(b.name))
+    .map((c) => ({ id: c.id, name: c.name, type: c.type, parentId: c.parentId }));
+
+  res.json(channels);
+});
+
+router.get("/guilds/:guildId/roles", requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const guild = client.guilds.cache.get(req.params.guildId);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  const roles = Array.from(guild.roles.cache.values())
+    .filter((r) => !r.managed && r.id !== guild.id)
+    .sort((a, b) => b.position - a.position)
+    .map((r) => ({ id: r.id, name: r.name, color: r.color }));
+
+  res.json(roles);
+});
+
 // Economy
 router.get("/economy/:guildId", requireAuth, async (req, res) => {
   const client = req.app.get("client");

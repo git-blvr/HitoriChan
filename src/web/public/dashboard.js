@@ -6,6 +6,7 @@ let currentGuild = "";
 let currentSection = "overview";
 let allGuilds = [];
 let activityChart = null;
+let guildData = { id: null, channels: [], roles: [] };
 
 function api(path, options = {}) {
   return fetch(path, { credentials: "same-origin", ...options });
@@ -46,9 +47,43 @@ async function loadGuilds() {
     currentGuild = g.id;
     guildSelect.value = g.id;
     updateGuildIcon(g.id);
+    await loadGuildData(g.id);
   }
 
   return allGuilds;
+}
+
+async function loadGuildData(guildId) {
+  if (!guildId) {
+    guildData = { id: null, channels: [], roles: [] };
+    return;
+  }
+  if (guildData.id === guildId) return;
+
+  const [channels, roles] = await Promise.all([
+    json(`/api/guilds/${guildId}/channels`),
+    json(`/api/guilds/${guildId}/roles`),
+  ]);
+
+  guildData = { id: guildId, channels, roles };
+}
+
+function populateChannels(selectId, selectedId, placeholder = "-- None --") {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const options = guildData.channels.map((c) =>
+    `<option value="${c.id}" ${c.id === selectedId ? "selected" : ""}>#${escapeHtml(c.name)}</option>`
+  ).join("");
+  select.innerHTML = `<option value="">${escapeHtml(placeholder)}</option>` + options;
+}
+
+function populateRoles(selectId, selectedId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const options = guildData.roles.map((r) =>
+    `<option value="${r.id}" ${r.id === selectedId ? "selected" : ""}>${escapeHtml(r.name)}</option>`
+  ).join("");
+  select.innerHTML = '<option value="">-- None --</option>' + options;
 }
 
 function escapeHtml(str) {
@@ -114,26 +149,29 @@ const sections = {
 
   ai: async () => {
     if (!currentGuild) return;
+    await loadGuildData(currentGuild);
     const settings = await json(`/api/ai/${currentGuild}`);
     document.getElementById("ai-enabled").checked = settings.enabled;
     document.getElementById("ai-mode").value = settings.mode;
-    document.getElementById("ai-channel").value = settings.channelId || "";
+    populateChannels("ai-channel", settings.channelId || "", "-- None --");
     document.getElementById("ai-prompt").value = settings.customPrompt || "";
   },
 
   streak: async () => {
     if (!currentGuild) return;
+    await loadGuildData(currentGuild);
     const settings = await json(`/api/streak/${currentGuild}`);
     document.getElementById("streak-enabled").checked = settings.enabled;
-    document.getElementById("streak-track").value = settings.trackChannelId || "";
-    document.getElementById("streak-notify").value = settings.notifyChannelId || "";
+    populateChannels("streak-track", settings.trackChannelId || "", "-- All channels --");
+    populateChannels("streak-notify", settings.notifyChannelId || "", "-- Same as track --");
   },
 
   moderation: async () => {
     if (!currentGuild) return;
+    await loadGuildData(currentGuild);
     const mod = await json(`/api/moderation/${currentGuild}`);
-    document.getElementById("mod-log").value = mod.logChannelId || "";
-    document.getElementById("mod-role").value = mod.modRoleId || "";
+    populateChannels("mod-log", mod.logChannelId || "", "-- None --");
+    populateRoles("mod-role", mod.modRoleId || "");
     const prefix = await json(`/api/prefix/${currentGuild}`);
     document.getElementById("prefix").value = prefix.prefix;
   },
@@ -451,6 +489,7 @@ function updateGuildIcon(guildId) {
 guildSelect.addEventListener("change", async (e) => {
   currentGuild = e.target.value;
   updateGuildIcon(currentGuild);
+  if (currentGuild) await loadGuildData(currentGuild);
   if (currentSection === "overview") {
     await renderChart(currentGuild || "", document.getElementById("chart-range").value);
   } else {
