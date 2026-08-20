@@ -1,13 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import os from "os";
-import {
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ChannelType,
-} from "discord.js";
+import { ChannelType } from "discord.js";
 import * as EconomyAccount from "../../models/EconomyAccount.js";
 import * as AISettings from "../../models/AISettings.js";
 import * as StreakSettings from "../../models/StreakSettings.js";
@@ -20,7 +14,7 @@ import * as Trigger from "../../models/Trigger.js";
 import * as ModerationCase from "../../models/ModerationCase.js";
 import * as TicketPanel from "../../models/TicketPanel.js";
 import * as Ticket from "../../models/Ticket.js";
-import { cv2 } from "../../helpers/cv2.js";
+import { buildTicketPanelPayload } from "../../helpers/ticketPanels.js";
 import { get_dominant_color } from "../../utils/color_utils.js";
 
 const router = Router();
@@ -327,10 +321,9 @@ function parsePanelBody(body) {
     type: body.type === "cv2" ? "cv2" : "embed",
     title: body.title?.trim() || null,
     description: body.description?.trim() || null,
-    color: body.color !== undefined && body.color !== "" ? Number(body.color) : null,
+    color: body.color !== undefined && body.color !== null && body.color !== "" ? Number(body.color) : null,
     imageUrl: body.imageUrl?.trim() || null,
     thumbnailUrl: body.thumbnailUrl?.trim() || null,
-    attachmentUrl: body.attachmentUrl?.trim() || null,
     useDominantColor: Boolean(body.useDominantColor),
     buttonLabel: body.buttonLabel?.trim() || "Create Ticket",
     buttonColor: body.buttonColor?.trim() || "green",
@@ -338,55 +331,10 @@ function parsePanelBody(body) {
     staffRoleId: body.staffRoleId?.trim() || null,
     transcriptChannelId: body.transcriptChannelId?.trim() || null,
     welcomeMessage: body.welcomeMessage?.trim() || null,
+    fields: Array.isArray(body.fields) ? body.fields.filter((f) => f?.name && f?.value) : [],
+    components: Array.isArray(body.components) ? body.components : [],
+    prefix: body.prefix?.trim() || null,
   };
-}
-
-function panelButton(customId, label, color) {
-  const styleMap = {
-    green: ButtonStyle.Success,
-    red: ButtonStyle.Danger,
-    blue: ButtonStyle.Primary,
-    gray: ButtonStyle.Secondary,
-  };
-  return new ButtonBuilder()
-    .setCustomId(customId)
-    .setLabel(label)
-    .setStyle(styleMap[color] ?? ButtonStyle.Success);
-}
-
-async function resolvePanelColor(panel) {
-  if (!panel.useDominantColor || !panel.attachmentUrl) return panel.color;
-  try {
-    return await get_dominant_color(panel.attachmentUrl);
-  } catch {
-    return panel.color;
-  }
-}
-
-function buildTicketPanelPayload(panel, color, customId) {
-  const row = new ActionRowBuilder().addComponents(
-    panelButton(customId, panel.buttonLabel, panel.buttonColor)
-  );
-
-  if (panel.type === "cv2") {
-    return cv2({
-      color,
-      title: panel.title,
-      description: panel.description,
-      image: panel.imageUrl || panel.attachmentUrl,
-      thumbnail: panel.thumbnailUrl,
-      components: [row],
-    });
-  }
-
-  const embed = new EmbedBuilder();
-  if (panel.title) embed.setTitle(panel.title);
-  if (panel.description) embed.setDescription(panel.description);
-  if (color !== null && color !== undefined && color !== "") embed.setColor(Number(color));
-  if (panel.imageUrl || panel.attachmentUrl) embed.setImage(panel.imageUrl || panel.attachmentUrl);
-  if (panel.thumbnailUrl) embed.setThumbnail(panel.thumbnailUrl);
-
-  return { embeds: [embed], components: [row] };
 }
 
 router.get("/tickets/panels/:guildId", requireAuth, async (req, res) => {
@@ -432,6 +380,33 @@ router.delete("/tickets/panels/:guildId/:panelId", requireAuth, async (req, res)
   res.json({ ok: true });
 });
 
+router.post("/tickets/dominant-color/:guildId", requireAuth, async (req, res) => {
+  const { imageUrl } = req.body;
+  if (!imageUrl) return res.status(400).json({ error: "imageUrl required" });
+  try {
+    const color = await get_dominant_color(imageUrl);
+    res.json({ color });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post("/tickets/panels/:guildId/preview", requireAuth, async (req, res) => {
+  const data = parsePanelBody(req.body);
+  const panel = { ...data, id: 0, guildId: req.params.guildId };
+  const payload = await buildTicketPanelPayload(panel, "ticket:create:preview");
+  res.json({ payload });
+});
+
+router.post("/tickets/panels/:guildId/:panelId/preview", requireAuth, async (req, res) => {
+  const panel = await TicketPanel.get(req.params.panelId);
+  if (!panel || panel.guildId !== req.params.guildId) return res.status(404).json({ error: "Panel not found" });
+
+  const customId = `ticket:create:${panel.id}`;
+  const payload = await buildTicketPanelPayload(panel, customId);
+  res.json({ payload });
+});
+
 router.post("/tickets/panels/:guildId/:panelId/send", requireAuth, async (req, res) => {
   const client = req.app.get("client");
   const panel = await TicketPanel.get(req.params.panelId);
@@ -441,9 +416,8 @@ router.post("/tickets/panels/:guildId/:panelId/send", requireAuth, async (req, r
   const channel = client.channels.cache.get(channelId);
   if (!channel?.isTextBased()) return res.status(400).json({ error: "Invalid channel" });
 
-  const color = await resolvePanelColor(panel);
   const customId = `ticket:create:${panel.id}`;
-  const payload = buildTicketPanelPayload(panel, color, customId);
+  const payload = await buildTicketPanelPayload(panel, customId);
 
   await channel.send(payload);
   res.json({ ok: true });

@@ -241,28 +241,43 @@
           <label>Title <input type="text" id="ticket-title" placeholder="Support tickets" /></label>
           <label>Description <textarea id="ticket-description" rows="4" placeholder="Click the button below to open a ticket."></textarea></label>
 
-          <div class="inline-fields">
-            <label class="grow">Color <input type="color" id="ticket-color" value="#7c3aed" /></label>
-            <label class="grow">Use dominant color from attachment <input type="checkbox" id="ticket-use-dominant" /></label>
+          <div class="inline-fields" style="align-items:flex-end">
+            <label class="grow">Color
+              <span class="color-row">
+                <input type="color" id="ticket-color" value="#7c3aed" />
+                <button type="button" id="ticket-dominant-btn" class="save-btn dominant-btn" title="Use the dominant color of the last image">
+                  Dominant color
+                </button>
+              </span>
+            </label>
+            <label class="grow" style="padding-bottom:8px"><input type="checkbox" id="ticket-use-dominant" /> Auto-apply dominant color on send</label>
           </div>
 
           <div class="inline-fields">
-            <label class="grow">Image URL <input type="text" id="ticket-image" placeholder="https://..." /></label>
+            <label class="grow">Image URL <input type="text" id="ticket-image" placeholder="https://... (also used for dominant color)" /></label>
             <label class="grow">Thumbnail URL <input type="text" id="ticket-thumbnail" placeholder="https://..." /></label>
           </div>
 
-          <label>Attachment URL (for dominant color) <input type="text" id="ticket-attachment" placeholder="https://..." /></label>
+          <label>Custom lightweight prefix
+            <input type="text" id="ticket-prefix" placeholder="Short label shown at the top of the panel" />
+          </label>
 
-          <div class="inline-fields">
-            <label class="grow">Button Label <input type="text" id="ticket-button-label" value="Create Ticket" /></label>
-            <label class="grow">Button Color
-              <select id="ticket-button-color">
-                <option value="green">Green</option>
-                <option value="blue">Blue</option>
-                <option value="red">Red</option>
-                <option value="gray">Gray</option>
-              </select>
-            </label>
+          <div id="ticket-embed-fields" class="panel sub-panel">
+            <h3>Embed Fields</h3>
+            <div id="ticket-fields-list" class="reorder-list"></div>
+            <button type="button" id="ticket-add-field" class="save-btn">Add Field</button>
+          </div>
+
+          <div id="ticket-cv2-components" class="panel sub-panel" hidden>
+            <h3>CV2 Components</h3>
+            <p class="hint">The last image component is used for the dominant color.</p>
+            <div id="ticket-components-list" class="reorder-list"></div>
+            <div class="inline-form" style="margin-top:10px">
+              <button type="button" id="ticket-add-text" class="save-btn">+ Text</button>
+              <button type="button" id="ticket-add-image" class="save-btn">+ Image</button>
+              <button type="button" id="ticket-add-separator" class="save-btn">+ Separator</button>
+              <button type="button" id="ticket-add-ticket" class="save-btn">+ Ticket Button</button>
+            </div>
           </div>
 
           <div class="inline-fields">
@@ -284,13 +299,19 @@
             </select>
           </label>
 
-          <label>Welcome Message <textarea id="ticket-welcome" rows="3" placeholder="Message sent inside the ticket channel"></textarea></label>
+          <label>Welcome Message <textarea id="ticket-welcome" rows="3" placeholder="Message sent inside the ticket channel. Use {user} to ping the user."></textarea></label>
 
           <label>Send Panel To
             <select id="ticket-send-channel">
               <option value="">-- Select a channel --</option>
             </select>
           </label>
+
+          <div class="panel sub-panel" id="ticket-payload-preview" hidden>
+            <h3>Payload Preview</h3>
+            <pre id="ticket-payload-text"></pre>
+            <button type="button" id="ticket-preview-btn" class="save-btn">Refresh Payload</button>
+          </div>
 
           <div class="inline-form" style="margin-top:16px">
             <button type="submit" class="save-btn">Save Panel</button>

@@ -216,6 +216,14 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_tickets_panel ON tickets(panel_id);
     `,
   },
+  {
+    version: 6,
+    sql: `
+      ALTER TABLE ticket_panels ADD COLUMN fields TEXT;
+      ALTER TABLE ticket_panels ADD COLUMN components TEXT;
+      ALTER TABLE ticket_panels ADD COLUMN prefix TEXT;
+    `,
+  },
 ];
 
 export function migrate() {

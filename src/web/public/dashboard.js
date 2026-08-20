@@ -704,15 +704,36 @@ function hexToInt(hex) {
   return parseInt(hex.replace("#", ""), 16) || null;
 }
 
+function getTicketImageSource() {
+  const type = document.getElementById("ticket-type").value;
+  if (type === "cv2") {
+    const components = getTicketComponents();
+    for (let i = components.length - 1; i >= 0; i--) {
+      if (components[i].type === "image" && components[i].url) return components[i].url;
+    }
+  }
+  return document.getElementById("ticket-image").value.trim() || document.getElementById("ticket-thumbnail").value.trim() || null;
+}
+
+function updateTicketTypeVisibility() {
+  const type = document.getElementById("ticket-type").value;
+  document.getElementById("ticket-embed-fields").hidden = type !== "embed";
+  document.getElementById("ticket-cv2-components").hidden = type !== "cv2";
+}
+
 function resetTicketEditor() {
   ticketForm.reset();
   document.getElementById("ticket-id").value = "";
   document.getElementById("ticket-color").value = "#7c3aed";
   document.getElementById("ticket-editor-title").textContent = "New Ticket Panel";
+  document.getElementById("ticket-payload-preview").hidden = true;
   populateCategories("ticket-category", "");
   populateRoles("ticket-staff-role", "");
   populateChannels("ticket-transcript", "", "-- None --");
   populateChannels("ticket-send-channel", "", "-- Select a channel --");
+  renderTicketFields([]);
+  renderTicketComponents([]);
+  updateTicketTypeVisibility();
   ticketEditor.hidden = false;
 }
 
@@ -720,6 +741,35 @@ function hideTicketEditor() {
   ticketEditor.hidden = true;
   document.getElementById("ticket-form").reset();
   document.getElementById("ticket-id").value = "";
+  document.getElementById("ticket-payload-preview").hidden = true;
+  renderTicketFields([]);
+  renderTicketComponents([]);
+}
+
+function getTicketFields() {
+  return Array.from(document.querySelectorAll(".ticket-field")).map((el) => ({
+    name: el.querySelector(".field-name").value.trim(),
+    value: el.querySelector(".field-value").value.trim(),
+    inline: el.querySelector(".field-inline").checked,
+  })).filter((f) => f.name && f.value);
+}
+
+function getTicketComponents() {
+  return Array.from(document.querySelectorAll(".ticket-component")).map((el) => {
+    const type = el.dataset.type;
+    const base = { type };
+    if (type === "text") base.content = el.querySelector(".comp-content").value.trim();
+    if (type === "image") base.url = el.querySelector(".comp-url").value.trim();
+    if (type === "separator") {
+      base.divider = el.querySelector(".comp-divider").checked;
+      base.large = el.querySelector(".comp-large").checked;
+    }
+    if (type === "ticket") {
+      base.label = el.querySelector(".comp-label").value.trim();
+      base.color = el.querySelector(".comp-color").value;
+    }
+    return base;
+  });
 }
 
 function getTicketPanelPayload() {
@@ -731,7 +781,6 @@ function getTicketPanelPayload() {
     color: hexToInt(document.getElementById("ticket-color").value),
     imageUrl: document.getElementById("ticket-image").value.trim() || null,
     thumbnailUrl: document.getElementById("ticket-thumbnail").value.trim() || null,
-    attachmentUrl: document.getElementById("ticket-attachment").value.trim() || null,
     useDominantColor: document.getElementById("ticket-use-dominant").checked,
     buttonLabel: document.getElementById("ticket-button-label").value.trim() || "Create Ticket",
     buttonColor: document.getElementById("ticket-button-color").value,
@@ -739,8 +788,79 @@ function getTicketPanelPayload() {
     staffRoleId: document.getElementById("ticket-staff-role").value || null,
     transcriptChannelId: document.getElementById("ticket-transcript").value || null,
     welcomeMessage: document.getElementById("ticket-welcome").value.trim() || null,
+    fields: getTicketFields(),
+    components: getTicketComponents(),
+    prefix: document.getElementById("ticket-prefix").value.trim() || null,
   };
 }
+
+function renderTicketFields(fields) {
+  const list = document.getElementById("ticket-fields-list");
+  list.innerHTML = fields.map((f, i) => `
+    <div class="reorder-item ticket-field" data-index="${i}">
+      <header>Field ${i + 1} <button type="button" class="remove-btn" onclick="removeTicketField(${i})">Remove</button></header>
+      <div class="inline-fields">
+        <label class="grow">Name <input type="text" class="field-name" value="${escapeHtml(f.name)}" /></label>
+        <label class="grow"><input type="checkbox" class="field-inline" ${f.inline ? "checked" : ""} /> Inline</label>
+      </div>
+      <label>Value <input type="text" class="field-value" value="${escapeHtml(f.value)}" /></label>
+    </div>
+  `).join("");
+}
+
+function renderTicketComponents(components) {
+  const list = document.getElementById("ticket-components-list");
+  list.innerHTML = components.map((c, i) => {
+    if (c.type === "text") return `
+      <div class="reorder-item ticket-component" data-type="text" data-index="${i}">
+        <header>Text <button type="button" class="remove-btn" onclick="removeTicketComponent(${i})">Remove</button></header>
+        <textarea class="comp-content" rows="3">${escapeHtml(c.content || "")}</textarea>
+      </div>
+    `;
+    if (c.type === "image") return `
+      <div class="reorder-item ticket-component" data-type="image" data-index="${i}">
+        <header>Image <button type="button" class="remove-btn" onclick="removeTicketComponent(${i})">Remove</button></header>
+        <input type="text" class="comp-url" value="${escapeHtml(c.url || "")}" placeholder="https://..." />
+      </div>
+    `;
+    if (c.type === "separator") return `
+      <div class="reorder-item ticket-component" data-type="separator" data-index="${i}">
+        <header>Separator <button type="button" class="remove-btn" onclick="removeTicketComponent(${i})">Remove</button></header>
+        <label><input type="checkbox" class="comp-divider" ${c.divider ? "checked" : ""} /> Divider</label>
+        <label><input type="checkbox" class="comp-large" ${c.large ? "checked" : ""} /> Large spacing</label>
+      </div>
+    `;
+    if (c.type === "ticket") return `
+      <div class="reorder-item ticket-component" data-type="ticket" data-index="${i}">
+        <header>Ticket Button <button type="button" class="remove-btn" onclick="removeTicketComponent(${i})">Remove</button></header>
+        <div class="inline-fields">
+          <label class="grow">Label <input type="text" class="comp-label" value="${escapeHtml(c.label || "Create Ticket")}" /></label>
+          <label class="grow">Color
+            <select class="comp-color">
+              <option value="green" ${c.color === "green" ? "selected" : ""}>Green</option>
+              <option value="blue" ${c.color === "blue" ? "selected" : ""}>Blue</option>
+              <option value="red" ${c.color === "red" ? "selected" : ""}>Red</option>
+              <option value="gray" ${c.color === "gray" ? "selected" : ""}>Gray</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    `;
+    return "";
+  }).join("");
+}
+
+window.removeTicketField = (i) => {
+  const fields = getTicketFields();
+  fields.splice(i, 1);
+  renderTicketFields(fields);
+};
+
+window.removeTicketComponent = (i) => {
+  const components = getTicketComponents();
+  components.splice(i, 1);
+  renderTicketComponents(components);
+};
 
 function fillTicketEditor(panel) {
   document.getElementById("ticket-id").value = panel.id || "";
@@ -751,10 +871,10 @@ function fillTicketEditor(panel) {
   document.getElementById("ticket-color").value = intToHex(panel.color);
   document.getElementById("ticket-image").value = panel.imageUrl || "";
   document.getElementById("ticket-thumbnail").value = panel.thumbnailUrl || "";
-  document.getElementById("ticket-attachment").value = panel.attachmentUrl || "";
   document.getElementById("ticket-use-dominant").checked = panel.useDominantColor;
   document.getElementById("ticket-button-label").value = panel.buttonLabel || "Create Ticket";
   document.getElementById("ticket-button-color").value = panel.buttonColor || "green";
+  document.getElementById("ticket-prefix").value = panel.prefix || "";
 
   populateCategories("ticket-category", panel.categoryId || "");
   populateRoles("ticket-staff-role", panel.staffRoleId || "");
@@ -762,6 +882,10 @@ function fillTicketEditor(panel) {
   populateChannels("ticket-send-channel", "", "-- Select a channel --");
 
   document.getElementById("ticket-welcome").value = panel.welcomeMessage || "";
+  renderTicketFields(panel.fields || []);
+  renderTicketComponents(panel.components || []);
+  updateTicketTypeVisibility();
+  document.getElementById("ticket-payload-preview").hidden = true;
   document.getElementById("ticket-editor-title").textContent = panel.id ? "Edit Ticket Panel" : "New Ticket Panel";
   ticketEditor.hidden = false;
 }
@@ -785,6 +909,70 @@ document.getElementById("ticket-new-btn").addEventListener("click", () => {
 
 document.getElementById("ticket-cancel-btn").addEventListener("click", hideTicketEditor);
 
+document.getElementById("ticket-type").addEventListener("change", updateTicketTypeVisibility);
+
+document.getElementById("ticket-add-field").addEventListener("click", () => {
+  const fields = getTicketFields();
+  fields.push({ name: "", value: "", inline: false });
+  renderTicketFields(fields);
+});
+
+document.getElementById("ticket-add-text").addEventListener("click", () => {
+  const components = getTicketComponents();
+  components.push({ type: "text", content: "" });
+  renderTicketComponents(components);
+});
+
+document.getElementById("ticket-add-image").addEventListener("click", () => {
+  const components = getTicketComponents();
+  components.push({ type: "image", url: "" });
+  renderTicketComponents(components);
+});
+
+document.getElementById("ticket-add-separator").addEventListener("click", () => {
+  const components = getTicketComponents();
+  components.push({ type: "separator", divider: true, large: false });
+  renderTicketComponents(components);
+});
+
+document.getElementById("ticket-add-ticket").addEventListener("click", () => {
+  const components = getTicketComponents();
+  components.push({ type: "ticket", label: "Create Ticket", color: "green" });
+  renderTicketComponents(components);
+});
+
+document.getElementById("ticket-dominant-btn").addEventListener("click", async () => {
+  const source = getTicketImageSource();
+  if (!source) {
+    showToast("No image found to sample. Add an image URL or CV2 image component first.", "error");
+    return;
+  }
+  try {
+    const { color } = await json(`/api/tickets/dominant-color/${currentGuild}`, {
+      method: "POST",
+      body: JSON.stringify({ imageUrl: source }),
+    });
+    document.getElementById("ticket-color").value = intToHex(color);
+    showToast("Dominant color applied", "success");
+  } catch (err) {
+    showToast(err.message || "Could not get dominant color", "error");
+  }
+});
+
+document.getElementById("ticket-preview-btn").addEventListener("click", async () => {
+  if (!currentGuild) return;
+  const id = document.getElementById("ticket-id").value;
+  const payload = getTicketPanelPayload();
+  const url = id ? `/api/tickets/panels/${currentGuild}/${id}/preview` : `/api/tickets/panels/${currentGuild}/preview`;
+  try {
+    const { payload: preview } = await json(url, { method: "POST", body: JSON.stringify(payload) });
+    document.getElementById("ticket-payload-text").textContent = JSON.stringify(preview, null, 2);
+    document.getElementById("ticket-payload-preview").hidden = false;
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
 ticketForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!currentGuild) return;
@@ -792,10 +980,9 @@ ticketForm.addEventListener("submit", async (e) => {
   const id = document.getElementById("ticket-id").value;
   const payload = getTicketPanelPayload();
   const url = id ? `/api/tickets/panels/${currentGuild}/${id}` : `/api/tickets/panels/${currentGuild}`;
-  const method = id ? "POST" : "POST";
 
   try {
-    await json(url, { method, body: JSON.stringify(payload) });
+    await json(url, { method: "POST", body: JSON.stringify(payload) });
     showToast(id ? "Panel updated" : "Panel created", "success");
     hideTicketEditor();
     refreshSection();
