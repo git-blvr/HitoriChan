@@ -5,6 +5,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
+  MessageFlags,
 } from "discord.js";
 import * as TicketPanel from "../models/TicketPanel.js";
 import * as Ticket from "../models/Ticket.js";
@@ -58,15 +59,15 @@ export default {
     if (action === "create") {
       const panel = await TicketPanel.get(id);
       if (!panel || panel.guildId !== interaction.guildId) {
-        return interaction.reply({ content: "This ticket panel no longer exists.", ephemeral: true });
+        return interaction.reply({ content: "This ticket panel no longer exists.", flags: MessageFlags.Ephemeral });
       }
 
       const existing = (await Ticket.getForUser(interaction.guildId, interaction.user.id)).find((t) => t.panelId === panel.id && t.status === "open");
       if (existing) {
-        return interaction.reply({ content: `You already have an open ticket: <#${existing.channelId}>`, ephemeral: true });
+        return interaction.reply({ content: `You already have an open ticket: <#${existing.channelId}>`, flags: MessageFlags.Ephemeral });
       }
 
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       try {
         const channel = await createTicketChannel(interaction.guild, interaction.user, panel);
@@ -95,16 +96,16 @@ export default {
     if (action === "close") {
       const ticket = await Ticket.get(id);
       if (!ticket || ticket.guildId !== interaction.guildId) {
-        return interaction.reply({ content: "This ticket no longer exists.", ephemeral: true });
+        return interaction.reply({ content: "This ticket no longer exists.", flags: MessageFlags.Ephemeral });
       }
 
       const panel = await TicketPanel.get(ticket.panelId);
       const isStaff = panel?.staffRoleId ? interaction.member.roles.cache.has(panel.staffRoleId) : false;
       if (ticket.userId !== interaction.user.id && !isStaff && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
-        return interaction.reply({ content: "You cannot close this ticket.", ephemeral: true });
+        return interaction.reply({ content: "You cannot close this ticket.", flags: MessageFlags.Ephemeral });
       }
 
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       try {
         const channel = client.channels.cache.get(ticket.channelId);
@@ -123,13 +124,19 @@ export default {
           }
         }
 
+        // Reply before deleting the channel, otherwise the original deferred message becomes unreachable.
+        const replied = await interaction.editReply({ content: "Ticket closed." }).catch((e) => {
+          console.error("editReply failed before delete:", e.message);
+          return null;
+        });
+
         await Ticket.close(ticket.id);
         if (channel) await channel.delete("Ticket closed").catch(() => {});
 
-        return interaction.editReply({ content: "Ticket closed." });
+        return replied;
       } catch (err) {
         console.error("Ticket close error:", err);
-        return interaction.editReply({ content: "Could not close the ticket." });
+        return interaction.editReply({ content: "Could not close the ticket." }).catch(() => {});
       }
     }
   },

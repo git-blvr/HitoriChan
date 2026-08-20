@@ -1,4 +1,4 @@
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder, MessageFlags } from "discord.js";
 import { cv2 } from "./cv2.js";
 
 const DEFAULT_ERROR_COLOR = 0xff0000;
@@ -25,7 +25,7 @@ function buildPayload(description, color, type, ephemeral) {
     const payload = {
       embeds: [new EmbedBuilder().setColor(color).setDescription(String(description))],
     };
-    if (ephemeral) payload.ephemeral = true;
+    if (ephemeral) payload.flags = MessageFlags.Ephemeral;
     return payload;
   }
   return cv2({ color, description, ephemeral });
