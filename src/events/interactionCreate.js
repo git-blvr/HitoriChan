@@ -9,6 +9,9 @@ import {
 } from "discord.js";
 import * as TicketPanel from "../models/TicketPanel.js";
 import * as Ticket from "../models/Ticket.js";
+import { cv2 } from "../helpers/cv2.js";
+import { embErr, embWrn } from "../helpers/embeds.js";
+import { buildShopInterface, purchaseItem } from "../utils/shopManager.js";
 
 function ticketButton(customId, label, color = "red") {
   const styleMap = {
@@ -48,10 +51,78 @@ async function createTicketChannel(guild, user, panel) {
   });
 }
 
+async function handleShopInteraction(interaction) {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    return interaction.reply({ content: "The shop only works in a server.", flags: MessageFlags.Ephemeral });
+  }
+
+  const customId = interaction.customId;
+  const parts = customId.split(":");
+
+  // Category select: shop_cat:guildId
+  if (parts[0] === "shop_cat") {
+    const categoryId = Number(interaction.values[0]);
+    if (!categoryId) {
+      return interaction.update(await buildShopInterface(guildId));
+    }
+    return interaction.update(await buildShopInterface(guildId, categoryId));
+  }
+
+  // Item select: shop_item:guildId:categoryId
+  if (parts[0] === "shop_item") {
+    const categoryId = Number(parts[2]);
+    const itemId = Number(interaction.values[0]);
+    if (!itemId) {
+      return interaction.update(await buildShopInterface(guildId, categoryId));
+    }
+    return interaction.update(await buildShopInterface(guildId, categoryId, itemId));
+  }
+
+  // Buy button: shop_buy:itemId
+  if (parts[0] === "shop_buy") {
+    const itemId = Number(parts[1]);
+    if (!itemId) {
+      return interaction.reply({ content: "Select an item first.", flags: MessageFlags.Ephemeral });
+    }
+
+    try {
+      const { item, account } = await purchaseItem(guildId, interaction.user.id, itemId, interaction.member);
+      const currency = await import("../utils/economyManager.js").then((m) => m.getGuildEconomyConfig(guildId));
+
+      const effects = [];
+      if (item.roleId) effects.push(`<@&${item.roleId}>`);
+      if (item.multiplierType) effects.push(`+${item.multiplierValue} ${item.multiplierType}`);
+      if (item.specialCommands?.length) effects.push(`Unlocked: ${item.specialCommands.join(", ")}`);
+
+      const confirm = cv2({
+        color: 0x2ecc71,
+        title: "Purchase Successful",
+        description: `You bought **${item.name}** for ${item.price > 0 ? `${currency.primary.symbol}${item.price.toLocaleString()} ${currency.primary.name}` : ""}${item.priceSecondary > 0 ? ` + ${currency.secondary.symbol}${item.priceSecondary.toLocaleString()} ${currency.secondary.name}` : ""}.`,
+        fields: effects.length ? [{ name: "Effects", value: effects.join("\n"), inline: true }] : [],
+      });
+      confirm.flags |= MessageFlags.Ephemeral;
+      return interaction.reply(confirm);
+    } catch (err) {
+      return interaction.reply({ content: err.message, flags: MessageFlags.Ephemeral });
+    }
+  }
+}
+
 export default {
   name: "interactionCreate",
   async execute(interaction, client) {
-    if (!interaction.isButton()) return;
+    if (interaction.isStringSelectMenu()) {
+      return handleShopInteraction(interaction);
+    }
+
+    if (interaction.isButton()) {
+      if (interaction.customId.startsWith("shop_")) {
+        return handleShopInteraction(interaction);
+      }
+    } else {
+      return;
+    }
 
     const [prefix, action, id] = interaction.customId.split(":");
     if (prefix !== "ticket") return;

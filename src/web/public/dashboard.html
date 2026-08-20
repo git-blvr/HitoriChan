@@ -18,6 +18,7 @@
       <a href="#moderation" data-section="moderation">Moderation</a>
       <a href="#cases" data-section="cases">Cases</a>
       <a href="#tickets" data-section="tickets">Tickets</a>
+      <a href="#shop" data-section="shop">Shop</a>
       <a href="#triggers" data-section="triggers">Triggers</a>
       <a href="#logs" data-section="logs">Logs</a>
     </nav>
@@ -313,6 +314,103 @@
             <button type="submit" class="save-btn">Save Panel</button>
             <button type="button" id="ticket-send-btn" class="save-btn">Send to Channel</button>
             <button type="button" id="ticket-cancel-btn" class="save-btn">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section id="shop" class="content-section">
+      <div class="panel">
+        <h2>Shop Settings</h2>
+        <form id="shop-settings-form" class="config-form">
+          <label><input type="checkbox" id="shop-enabled" /> Shop interface enabled</label>
+          <label>Shop Channel
+            <select id="shop-channel">
+              <option value="">-- None --</option>
+            </select>
+          </label>
+          <p class="hint">Set the channel where the <code>/shop</code> command will post the interface.</p>
+          <button type="submit" class="save-btn">Save Shop Settings</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Categories</h2>
+        <form id="shop-category-form" class="config-form inline-form" style="margin-bottom: 14px">
+          <input type="hidden" id="shop-category-id" />
+          <label class="grow">Name <input type="text" id="shop-category-name" required /></label>
+          <label class="grow">Description <input type="text" id="shop-category-desc" /></label>
+          <label>Sort <input type="number" id="shop-category-sort" value="0" /></label>
+          <button type="submit" class="save-btn" id="shop-category-btn">Add Category</button>
+          <button type="button" id="shop-category-cancel" class="save-btn">Cancel</button>
+        </form>
+        <table class="data-table" id="shop-categories-table">
+          <thead><tr><th>Name</th><th>Description</th><th>Items</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="panel" id="shop-items-panel" hidden>
+        <h2>Items in Category</h2>
+        <table class="data-table" id="shop-items-table">
+          <thead><tr><th>Name</th><th>Primary</th><th>Secondary</th><th>Commands</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="panel" id="shop-item-editor" hidden>
+        <h2 id="shop-item-editor-title">New Shop Item</h2>
+        <form id="shop-item-form" class="config-form">
+          <input type="hidden" id="shop-item-id" />
+          <input type="hidden" id="shop-item-category-id" />
+
+          <div class="inline-fields">
+            <label class="grow">Name <input type="text" id="shop-item-name" required /></label>
+            <label class="grow">Sort Order <input type="number" id="shop-item-sort" value="0" /></label>
+          </div>
+
+          <label>Description <textarea id="shop-item-desc" rows="3"></textarea></label>
+
+          <div class="inline-fields">
+            <label class="grow">Primary Price <input type="number" id="shop-item-price" min="0" value="0" /></label>
+            <label class="grow">Secondary Price <input type="number" id="shop-item-price-sec" min="0" value="0" /></label>
+          </div>
+
+          <label>Role Reward
+            <select id="shop-item-role">
+              <option value="">-- None --</option>
+            </select>
+          </label>
+
+          <div class="inline-fields">
+            <label class="grow">Multiplier Type
+              <select id="shop-item-multiplier-type">
+                <option value="">None</option>
+                <option value="earnings">Earnings</option>
+                <option value="level">Level</option>
+              </select>
+            </label>
+            <label class="grow">Multiplier Value <input type="number" id="shop-item-multiplier-value" step="0.1" value="0" /></label>
+          </div>
+
+          <label>Required Role
+            <select id="shop-item-requires-role">
+              <option value="">-- None --</option>
+            </select>
+          </label>
+
+          <div class="inline-fields">
+            <label class="grow">Stock (total) <input type="number" id="shop-item-stock" min="0" placeholder="Unlimited" /></label>
+            <label class="grow">Max per user <input type="number" id="shop-item-max" min="0" placeholder="Unlimited" /></label>
+          </div>
+
+          <label>Unlocks Commands
+            <textarea id="shop-item-commands" rows="2" placeholder="One command name per line"></textarea>
+          </label>
+
+          <div class="inline-form">
+            <button type="submit" class="save-btn" id="shop-item-btn">Save Item</button>
+            <button type="button" id="shop-item-cancel" class="save-btn">Cancel</button>
           </div>
         </form>
       </div>

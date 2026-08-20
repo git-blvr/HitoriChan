@@ -85,11 +85,13 @@ export function getDailyCooldown(account) {
 export async function claimDaily(guildId, userId) {
   const account = await getEconomyAccount(guildId, userId);
   const config = await getGuildEconomyConfig(guildId);
-  const reward = Math.floor(Math.random() * (config.dailyMax - config.dailyMin + 1)) + config.dailyMin;
+  const baseReward = Math.floor(Math.random() * (config.dailyMax - config.dailyMin + 1)) + config.dailyMin;
+  const multiplier = account.earningsMultiplier || 1;
+  const reward = Math.floor(baseReward * multiplier);
   account.primary += reward;
   account.lastDaily = new Date();
   const saved = await EconomyAccount.save(account);
-  return { account: saved, reward };
+  return { account: saved, reward, baseReward, multiplier };
 }
 
 export async function convertPrimaryToSecondary(guildId, userId, amount) {

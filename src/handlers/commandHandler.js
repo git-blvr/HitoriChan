@@ -4,6 +4,8 @@ import { Collection, MessageFlags } from "discord.js";
 import { walkDirectory } from "../utils/fileWalker.js";
 import { createCtx } from "../utils/ctx.js";
 import { getPrefix } from "../utils/prefixManager.js";
+import { hasShopCommand } from "../utils/shopManager.js";
+import { embErr } from "../helpers/embeds.js";
 import { handleStreak } from "./streakHandler.js";
 import { handleChat } from "./chatHandler.js";
 import { handleTrigger } from "./triggerHandler.js";
@@ -48,6 +50,14 @@ export function registerCommandListeners(client) {
     if (!command) return;
 
     const ctx = createCtx(interaction);
+
+    if (command.shopItem) {
+      const shopItems = Array.isArray(command.shopItem) ? command.shopItem : [command.shopItem];
+      const results = await Promise.all(shopItems.map((name) => hasShopCommand(ctx.guild?.id, ctx.user.id, name)));
+      if (!results.some(Boolean)) {
+        return interaction.reply(embErr(`This command is locked. Buy it from the shop first.`, true));
+      }
+    }
 
     try {
       await command.execute(ctx);
@@ -102,6 +112,14 @@ export function registerCommandListeners(client) {
     if (!command) return;
 
     const ctx = createCtx(message, args);
+
+    if (command.shopItem) {
+      const shopItems = Array.isArray(command.shopItem) ? command.shopItem : [command.shopItem];
+      const results = await Promise.all(shopItems.map((name) => hasShopCommand(ctx.guild?.id, ctx.user.id, name)));
+      if (!results.some(Boolean)) {
+        return message.reply(embErr(`This command is locked. Buy it from the shop first.`, false));
+      }
+    }
 
     try {
       await command.execute(ctx);

@@ -224,6 +224,63 @@ const MIGRATIONS = [
       ALTER TABLE ticket_panels ADD COLUMN prefix TEXT;
     `,
   },
+  {
+    version: 7,
+    sql: `
+      CREATE TABLE IF NOT EXISTS shop_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        UNIQUE(guild_id, name)
+      );
+      CREATE INDEX IF NOT EXISTS idx_shop_categories_guild ON shop_categories(guild_id);
+
+      CREATE TABLE IF NOT EXISTS shop_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        category_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        price INTEGER NOT NULL DEFAULT 0,
+        price_secondary INTEGER,
+        role_id TEXT,
+        multiplier_type TEXT,
+        multiplier_value REAL,
+        special_commands TEXT DEFAULT '[]',
+        stock INTEGER,
+        max_purchases INTEGER,
+        requires_role_id TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+      CREATE INDEX IF NOT EXISTS idx_shop_items_guild_category ON shop_items(guild_id, category_id);
+
+      CREATE TABLE IF NOT EXISTS shop_purchases (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        item_id INTEGER NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+      CREATE INDEX IF NOT EXISTS idx_shop_purchases_guild_user ON shop_purchases(guild_id, user_id);
+
+      ALTER TABLE economy_accounts ADD COLUMN earnings_multiplier REAL DEFAULT 1.0;
+      ALTER TABLE economy_accounts ADD COLUMN level INTEGER DEFAULT 1;
+      ALTER TABLE economy_accounts ADD COLUMN shop_item_ids TEXT DEFAULT '[]';
+    `,
+  },
+  {
+    version: 8,
+    sql: `
+      ALTER TABLE guild_settings ADD COLUMN shop_channel_id TEXT;
+      ALTER TABLE guild_settings ADD COLUMN shop_message_id TEXT;
+      ALTER TABLE guild_settings ADD COLUMN shop_interface_enabled INTEGER NOT NULL DEFAULT 1;
+    `,
+  },
 ];
 
 export function migrate() {

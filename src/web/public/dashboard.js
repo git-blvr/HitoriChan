@@ -230,6 +230,18 @@ const sections = {
     hideTicketEditor();
   },
 
+  shop: async () => {
+    if (!currentGuild) return;
+    await loadGuildData(currentGuild);
+
+    const settings = await json(`/api/shop/settings/${currentGuild}`);
+    document.getElementById("shop-enabled").checked = settings.shopInterfaceEnabled;
+    populateChannels("shop-channel", settings.shopChannelId || "", "-- None --");
+
+    await renderShopCategories();
+    hideShopItemEditor();
+  },
+
   triggers: async () => {
     if (!currentGuild) return;
     const rows = await json(`/api/triggers/${currentGuild}`);
@@ -1067,6 +1079,201 @@ document.getElementById("ticket-send-btn").addEventListener("click", async () =>
     showToast(err.message, "error");
   }
 });
+
+// Shop functions
+let shopCategories = [];
+
+async function renderShopCategories() {
+  const tbody = document.querySelector("#shop-categories-table tbody");
+  shopCategories = await json(`/api/shop/categories/${currentGuild}`);
+
+  tbody.innerHTML = shopCategories.map((c) => `
+    <tr>
+      <td>${escapeHtml(c.name)}</td>
+      <td>${escapeHtml(c.description || "—")}</td>
+      <td>${c.items ? c.items.length : 0}</td>
+      <td>
+        <button onclick="showShopCategoryItems(${c.id})">View</button>
+        <button onclick="editShopCategory(${c.id})">Edit</button>
+        <button onclick="deleteShopCategory(${c.id})">Delete</button>
+        <button onclick="newShopItem(${c.id})">Add Item</button>
+      </td>
+    </tr>
+  `).join("") || '<tr><td colspan="4">No categories</td></tr>';
+
+  const itemsTbody = document.querySelector("#shop-items-table tbody");
+  if (itemsTbody) itemsTbody.innerHTML = '<tr><td colspan="6">Select a category</td></tr>';
+}
+
+function getShopCategoryPayload() {
+  return {
+    name: document.getElementById("shop-category-name").value.trim(),
+    description: document.getElementById("shop-category-desc").value.trim() || null,
+    sortOrder: Number(document.getElementById("shop-category-sort").value) || 0,
+  };
+}
+
+function resetShopCategoryForm() {
+  document.getElementById("shop-category-id").value = "";
+  document.getElementById("shop-category-name").value = "";
+  document.getElementById("shop-category-desc").value = "";
+  document.getElementById("shop-category-sort").value = "0";
+  document.getElementById("shop-category-btn").textContent = "Add Category";
+}
+
+window.editShopCategory = async (id) => {
+  const category = shopCategories.find((c) => c.id === id);
+  if (!category) return;
+  document.getElementById("shop-category-id").value = category.id;
+  document.getElementById("shop-category-name").value = category.name;
+  document.getElementById("shop-category-desc").value = category.description || "";
+  document.getElementById("shop-category-sort").value = category.sortOrder;
+  document.getElementById("shop-category-btn").textContent = "Update Category";
+};
+
+window.deleteShopCategory = async (id) => {
+  if (!confirm("Delete this category and all its items?")) return;
+  await json(`/api/shop/categories/${currentGuild}/${id}`, { method: "DELETE" });
+  resetShopCategoryForm();
+  refreshSection();
+  showToast("Category deleted", "success");
+};
+
+function hideShopItemEditor() {
+  document.getElementById("shop-item-editor").hidden = true;
+  document.getElementById("shop-item-form").reset();
+  document.getElementById("shop-item-id").value = "";
+  document.getElementById("shop-item-category-id").value = "";
+}
+
+function getShopItemPayload() {
+  return {
+    name: document.getElementById("shop-item-name").value.trim(),
+    description: document.getElementById("shop-item-desc").value.trim() || null,
+    price: Number(document.getElementById("shop-item-price").value) || 0,
+    priceSecondary: document.getElementById("shop-item-price-sec").value === "" ? null : Math.max(0, Number(document.getElementById("shop-item-price-sec").value)),
+    roleId: document.getElementById("shop-item-role").value || null,
+    multiplierType: document.getElementById("shop-item-multiplier-type").value || null,
+    multiplierValue: document.getElementById("shop-item-multiplier-value").value === "" ? null : Number(document.getElementById("shop-item-multiplier-value").value),
+    requiresRoleId: document.getElementById("shop-item-requires-role").value || null,
+    stock: document.getElementById("shop-item-stock").value === "" ? null : Math.max(0, Number(document.getElementById("shop-item-stock").value)),
+    maxPurchases: document.getElementById("shop-item-max").value === "" ? null : Math.max(0, Number(document.getElementById("shop-item-max").value)),
+    specialCommands: document.getElementById("shop-item-commands").value.split(/\n+/).map((s) => s.trim()).filter(Boolean),
+    sortOrder: Number(document.getElementById("shop-item-sort").value) || 0,
+  };
+}
+
+window.newShopItem = (categoryId) => {
+  document.getElementById("shop-item-editor").hidden = false;
+  document.getElementById("shop-item-editor-title").textContent = "New Shop Item";
+  document.getElementById("shop-item-id").value = "";
+  document.getElementById("shop-item-category-id").value = categoryId;
+  document.getElementById("shop-item-form").reset();
+  populateRoles("shop-item-role", "");
+  populateRoles("shop-item-requires-role", "");
+  document.getElementById("shop-item-btn").textContent = "Create Item";
+  window.scrollTo({ top: document.getElementById("shop-item-editor").offsetTop - 80, behavior: "smooth" });
+};
+
+window.editShopItem = async (categoryId, itemId) => {
+  await loadGuildData(currentGuild);
+  const category = shopCategories.find((c) => c.id === categoryId);
+  const item = category?.items?.find((i) => i.id === itemId);
+  if (!item) return;
+
+  document.getElementById("shop-item-editor").hidden = false;
+  document.getElementById("shop-item-editor-title").textContent = "Edit Shop Item";
+  document.getElementById("shop-item-id").value = item.id;
+  document.getElementById("shop-item-category-id").value = categoryId;
+  document.getElementById("shop-item-name").value = item.name;
+  document.getElementById("shop-item-desc").value = item.description || "";
+  document.getElementById("shop-item-sort").value = item.sortOrder;
+  document.getElementById("shop-item-price").value = item.price;
+  document.getElementById("shop-item-price-sec").value = item.priceSecondary ?? "";
+  populateRoles("shop-item-role", item.roleId || "");
+  document.getElementById("shop-item-multiplier-type").value = item.multiplierType || "";
+  document.getElementById("shop-item-multiplier-value").value = item.multiplierValue ?? "";
+  populateRoles("shop-item-requires-role", item.requiresRoleId || "");
+  document.getElementById("shop-item-stock").value = item.stock ?? "";
+  document.getElementById("shop-item-max").value = item.maxPurchases ?? "";
+  document.getElementById("shop-item-commands").value = (item.specialCommands || []).join("\n");
+  document.getElementById("shop-item-btn").textContent = "Update Item";
+};
+
+window.deleteShopItem = async (itemId) => {
+  if (!confirm("Delete this item?")) return;
+  await json(`/api/shop/items/${currentGuild}/${itemId}`, { method: "DELETE" });
+  refreshSection();
+  showToast("Item deleted", "success");
+};
+
+window.showShopCategoryItems = (categoryId) => {
+  const category = shopCategories.find((c) => c.id === categoryId);
+  if (!category) return;
+  const container = document.getElementById("shop-items-panel");
+  if (!container) return;
+  container.hidden = false;
+  const tbody = document.querySelector("#shop-items-table tbody");
+  tbody.innerHTML = category.items?.map((item) => `
+    <tr>
+      <td>${escapeHtml(item.name)}</td>
+      <td>${item.price}</td>
+      <td>${item.priceSecondary ?? "—"}</td>
+      <td>${escapeHtml((item.specialCommands || []).join(", ") || "—")}</td>
+      <td>
+        <button onclick="editShopItem(${category.id}, ${item.id})">Edit</button>
+        <button onclick="deleteShopItem(${item.id})">Delete</button>
+      </td>
+    </tr>
+  `).join("") || '<tr><td colspan="5">No items</td></tr>';
+};
+
+// Shop forms
+document.getElementById("shop-settings-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+  await json(`/api/shop/settings/${currentGuild}`, {
+    method: "POST",
+    body: JSON.stringify({
+      shopChannelId: document.getElementById("shop-channel").value || null,
+      shopInterfaceEnabled: document.getElementById("shop-enabled").checked,
+    }),
+  });
+  showToast("Shop settings saved", "success");
+});
+
+document.getElementById("shop-category-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+  const id = document.getElementById("shop-category-id").value;
+  const payload = getShopCategoryPayload();
+  const url = id ? `/api/shop/categories/${currentGuild}/${id}` : `/api/shop/categories/${currentGuild}`;
+  await json(url, { method: id ? "PUT" : "POST", body: JSON.stringify(payload) });
+  resetShopCategoryForm();
+  refreshSection();
+  showToast(id ? "Category updated" : "Category created", "success");
+});
+
+document.getElementById("shop-category-cancel").addEventListener("click", resetShopCategoryForm);
+
+document.getElementById("shop-item-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+  const itemId = document.getElementById("shop-item-id").value;
+  const categoryId = document.getElementById("shop-item-category-id").value;
+  if (!categoryId) {
+    showToast("Select a category first", "error");
+    return;
+  }
+  const payload = getShopItemPayload();
+  const url = itemId ? `/api/shop/items/${currentGuild}/${itemId}` : `/api/shop/items/${currentGuild}/${categoryId}`;
+  await json(url, { method: itemId ? "PUT" : "POST", body: JSON.stringify(payload) });
+  hideShopItemEditor();
+  refreshSection();
+  showToast(itemId ? "Item updated" : "Item created", "success");
+});
+
+document.getElementById("shop-item-cancel").addEventListener("click", hideShopItemEditor);
 
 // Init
 loadGuilds().then(() => showSection("overview"));

@@ -8,12 +8,18 @@ const CURRENCY_COLUMNS = {
 const getStmt = db.prepare("SELECT * FROM economy_accounts WHERE guild_id = ? AND user_id = ?");
 
 const upsertStmt = db.prepare(`
-  INSERT INTO economy_accounts (guild_id, user_id, primary_balance, secondary_balance, last_daily, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO economy_accounts (
+    guild_id, user_id, primary_balance, secondary_balance, last_daily,
+    earnings_multiplier, level, shop_item_ids, created_at, updated_at
+  )
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(guild_id, user_id) DO UPDATE SET
     primary_balance = excluded.primary_balance,
     secondary_balance = excluded.secondary_balance,
     last_daily = excluded.last_daily,
+    earnings_multiplier = excluded.earnings_multiplier,
+    level = excluded.level,
+    shop_item_ids = excluded.shop_item_ids,
     updated_at = excluded.updated_at
 `);
 
@@ -33,6 +39,15 @@ const globalLeaderboardStmt = db.prepare(`
   LIMIT ?
 `);
 
+function parseJson(json) {
+  if (!json) return [];
+  try {
+    return JSON.parse(json);
+  } catch {
+    return [];
+  }
+}
+
 function fromRow(row) {
   if (!row) return null;
   return {
@@ -42,6 +57,9 @@ function fromRow(row) {
     primary: row.primary_balance,
     secondary: row.secondary_balance,
     lastDaily: row.last_daily ? new Date(row.last_daily) : null,
+    earningsMultiplier: row.earnings_multiplier ?? 1.0,
+    level: row.level ?? 1,
+    shopItemIds: parseJson(row.shop_item_ids),
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -56,7 +74,7 @@ export async function getOrCreate(guildId, userId) {
   if (existing) return fromRow(existing);
 
   const now = Date.now();
-  upsertStmt.run(guildId, userId, 0, 0, null, now, now);
+  upsertStmt.run(guildId, userId, 0, 0, null, 1.0, 1, "[]", now, now);
   return fromRow(getStmt.get(guildId, userId));
 }
 
@@ -69,6 +87,9 @@ export async function save(account) {
     account.primary ?? 0,
     account.secondary ?? 0,
     lastDaily || null,
+    account.earningsMultiplier ?? 1.0,
+    account.level ?? 1,
+    JSON.stringify(account.shopItemIds ?? []),
     account.createdAt?.getTime?.() ?? now,
     now
   );
@@ -102,7 +123,7 @@ export async function setLastDaily(guildId, userId, date = new Date()) {
 export async function transfer(guildId, fromUserId, toUserId, amount, currency) {
   if (fromUserId === toUserId) throw new Error("You cannot pay yourself.");
   if (amount <= 0) throw new Error("Amount must be greater than zero.");
-  if (!CURRENCY_COLUMNS[currency]) throw new Error("Invalid economy currency type.");
+  if (!Object.values(CURRENCY_COLUMNS).includes(currency)) throw new Error("Invalid economy currency type.");
 
   const fromAccount = await getOrCreate(guildId, fromUserId);
   const toAccount = await getOrCreate(guildId, toUserId);

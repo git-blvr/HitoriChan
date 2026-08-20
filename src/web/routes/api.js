@@ -14,6 +14,8 @@ import * as Trigger from "../../models/Trigger.js";
 import * as ModerationCase from "../../models/ModerationCase.js";
 import * as TicketPanel from "../../models/TicketPanel.js";
 import * as Ticket from "../../models/Ticket.js";
+import * as ShopCategory from "../../models/ShopCategory.js";
+import * as ShopItem from "../../models/ShopItem.js";
 import { buildTicketPanelPayload } from "../../helpers/ticketPanels.js";
 import { get_dominant_color } from "../../utils/color_utils.js";
 
@@ -427,6 +429,143 @@ router.get("/tickets/:guildId", requireAuth, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 100, 1000);
   const rows = await Ticket.getForGuild(req.params.guildId, limit);
   res.json(rows);
+});
+
+function parseSpecialCommands(input) {
+  if (Array.isArray(input)) return input.map((s) => String(s).trim()).filter(Boolean);
+  if (typeof input === "string" && input.trim()) {
+    return input.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+// Shop categories
+router.get("/shop/categories/:guildId", requireAuth, async (req, res) => {
+  const categories = await ShopCategory.getByGuild(req.params.guildId);
+  const items = await ShopItem.getByGuild(req.params.guildId);
+  const withItems = categories.map((c) => ({ ...c, items: items.filter((i) => i.categoryId === c.id) }));
+  res.json(withItems);
+});
+
+router.post("/shop/categories/:guildId", requireAuth, async (req, res) => {
+  const { name, description, sortOrder } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: "Category name is required" });
+  const category = await ShopCategory.create({
+    guildId: req.params.guildId,
+    name: name.trim(),
+    description: description?.trim() || "",
+    sortOrder: Number(sortOrder) || 0,
+  });
+  res.json(category);
+});
+
+router.put("/shop/categories/:guildId/:categoryId", requireAuth, async (req, res) => {
+  const category = await ShopCategory.getById(Number(req.params.categoryId));
+  if (!category || category.guildId !== req.params.guildId) return res.status(404).json({ error: "Category not found" });
+  const { name, description, sortOrder } = req.body;
+  const updated = await ShopCategory.update(category.id, {
+    name: name?.trim() ?? category.name,
+    description: description?.trim() ?? category.description,
+    sortOrder: sortOrder !== undefined ? Number(sortOrder) : category.sortOrder,
+  });
+  res.json(updated);
+});
+
+router.delete("/shop/categories/:guildId/:categoryId", requireAuth, async (req, res) => {
+  const category = await ShopCategory.getById(Number(req.params.categoryId));
+  if (!category || category.guildId !== req.params.guildId) return res.status(404).json({ error: "Category not found" });
+  const items = await ShopItem.getByCategory(req.params.guildId, category.id);
+  for (const item of items) await ShopItem.remove(item.id);
+  await ShopCategory.remove(category.id);
+  res.json({ ok: true });
+});
+
+// Shop items
+router.post("/shop/items/:guildId/:categoryId", requireAuth, async (req, res) => {
+  const category = await ShopCategory.getById(Number(req.params.categoryId));
+  if (!category || category.guildId !== req.params.guildId) return res.status(404).json({ error: "Category not found" });
+
+  const {
+    name, description, price, priceSecondary, roleId,
+    multiplierType, multiplierValue, specialCommands, stock, maxPurchases, requiresRoleId, sortOrder,
+  } = req.body;
+
+  if (!name?.trim()) return res.status(400).json({ error: "Item name is required" });
+
+  const asNumberOrNull = (v) => (v === undefined || v === null || v === "" ? null : Math.max(0, Number(v)));
+
+  const item = await ShopItem.create({
+    guildId: req.params.guildId,
+    categoryId: category.id,
+    name: name.trim(),
+    description: description?.trim() || "",
+    price: Math.max(0, Number(price) || 0),
+    priceSecondary: asNumberOrNull(priceSecondary),
+    roleId: roleId?.trim() || null,
+    multiplierType: ["earnings", "level"].includes(multiplierType) ? multiplierType : null,
+    multiplierValue: multiplierValue !== undefined && multiplierValue !== null && multiplierValue !== "" ? Number(multiplierValue) : null,
+    specialCommands: parseSpecialCommands(specialCommands),
+    stock: asNumberOrNull(stock),
+    maxPurchases: asNumberOrNull(maxPurchases),
+    requiresRoleId: requiresRoleId?.trim() || null,
+    sortOrder: Number(sortOrder) || 0,
+  });
+  res.json(item);
+});
+
+router.put("/shop/items/:guildId/:itemId", requireAuth, async (req, res) => {
+  const item = await ShopItem.getById(Number(req.params.itemId));
+  if (!item || item.guildId !== req.params.guildId) return res.status(404).json({ error: "Item not found" });
+
+  const {
+    name, description, price, priceSecondary, roleId,
+    multiplierType, multiplierValue, specialCommands, stock, maxPurchases, requiresRoleId, sortOrder,
+  } = req.body;
+
+  const asNumberOrNull = (v) => (v === undefined || v === null || v === "" ? null : Math.max(0, Number(v)));
+
+  const values = {};
+  if (name !== undefined) values.name = name.trim();
+  if (description !== undefined) values.description = description?.trim() || "";
+  if (price !== undefined) values.price = Math.max(0, Number(price) || 0);
+  if (priceSecondary !== undefined) values.priceSecondary = asNumberOrNull(priceSecondary);
+  if (roleId !== undefined) values.roleId = roleId?.trim() || null;
+  if (multiplierType !== undefined) values.multiplierType = ["earnings", "level"].includes(multiplierType) ? multiplierType : null;
+  if (multiplierValue !== undefined) values.multiplierValue = multiplierValue !== undefined && multiplierValue !== null && multiplierValue !== "" ? Number(multiplierValue) : null;
+  if (specialCommands !== undefined) values.specialCommands = parseSpecialCommands(specialCommands);
+  if (stock !== undefined) values.stock = asNumberOrNull(stock);
+  if (maxPurchases !== undefined) values.maxPurchases = asNumberOrNull(maxPurchases);
+  if (requiresRoleId !== undefined) values.requiresRoleId = requiresRoleId?.trim() || null;
+  if (sortOrder !== undefined) values.sortOrder = Number(sortOrder) || 0;
+
+  const updated = await ShopItem.update(item.id, values);
+  res.json(updated);
+});
+
+router.delete("/shop/items/:guildId/:itemId", requireAuth, async (req, res) => {
+  const item = await ShopItem.getById(Number(req.params.itemId));
+  if (!item || item.guildId !== req.params.guildId) return res.status(404).json({ error: "Item not found" });
+  await ShopItem.remove(item.id);
+  res.json({ ok: true });
+});
+
+// Shop settings (channel + enabled)
+router.get("/shop/settings/:guildId", requireAuth, async (req, res) => {
+  const settings = await GuildSettings.getOrCreate(req.params.guildId);
+  res.json({
+    shopChannelId: settings.shopChannelId,
+    shopMessageId: settings.shopMessageId,
+    shopInterfaceEnabled: settings.shopInterfaceEnabled,
+  });
+});
+
+router.post("/shop/settings/:guildId", requireAuth, async (req, res) => {
+  const { shopChannelId, shopInterfaceEnabled } = req.body;
+  await GuildSettings.save(req.params.guildId, {
+    shopChannelId: shopChannelId?.trim() || null,
+    shopInterfaceEnabled: shopInterfaceEnabled !== undefined ? Boolean(shopInterfaceEnabled) : undefined,
+  });
+  res.json({ ok: true });
 });
 
 export default router;
