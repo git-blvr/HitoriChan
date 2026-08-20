@@ -333,7 +333,6 @@ function parsePanelBody(body) {
     welcomeMessage: body.welcomeMessage?.trim() || null,
     fields: Array.isArray(body.fields) ? body.fields.filter((f) => f?.name && f?.value) : [],
     components: Array.isArray(body.components) ? body.components : [],
-    prefix: body.prefix?.trim() || null,
   };
 }
 

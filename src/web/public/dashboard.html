@@ -258,10 +258,6 @@
             <label class="grow">Thumbnail URL <input type="text" id="ticket-thumbnail" placeholder="https://..." /></label>
           </div>
 
-          <label>Custom lightweight prefix
-            <input type="text" id="ticket-prefix" placeholder="Short label shown at the top of the panel" />
-          </label>
-
           <div id="ticket-embed-fields" class="panel sub-panel">
             <h3>Embed Fields</h3>
             <div id="ticket-fields-list" class="reorder-list"></div>
@@ -308,9 +304,9 @@
           </label>
 
           <div class="panel sub-panel" id="ticket-payload-preview" hidden>
-            <h3>Payload Preview</h3>
-            <pre id="ticket-payload-text"></pre>
-            <button type="button" id="ticket-preview-btn" class="save-btn">Refresh Payload</button>
+            <h3>Panel Preview</h3>
+            <div id="ticket-preview-box" class="ticket-preview-box"></div>
+            <button type="button" id="ticket-preview-btn" class="save-btn">Refresh Preview</button>
           </div>
 
           <div class="inline-form" style="margin-top:16px">

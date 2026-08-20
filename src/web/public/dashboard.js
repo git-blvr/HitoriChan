@@ -790,8 +790,71 @@ function getTicketPanelPayload() {
     welcomeMessage: document.getElementById("ticket-welcome").value.trim() || null,
     fields: getTicketFields(),
     components: getTicketComponents(),
-    prefix: document.getElementById("ticket-prefix").value.trim() || null,
   };
+}
+
+function renderTicketPreview() {
+  const type = document.getElementById("ticket-type").value;
+  const color = document.getElementById("ticket-color").value || "#7c3aed";
+  const title = document.getElementById("ticket-title").value.trim();
+  const description = document.getElementById("ticket-description").value.trim();
+  const imageUrl = document.getElementById("ticket-image").value.trim();
+  const thumbnailUrl = document.getElementById("ticket-thumbnail").value.trim();
+  const buttonLabel = document.getElementById("ticket-button-label").value.trim() || "Create Ticket";
+  const buttonColor = document.getElementById("ticket-button-color").value;
+  const fields = getTicketFields();
+  const components = getTicketComponents();
+  const box = document.getElementById("ticket-preview-box");
+
+  if (type === "embed") {
+    const fieldsHtml = fields.length ? `
+      <div class="embed-fields">
+        ${fields.map((f) => `
+          <div class="embed-field" style="grid-column: ${f.inline ? 'span 1' : '1 / -1'}">
+            <h4>${escapeHtml(f.name)}</h4>
+            <p>${escapeHtml(f.value)}</p>
+          </div>
+        `).join("")}
+      </div>
+    ` : "";
+
+    box.innerHTML = `
+      <div class="ticket-embed-preview" style="border-left-color: ${escapeHtml(color)}">
+        <div style="padding: 14px">
+          ${thumbnailUrl ? `<img src="${escapeHtml(thumbnailUrl)}" class="ticket-embed-thumb" alt="" />` : ""}
+          ${title ? `<div class="embed-title">${escapeHtml(title)}</div>` : ""}
+          ${description ? `<div class="embed-description">${escapeHtml(description).replace(/\n/g, "<br>")}</div>` : ""}
+          ${fieldsHtml}
+          ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" class="embed-image" alt="" />` : ""}
+          <button type="button" class="cv2-button ${escapeHtml(buttonColor)}" style="margin-top: 12px">${escapeHtml(buttonLabel)}</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // CV2 preview
+  let html = `<div class="ticket-cv2-preview" style="border-top-color: ${escapeHtml(color)}">`;
+  if (title) html += `<div class="cv2-title">${escapeHtml(title)}</div>`;
+  if (description) html += `<div class="cv2-text">${escapeHtml(description).replace(/\n/g, "<br>")}</div>`;
+
+  if (components.length) {
+    for (const c of components) {
+      if (!c || !c.type) continue;
+      if (c.type === "text" && c.content) html += `<div class="cv2-text">${escapeHtml(c.content).replace(/\n/g, "<br>")}</div>`;
+      if (c.type === "image" && c.url) html += `<img src="${escapeHtml(c.url)}" class="cv2-image" alt="" />`;
+      if (c.type === "separator") html += `<div class="cv2-separator" style="height: ${c.large ? 16 : 8}px; background: ${c.divider ? "rgba(255,255,255,0.1)" : "transparent"}"></div>`;
+      if (c.type === "ticket") {
+        const cColor = c.color || buttonColor;
+        html += `<button type="button" class="cv2-button ${escapeHtml(cColor)}">${escapeHtml(c.label || buttonLabel)}</button>`;
+      }
+    }
+  } else {
+    html += `<button type="button" class="cv2-button ${escapeHtml(buttonColor)}">${escapeHtml(buttonLabel)}</button>`;
+  }
+
+  html += "</div>";
+  box.innerHTML = html;
 }
 
 function renderTicketFields(fields) {
@@ -874,7 +937,6 @@ function fillTicketEditor(panel) {
   document.getElementById("ticket-use-dominant").checked = panel.useDominantColor;
   document.getElementById("ticket-button-label").value = panel.buttonLabel || "Create Ticket";
   document.getElementById("ticket-button-color").value = panel.buttonColor || "green";
-  document.getElementById("ticket-prefix").value = panel.prefix || "";
 
   populateCategories("ticket-category", panel.categoryId || "");
   populateRoles("ticket-staff-role", panel.staffRoleId || "");
@@ -959,18 +1021,9 @@ document.getElementById("ticket-dominant-btn").addEventListener("click", async (
   }
 });
 
-document.getElementById("ticket-preview-btn").addEventListener("click", async () => {
-  if (!currentGuild) return;
-  const id = document.getElementById("ticket-id").value;
-  const payload = getTicketPanelPayload();
-  const url = id ? `/api/tickets/panels/${currentGuild}/${id}/preview` : `/api/tickets/panels/${currentGuild}/preview`;
-  try {
-    const { payload: preview } = await json(url, { method: "POST", body: JSON.stringify(payload) });
-    document.getElementById("ticket-payload-text").textContent = JSON.stringify(preview, null, 2);
-    document.getElementById("ticket-payload-preview").hidden = false;
-  } catch (err) {
-    showToast(err.message, "error");
-  }
+document.getElementById("ticket-preview-btn").addEventListener("click", () => {
+  renderTicketPreview();
+  document.getElementById("ticket-payload-preview").hidden = false;
 });
 
 ticketForm.addEventListener("submit", async (e) => {

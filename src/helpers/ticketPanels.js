@@ -89,11 +89,6 @@ export async function buildTicketPanelPayload(panel, customId) {
     const container = new ContainerBuilder();
     if (color != null) container.setAccentColor(color);
 
-    if (panel.prefix) {
-      container.addTextDisplayComponents(buildText(`*${escapeBold(panel.prefix)}*`));
-      container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(1));
-    }
-
     if (panel.title) {
       const titleParts = [];
       if (panel.title) titleParts.push(`**${escapeBold(panel.title)}**`);
@@ -142,10 +137,6 @@ export async function buildTicketPanelPayload(panel, customId) {
   if (color != null) embed.setColor(color);
   if (panel.imageUrl) embed.setImage(panel.imageUrl);
   if (panel.thumbnailUrl) embed.setThumbnail(panel.thumbnailUrl);
-
-  if (panel.prefix) {
-    embed.setAuthor({ name: panel.prefix });
-  }
 
   if (Array.isArray(panel.fields)) {
     for (const f of panel.fields) {

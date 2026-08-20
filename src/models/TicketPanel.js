@@ -8,15 +8,15 @@ const insertStmt = db.prepare(`
     guild_id, name, type, title, description, color, image_url, thumbnail_url,
     use_dominant_color, button_label, button_color,
     category_id, staff_role_id, transcript_channel_id, welcome_message,
-    fields, components, prefix
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    fields, components
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const updateStmt = db.prepare(`
   UPDATE ticket_panels SET
     name = ?, type = ?, title = ?, description = ?, color = ?, image_url = ?, thumbnail_url = ?,
     use_dominant_color = ?, button_label = ?, button_color = ?,
     category_id = ?, staff_role_id = ?, transcript_channel_id = ?, welcome_message = ?,
-    fields = ?, components = ?, prefix = ?
+    fields = ?, components = ?
   WHERE id = ?
 `);
 const deleteStmt = db.prepare("DELETE FROM ticket_panels WHERE id = ?");
@@ -51,7 +51,6 @@ function fromRow(row) {
     welcomeMessage: row.welcome_message,
     fields: parseJson(row.fields),
     components: parseJson(row.components),
-    prefix: row.prefix,
     createdAt: new Date(row.created_at),
   };
 }
@@ -86,8 +85,7 @@ export async function create(data) {
     data.transcriptChannelId ?? null,
     data.welcomeMessage ?? null,
     JSON.stringify(data.fields ?? []),
-    JSON.stringify(data.components ?? []),
-    data.prefix ?? null
+    JSON.stringify(data.components ?? [])
   );
   const row = db.prepare("SELECT * FROM ticket_panels WHERE rowid = last_insert_rowid()").get();
   return fromRow(row);
@@ -114,7 +112,6 @@ export async function update(id, data) {
     data.welcomeMessage ?? panel.welcomeMessage,
     JSON.stringify(data.fields ?? panel.fields),
     JSON.stringify(data.components ?? panel.components),
-    data.prefix ?? panel.prefix,
     id
   );
   return get(id);
