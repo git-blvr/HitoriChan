@@ -9,7 +9,7 @@ import api from "./routes/api.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, "public");
 
-export function startWebServer(client, port = process.env.WEB_PORT) {
+export function startWebServer(client, port = process.env.WEB_PORT || process.env.PORT || 3000) {
   generateInitialPassword();
 
   const app = express();
