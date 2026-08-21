@@ -4,6 +4,7 @@ import { closeDatabase } from "./src/database/db.js";
 import { loadCommands, registerCommandListeners } from "./src/handlers/commandHandler.js";
 import { loadEvents } from "./src/handlers/eventHandler.js";
 import { startWebServer } from "./src/web/server.js";
+import { logCrash } from "./src/utils/crashLogger.js";
 
 const client = new Client({
   intents: [
@@ -27,6 +28,18 @@ async function main() {
   await startWebServer(client);
 }
 
+process.on("uncaughtException", (error) => {
+  logCrash(error, "uncaughtException");
+  closeDatabase();
+  client.destroy();
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  const error = reason instanceof Error ? reason : new Error(String(reason));
+  logCrash(error, "unhandledRejection");
+});
+
 process.on("SIGINT", () => {
   closeDatabase();
   client.destroy();
@@ -39,8 +52,11 @@ process.on("SIGTERM", () => {
   process.exit(0);
 });
 
+client.on("error", (error) => logCrash(error, "clientError"));
+client.on("warn", (info) => console.warn("[Discord warning]", info));
+
 main().catch((error) => {
-  console.error(error);
+  logCrash(error, "main");
   closeDatabase();
   process.exit(1);
 });
