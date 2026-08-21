@@ -224,6 +224,43 @@ function parseContainerToComponents(container) {
   return { components, color };
 }
 
+function parsePayloadToEmbed(raw) {
+  let payload;
+  try {
+    payload = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch (e) {
+    throw new Error("Invalid JSON payload.");
+  }
+
+  let embed = null;
+  if (payload.embeds?.length) embed = payload.embeds[0];
+  else if (payload.embed) embed = payload.embed;
+  else if (payload.title != null || payload.description != null || payload.color != null) embed = payload;
+
+  if (!embed) throw new Error("No embed found in payload.");
+
+  const descriptionParts = [];
+  if (embed.author?.name) descriptionParts.push(`*${embed.author.name}*`);
+  if (embed.description) descriptionParts.push(embed.description);
+  if (embed.footer?.text) descriptionParts.push(`_${embed.footer.text}_`);
+  if (embed.timestamp) descriptionParts.push(new Date(embed.timestamp).toLocaleString());
+
+  const fields = (embed.fields || []).map((f) => ({
+    name: String(f.name || ""),
+    value: String(f.value || ""),
+    inline: Boolean(f.inline),
+  }));
+
+  return {
+    title: embed.title || "",
+    description: descriptionParts.join("\n\n"),
+    color: embed.color ? intToHex(embed.color) : "#7c3aed",
+    image: embed.image?.url || "",
+    thumbnail: embed.thumbnail?.url || "",
+    fields,
+  };
+}
+
 const sections = {
   overview: async () => {
     const [overview, guilds] = await Promise.all([json("/api/overview"), json("/api/guilds")]);
@@ -1122,6 +1159,31 @@ document.getElementById("ticket-add-field").addEventListener("click", () => {
   const fields = getTicketFields();
   fields.push({ name: "", value: "", inline: false });
   renderTicketFields(fields);
+});
+
+document.getElementById("ticket-embed-import-toggle").addEventListener("click", () => {
+  const panel = document.getElementById("ticket-embed-import-panel");
+  panel.hidden = !panel.hidden;
+});
+
+document.getElementById("ticket-embed-import-btn").addEventListener("click", () => {
+  try {
+    const raw = document.getElementById("ticket-embed-payload-input").value;
+    const embed = parsePayloadToEmbed(raw);
+
+    document.getElementById("ticket-title").value = embed.title || "";
+    document.getElementById("ticket-description").value = embed.description || "";
+    document.getElementById("ticket-color").value = embed.color || "#7c3aed";
+    document.getElementById("ticket-image").value = embed.image || "";
+    document.getElementById("ticket-thumbnail").value = embed.thumbnail || "";
+    renderTicketFields(embed.fields || []);
+    renderTicketPreview();
+    document.getElementById("ticket-payload-preview").hidden = false;
+
+    showToast(`Imported embed with ${(embed.fields || []).length} field(s)`, "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
 });
 
 document.getElementById("ticket-add-text").addEventListener("click", () => {

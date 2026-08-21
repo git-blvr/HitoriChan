@@ -263,7 +263,16 @@
           <div id="ticket-embed-fields" class="panel sub-panel">
             <h3>Embed Fields</h3>
             <div id="ticket-fields-list" class="reorder-list"></div>
-            <button type="button" id="ticket-add-field" class="save-btn">Add Field</button>
+            <div class="inline-form">
+              <button type="button" id="ticket-add-field" class="save-btn">Add Field</button>
+              <button type="button" id="ticket-embed-import-toggle" class="save-btn">Payload</button>
+            </div>
+            <div id="ticket-embed-import-panel" hidden>
+              <textarea id="ticket-embed-payload-input" rows="6" placeholder="Paste a Discord embed JSON or full message payload here..."></textarea>
+              <div class="inline-form">
+                <button type="button" id="ticket-embed-import-btn" class="save-btn">Import</button>
+              </div>
+            </div>
           </div>
 
           <div id="ticket-cv2-components" class="panel sub-panel" hidden>
