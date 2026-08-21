@@ -237,6 +237,8 @@ const sections = {
     const settings = await json(`/api/shop/settings/${currentGuild}`);
     document.getElementById("shop-enabled").checked = settings.shopInterfaceEnabled;
     populateChannels("shop-channel", settings.shopChannelId || "", "-- None --");
+    document.getElementById("shop-interface-color").value = intToHex(settings.shopInterfaceColor);
+    document.getElementById("shop-use-dominant").checked = settings.shopInterfaceUseDominantColor;
 
     renderShopInterfaceComponents(settings.shopInterfaceComponents || []);
 
@@ -1332,9 +1334,32 @@ document.getElementById("shop-settings-form").addEventListener("submit", async (
       shopChannelId: document.getElementById("shop-channel").value || null,
       shopInterfaceEnabled: document.getElementById("shop-enabled").checked,
       shopInterfaceComponents: getShopInterfaceComponents(),
+      shopInterfaceColor: hexToInt(document.getElementById("shop-interface-color").value),
+      shopInterfaceUseDominantColor: document.getElementById("shop-use-dominant").checked,
     }),
   });
   showToast("Shop settings saved", "success");
+});
+
+document.getElementById("shop-dominant-btn").addEventListener("click", async () => {
+  if (!currentGuild) return;
+  const components = getShopInterfaceComponents();
+  const firstImage = components.find((c) => (c.type === "image" && c.url) || (c.type === "media_gallery" && c.urls?.[0]));
+  const imageUrl = firstImage?.type === "image" ? firstImage.url : (firstImage?.urls?.[0]);
+  if (!imageUrl) {
+    showToast("Add an image or media gallery component first.", "error");
+    return;
+  }
+  try {
+    const { color } = await json(`/api/tickets/dominant-color/${currentGuild}`, {
+      method: "POST",
+      body: JSON.stringify({ imageUrl }),
+    });
+    document.getElementById("shop-interface-color").value = intToHex(color);
+    showToast("Dominant color applied", "success");
+  } catch (err) {
+    showToast(err.message || "Could not sample color", "error");
+  }
 });
 
 document.getElementById("shop-category-form").addEventListener("submit", async (e) => {

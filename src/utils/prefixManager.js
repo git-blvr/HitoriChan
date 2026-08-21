@@ -15,6 +15,8 @@ export async function getGuildSettings(guildId) {
       shopMessageId: null,
       shopInterfaceEnabled: true,
       shopInterfaceComponents: [],
+      shopInterfaceColor: 0xffd700,
+      shopInterfaceUseDominantColor: false,
     };
   }
 

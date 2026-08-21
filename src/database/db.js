@@ -307,6 +307,13 @@ const MIGRATIONS = [
       ALTER TABLE guild_settings ADD COLUMN shop_interface_components TEXT DEFAULT '[]';
     `,
   },
+  {
+    version: 11,
+    sql: `
+      ALTER TABLE guild_settings ADD COLUMN shop_interface_color INTEGER DEFAULT 16766720;
+      ALTER TABLE guild_settings ADD COLUMN shop_interface_use_dominant_color INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];
 
 export function migrate() {

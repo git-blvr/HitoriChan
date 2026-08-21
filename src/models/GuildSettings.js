@@ -11,6 +11,8 @@ const DEFAULTS = {
   shopMessageId: null,
   shopInterfaceEnabled: true,
   shopInterfaceComponents: [],
+  shopInterfaceColor: 0xffd700,
+  shopInterfaceUseDominantColor: false,
 };
 
 function parseJson(json) {
@@ -29,8 +31,9 @@ const upsertStmt = db.prepare(`
     guild_id, prefix,
     primary_currency_name, primary_currency_symbol, primary_currency_emoji,
     secondary_currency_name, secondary_currency_symbol, secondary_currency_emoji,
-    daily_min, daily_max, shop_channel_id, shop_message_id, shop_interface_enabled, shop_interface_components
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    daily_min, daily_max, shop_channel_id, shop_message_id, shop_interface_enabled, shop_interface_components,
+    shop_interface_color, shop_interface_use_dominant_color
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(guild_id) DO UPDATE SET
     prefix = excluded.prefix,
     primary_currency_name = excluded.primary_currency_name,
@@ -44,7 +47,9 @@ const upsertStmt = db.prepare(`
     shop_channel_id = excluded.shop_channel_id,
     shop_message_id = excluded.shop_message_id,
     shop_interface_enabled = excluded.shop_interface_enabled,
-    shop_interface_components = excluded.shop_interface_components
+    shop_interface_components = excluded.shop_interface_components,
+    shop_interface_color = excluded.shop_interface_color,
+    shop_interface_use_dominant_color = excluded.shop_interface_use_dominant_color
 `);
 
 function fromRow(row) {
@@ -68,6 +73,8 @@ function fromRow(row) {
     shopMessageId: row.shop_message_id ?? DEFAULTS.shopMessageId,
     shopInterfaceEnabled: row.shop_interface_enabled === undefined ? DEFAULTS.shopInterfaceEnabled : Boolean(row.shop_interface_enabled),
     shopInterfaceComponents: parseJson(row.shop_interface_components),
+    shopInterfaceColor: row.shop_interface_color ?? DEFAULTS.shopInterfaceColor,
+    shopInterfaceUseDominantColor: row.shop_interface_use_dominant_color === undefined ? DEFAULTS.shopInterfaceUseDominantColor : Boolean(row.shop_interface_use_dominant_color),
   };
 }
 
@@ -93,7 +100,9 @@ export async function getOrCreate(guildId) {
     DEFAULTS.shopChannelId,
     DEFAULTS.shopMessageId,
     DEFAULTS.shopInterfaceEnabled ? 1 : 0,
-    JSON.stringify(DEFAULTS.shopInterfaceComponents)
+    JSON.stringify(DEFAULTS.shopInterfaceComponents),
+    DEFAULTS.shopInterfaceColor,
+    DEFAULTS.shopInterfaceUseDominantColor ? 1 : 0
   );
   return fromRow(getStmt.get(guildId));
 }
@@ -114,7 +123,9 @@ export async function save(guildId, values) {
     values.shopChannelId !== undefined ? values.shopChannelId : current.shopChannelId,
     values.shopMessageId !== undefined ? values.shopMessageId : current.shopMessageId,
     values.shopInterfaceEnabled !== undefined ? (values.shopInterfaceEnabled ? 1 : 0) : (current.shopInterfaceEnabled ? 1 : 0),
-    JSON.stringify(values.shopInterfaceComponents !== undefined ? values.shopInterfaceComponents : current.shopInterfaceComponents)
+    JSON.stringify(values.shopInterfaceComponents !== undefined ? values.shopInterfaceComponents : current.shopInterfaceComponents),
+    values.shopInterfaceColor !== undefined ? (values.shopInterfaceColor ?? DEFAULTS.shopInterfaceColor) : current.shopInterfaceColor,
+    values.shopInterfaceUseDominantColor !== undefined ? (values.shopInterfaceUseDominantColor ? 1 : 0) : (current.shopInterfaceUseDominantColor ? 1 : 0)
   );
   return fromRow(getStmt.get(guildId));
 }
@@ -142,6 +153,8 @@ export async function setShop(guildId, values) {
     shopMessageId: values.shopMessageId,
     shopInterfaceEnabled: values.shopInterfaceEnabled,
     shopInterfaceComponents: values.shopInterfaceComponents,
+    shopInterfaceColor: values.shopInterfaceColor,
+    shopInterfaceUseDominantColor: values.shopInterfaceUseDominantColor,
   });
 }
 

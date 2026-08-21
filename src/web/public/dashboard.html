@@ -330,6 +330,21 @@
               <option value="">-- None --</option>
             </select>
           </label>
+
+          <div class="inline-fields">
+            <label class="grow">
+              Accent Color
+              <input type="color" id="shop-interface-color" value="#ffd700" />
+            </label>
+            <label class="grow" style="display:flex;align-items:center;gap:8px;margin-top:22px">
+              <input type="checkbox" id="shop-use-dominant" /> Use dominant color from first image
+            </label>
+          </div>
+
+          <div class="inline-form">
+            <button type="button" id="shop-dominant-btn" class="save-btn">Sample Dominant Color</button>
+          </div>
+
           <p class="hint">Set the channel where the <code>/shop</code> command will post the interface.</p>
           <button type="submit" class="save-btn">Save Shop Settings</button>
         </form>

@@ -11,6 +11,7 @@ import * as EconomyAccount from "../models/EconomyAccount.js";
 import * as GuildSettings from "../models/GuildSettings.js";
 import { cv2, text, mediaGallery, separator } from "../helpers/cv2.js";
 import { getGuildEconomyConfig } from "./economyManager.js";
+import { get_dominant_color } from "../utils/color_utils.js";
 
 const CUSTOM_CATEGORY = "shop_cat";
 const CUSTOM_ITEM = "shop_item";
@@ -85,11 +86,37 @@ function buildInterfaceComponents(components) {
   return out;
 }
 
+function findFirstImageUrl(components) {
+  for (const c of components || []) {
+    if (c.type === "image" && c.url) return c.url;
+    if (c.type === "media_gallery") {
+      const urls = Array.isArray(c.urls) ? c.urls : [c.url].filter(Boolean);
+      if (urls[0]) return urls[0];
+    }
+  }
+  return null;
+}
+
+async function resolveShopColor(settings) {
+  if (settings.shopInterfaceUseDominantColor) {
+    const imageUrl = findFirstImageUrl(settings.shopInterfaceComponents);
+    if (imageUrl) {
+      try {
+        return await get_dominant_color(imageUrl);
+      } catch (err) {
+        console.warn("Could not get dominant color for shop interface:", err.message);
+      }
+    }
+  }
+  return settings.shopInterfaceColor ?? 0xffd700;
+}
+
 export async function buildShopInterface(guildId, selectedCategoryId = null) {
   const categories = await ShopCategory.getByGuild(guildId);
   const items = await ShopItem.getByGuild(guildId);
   const config = await getGuildEconomyConfig(guildId);
   const guildSettings = await GuildSettings.getOrCreate(guildId);
+  const color = await resolveShopColor(guildSettings);
 
   const ids = getShopCustomIds(guildId);
 
@@ -134,7 +161,7 @@ export async function buildShopInterface(guildId, selectedCategoryId = null) {
   ];
 
   return cv2({
-    color: 0xffd700,
+    color,
     cv2Components,
     components: [categoryRow, itemRow],
   });
@@ -251,6 +278,8 @@ export async function getShopSettings(guildId) {
     shopMessageId: settings.shopMessageId,
     shopInterfaceEnabled: settings.shopInterfaceEnabled,
     shopInterfaceComponents: settings.shopInterfaceComponents,
+    shopInterfaceColor: settings.shopInterfaceColor,
+    shopInterfaceUseDominantColor: settings.shopInterfaceUseDominantColor,
   };
 }
 

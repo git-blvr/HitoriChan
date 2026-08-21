@@ -558,15 +558,19 @@ router.get("/shop/settings/:guildId", requireAuth, async (req, res) => {
     shopMessageId: settings.shopMessageId,
     shopInterfaceEnabled: settings.shopInterfaceEnabled,
     shopInterfaceComponents: settings.shopInterfaceComponents,
+    shopInterfaceColor: settings.shopInterfaceColor,
+    shopInterfaceUseDominantColor: settings.shopInterfaceUseDominantColor,
   });
 });
 
 router.post("/shop/settings/:guildId", requireAuth, async (req, res) => {
-  const { shopChannelId, shopInterfaceEnabled, shopInterfaceComponents } = req.body;
+  const { shopChannelId, shopInterfaceEnabled, shopInterfaceComponents, shopInterfaceColor, shopInterfaceUseDominantColor } = req.body;
   await GuildSettings.save(req.params.guildId, {
     shopChannelId: shopChannelId?.trim() || null,
     shopInterfaceEnabled: shopInterfaceEnabled !== undefined ? Boolean(shopInterfaceEnabled) : undefined,
     shopInterfaceComponents: Array.isArray(shopInterfaceComponents) ? shopInterfaceComponents : undefined,
+    shopInterfaceColor: shopInterfaceColor !== undefined && shopInterfaceColor !== "" ? Number(shopInterfaceColor) : undefined,
+    shopInterfaceUseDominantColor: shopInterfaceUseDominantColor !== undefined ? Boolean(shopInterfaceUseDominantColor) : undefined,
   });
   res.json({ ok: true });
 });
