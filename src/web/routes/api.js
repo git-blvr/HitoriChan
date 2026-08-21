@@ -205,6 +205,35 @@ router.get("/logs/messages/:guildId", requireAuth, async (req, res) => {
   res.json(rows);
 });
 
+// Commands
+router.get("/commands/:guildId", requireAuth, (req, res) => {
+  const client = req.app.get("client");
+  const commands = [];
+  const seen = new Set();
+
+  for (const cmd of client.commands.values()) {
+    if (seen.has(cmd.data.name)) continue;
+    seen.add(cmd.data.name);
+
+    const names = new Set([cmd.data.name]);
+    if (cmd.prefixName) names.add(cmd.prefixName);
+    if (Array.isArray(cmd.aliases)) {
+      for (const alias of cmd.aliases) names.add(alias);
+    }
+
+    commands.push({
+      name: cmd.data.name,
+      category: cmd.category || "misc",
+      prefixName: cmd.prefixName || cmd.data.name,
+      aliases: Array.isArray(cmd.aliases) ? cmd.aliases : [],
+      names: Array.from(names),
+    });
+  }
+
+  commands.sort((a, b) => a.name.localeCompare(b.name));
+  res.json(commands);
+});
+
 // Triggers
 router.get("/triggers/:guildId", requireAuth, async (req, res) => {
   const rows = await Trigger.getForGuild(req.params.guildId);

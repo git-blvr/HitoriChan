@@ -508,6 +508,32 @@ body {
   border-color: var(--accent);
 }
 
+.searchable-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.select-filter {
+  padding: 8px 10px;
+  border: 1px solid #252532;
+  border-radius: 8px;
+  background: var(--input);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.select-filter:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.searchable-select select {
+  min-height: 40px;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;

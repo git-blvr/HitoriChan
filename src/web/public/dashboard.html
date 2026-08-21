@@ -530,9 +530,12 @@
     <section id="triggers" class="content-section">
       <div class="panel">
         <h2>Keyword Triggers</h2>
-        <form id="trigger-form" class="inline-form">
+        <form id="trigger-form" class="inline-form" style="align-items:flex-start">
           <input type="text" id="trigger-keyword" placeholder="keyword" required />
-          <input type="text" id="trigger-command" placeholder="command name" required />
+          <div class="searchable-input" style="min-width:220px">
+            <input type="text" id="trigger-command" list="trigger-commands-datalist" placeholder="Search or type command..." required autocomplete="off" />
+            <datalist id="trigger-commands-datalist"></datalist>
+          </div>
           <button type="submit" class="save-btn">Add Trigger</button>
         </form>
         <table class="data-table" id="triggers-table">

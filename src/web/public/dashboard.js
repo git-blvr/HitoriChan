@@ -5,6 +5,7 @@ const navLinks = document.querySelectorAll(".nav-links a");
 let currentGuild = "";
 let currentSection = "overview";
 let allGuilds = [];
+let allCommands = [];
 let activityChart = null;
 let guildData = { id: null, channels: [], roles: [] };
 
@@ -50,7 +51,35 @@ async function loadGuilds() {
     await loadGuildData(g.id);
   }
 
+  refreshSelectFilter(guildSelect);
   return allGuilds;
+}
+
+async function loadCommands(guildId) {
+  if (!guildId) return [];
+  if (allCommands.length) return allCommands;
+  try {
+    allCommands = await json(`/api/commands/${guildId}`);
+  } catch (err) {
+    console.error("Failed to load commands:", err);
+    allCommands = [];
+  }
+  return allCommands;
+}
+
+function populateCommandDatalist(datalistId) {
+  const datalist = document.getElementById(datalistId);
+  if (!datalist) return;
+  const options = [];
+  for (const c of allCommands) {
+    options.push({ value: c.name, label: `${c.category}: ${c.name}` });
+    for (const alias of c.aliases) {
+      options.push({ value: alias, label: `${c.category}: ${alias} (alias of ${c.name})` });
+    }
+  }
+  datalist.innerHTML = options.map((o) => `
+    <option value="${escapeHtml(o.value)}" label="${escapeHtml(o.label)}"></option>
+  `).join("");
 }
 
 async function loadGuildData(guildId) {
@@ -76,6 +105,7 @@ function populateChannels(selectId, selectedId, placeholder = "-- None --") {
     `<option value="${c.id}" ${c.id === selectedId ? "selected" : ""}>#${escapeHtml(c.name)}</option>`
   ).join("");
   select.innerHTML = `<option value="">${escapeHtml(placeholder)}</option>` + options;
+  refreshSelectFilter(select);
 }
 
 function populateRoles(selectId, selectedId) {
@@ -85,6 +115,7 @@ function populateRoles(selectId, selectedId) {
     `<option value="${r.id}" ${r.id === selectedId ? "selected" : ""}>${escapeHtml(r.name)}</option>`
   ).join("");
   select.innerHTML = '<option value="">-- None --</option>' + options;
+  refreshSelectFilter(select);
 }
 
 async function loadGuildCategories(guildId) {
@@ -101,10 +132,65 @@ function populateCategories(selectId, selectedId) {
     `<option value="${c.id}" ${c.id === selectedId ? "selected" : ""}>${escapeHtml(c.name)}</option>`
   ).join("");
   select.innerHTML = '<option value="">-- None --</option>' + options;
+  refreshSelectFilter(select);
 }
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function makeSelectSearchable(select) {
+  if (select._searchFilter) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "searchable-select";
+  select.parentNode.insertBefore(wrapper, select);
+  wrapper.appendChild(select);
+
+  const filter = document.createElement("input");
+  filter.type = "text";
+  filter.className = "select-filter";
+  filter.placeholder = "Filter...";
+  wrapper.insertBefore(filter, select);
+
+  const saveOptions = () => {
+    select._allOptions = Array.from(select.options).map((o) => ({
+      value: o.value,
+      text: o.textContent,
+      disabled: o.disabled,
+    }));
+  };
+
+  const renderOptions = () => {
+    const q = filter.value.trim().toLowerCase();
+    const options = select._allOptions || [];
+    const placeholder = options[0];
+    const matches = options.filter((o, i) => i === 0 || o.text.toLowerCase().includes(q) || o.value.toLowerCase().includes(q));
+    const selected = select.value;
+    select.innerHTML = matches.map((o) => `
+      <option value="${escapeHtml(o.value)}" ${o.value === selected || (o.value === "" && !selected) ? "selected" : ""} ${o.disabled ? "disabled" : ""}>
+        ${escapeHtml(o.text)}
+      </option>
+    `).join("");
+  };
+
+  filter.addEventListener("input", renderOptions);
+
+  select._searchFilter = filter;
+  select._refreshFilter = () => {
+    saveOptions();
+    renderOptions();
+  };
+  select._setFilter = (value) => {
+    filter.value = value;
+    renderOptions();
+  };
+
+  saveOptions();
+}
+
+function refreshSelectFilter(select) {
+  select?._refreshFilter?.();
 }
 
 function formatDate(ts) {
@@ -414,6 +500,8 @@ const sections = {
 
   triggers: async () => {
     if (!currentGuild) return;
+    await loadCommands(currentGuild);
+    populateCommandDatalist("trigger-commands-datalist");
     const rows = await json(`/api/triggers/${currentGuild}`);
     const tbody = document.querySelector("#triggers-table tbody");
     tbody.innerHTML = rows.map((r) => `
@@ -1680,5 +1768,21 @@ document.getElementById("boost-form").addEventListener("submit", async (e) => {
   showToast("Boost settings saved", "success");
 });
 
+function initSelectFilters() {
+  const excluded = new Set([
+    "chart-range",
+    "ai-mode",
+    "ticket-type",
+    "ticket-button-color",
+    "shop-item-multiplier-type",
+    "cmd-filter-success",
+  ]);
+  document.querySelectorAll("select").forEach((select) => {
+    if (select.id && excluded.has(select.id)) return;
+    makeSelectSearchable(select);
+  });
+}
+
 // Init
+initSelectFilters();
 loadGuilds().then(() => showSection("overview"));
