@@ -175,6 +175,7 @@ export default {
         });
 
         const row = new ActionRowBuilder().addComponents(
+          ticketButton(`ticket:claim:${ticket.id}`, "Claim Ticket", "blue"),
           ticketButton(`ticket:close:${ticket.id}`, "Close Ticket", "red")
         );
 
@@ -232,6 +233,91 @@ export default {
       } catch (err) {
         console.error("Ticket close error:", err);
         return interaction.editReply({ content: "Could not close the ticket." }).catch(() => {});
+      }
+    }
+
+    if (action === "claim") {
+      const ticket = await Ticket.get(id);
+      if (!ticket || ticket.guildId !== interaction.guildId) {
+        return interaction.reply({ content: "This ticket no longer exists.", flags: MessageFlags.Ephemeral });
+      }
+
+      const panel = await TicketPanel.get(ticket.panelId);
+      const isStaff = panel?.staffRoleId ? interaction.member.roles.cache.has(panel.staffRoleId) : false;
+      if (ticket.claimerId && ticket.claimerId !== interaction.user.id && !isStaff && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+        return interaction.reply({ content: "This ticket is already claimed.", flags: MessageFlags.Ephemeral });
+      }
+
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+      try {
+        const channel = client.channels.cache.get(ticket.channelId);
+        if (channel) {
+          await channel.permissionOverwrites.create(interaction.user.id, {
+            ViewChannel: true,
+            SendMessages: true,
+            ReadMessageHistory: true,
+          });
+        }
+
+        const updated = await Ticket.claim(ticket.id, interaction.user.id);
+
+        const row = new ActionRowBuilder().addComponents(
+          ticketButton(`ticket:unclaim:${updated.id}`, "Unclaim Ticket", "gray"),
+          ticketButton(`ticket:close:${updated.id}`, "Close Ticket", "red")
+        );
+
+        const welcomeMessage = await channel.messages.fetch({ limit: 10 }).then((msgs) => msgs.find((m) => m.components?.length)).catch(() => null);
+        if (welcomeMessage) {
+          await welcomeMessage.edit({
+            content: welcomeMessage.content + `\n\n**Claimed by <@${updated.claimerId}>**`,
+            components: [row],
+          });
+        }
+
+        return interaction.editReply({ content: `You claimed this ticket.` });
+      } catch (err) {
+        console.error("Ticket claim error:", err);
+        return interaction.editReply({ content: "Could not claim the ticket." });
+      }
+    }
+
+    if (action === "unclaim") {
+      const ticket = await Ticket.get(id);
+      if (!ticket || ticket.guildId !== interaction.guildId) {
+        return interaction.reply({ content: "This ticket no longer exists.", flags: MessageFlags.Ephemeral });
+      }
+      if (ticket.claimerId !== interaction.user.id && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+        return interaction.reply({ content: "You cannot unclaim this ticket.", flags: MessageFlags.Ephemeral });
+      }
+
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+      try {
+        const channel = client.channels.cache.get(ticket.channelId);
+        if (channel && ticket.claimerId) {
+          await channel.permissionOverwrites.delete(ticket.claimerId).catch(() => {});
+        }
+
+        const updated = await Ticket.unclaim(ticket.id);
+
+        const row = new ActionRowBuilder().addComponents(
+          ticketButton(`ticket:claim:${updated.id}`, "Claim Ticket", "blue"),
+          ticketButton(`ticket:close:${updated.id}`, "Close Ticket", "red")
+        );
+
+        const welcomeMessage = await channel.messages.fetch({ limit: 10 }).then((msgs) => msgs.find((m) => m.components?.length)).catch(() => null);
+        if (welcomeMessage) {
+          await welcomeMessage.edit({
+            content: (welcomeMessage.content || "").replace(/\n\n\*\*Claimed by <@!?\d+>\*\*$/, ""),
+            components: [row],
+          });
+        }
+
+        return interaction.editReply({ content: "Ticket unclaimed." });
+      } catch (err) {
+        console.error("Ticket unclaim error:", err);
+        return interaction.editReply({ content: "Could not unclaim the ticket." });
       }
     }
   },

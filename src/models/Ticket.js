@@ -9,6 +9,9 @@ const insertStmt = db.prepare(`
   VALUES (?, ?, ?, ?, ?, ?)
 `);
 const closeStmt = db.prepare("UPDATE tickets SET status = 'closed', closed_at = ? WHERE id = ?");
+const archiveStmt = db.prepare("UPDATE tickets SET status = 'archived', archived_at = ? WHERE id = ?");
+const claimStmt = db.prepare("UPDATE tickets SET claimer_id = ? WHERE id = ?");
+const unclaimStmt = db.prepare("UPDATE tickets SET claimer_id = NULL WHERE id = ?");
 const deleteStmt = db.prepare("DELETE FROM tickets WHERE id = ?");
 
 function fromRow(row) {
@@ -20,8 +23,10 @@ function fromRow(row) {
     channelId: row.channel_id,
     userId: row.user_id,
     status: row.status,
+    claimerId: row.claimer_id,
     createdAt: new Date(row.created_at),
     closedAt: row.closed_at ? new Date(row.closed_at) : null,
+    archivedAt: row.archived_at ? new Date(row.archived_at) : null,
   };
 }
 
@@ -53,8 +58,23 @@ export async function close(id) {
   return get(id);
 }
 
+export async function archive(id) {
+  archiveStmt.run(Date.now(), id);
+  return get(id);
+}
+
+export async function claim(id, claimerId) {
+  claimStmt.run(claimerId, id);
+  return get(id);
+}
+
+export async function unclaim(id) {
+  unclaimStmt.run(id);
+  return get(id);
+}
+
 export async function remove(id) {
   return deleteStmt.run(id);
 }
 
-export default { get, getByChannel, getForGuild, getForUser, create, close, remove };
+export default { get, getByChannel, getForGuild, getForUser, create, close, archive, claim, unclaim, remove };

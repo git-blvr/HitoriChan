@@ -314,6 +314,13 @@ const MIGRATIONS = [
       ALTER TABLE guild_settings ADD COLUMN shop_interface_use_dominant_color INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    version: 12,
+    sql: `
+      ALTER TABLE tickets ADD COLUMN claimer_id TEXT;
+      ALTER TABLE tickets ADD COLUMN archived_at INTEGER;
+    `,
+  },
 ];
 
 export function migrate() {
