@@ -35,10 +35,14 @@ export function getForGuild(guildId) {
 
 export function findForMessage(guildId, messageContent) {
   const rows = findMatch.all(guildId);
-  const text = messageContent.toLowerCase();
+  const text = messageContent.trim().toLowerCase();
   for (const row of rows) {
-    if (text.includes(row.keyword.toLowerCase())) {
-      return parse(row);
+    const keyword = row.keyword.toLowerCase();
+    if (text.startsWith(keyword)) {
+      const nextChar = text[keyword.length];
+      if (!nextChar || /\s/.test(nextChar)) {
+        return parse(row);
+      }
     }
   }
   return null;
