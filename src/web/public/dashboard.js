@@ -969,8 +969,8 @@ function getTicketPanelPayload() {
     imageUrl: document.getElementById("ticket-image").value.trim() || null,
     thumbnailUrl: document.getElementById("ticket-thumbnail").value.trim() || null,
     useDominantColor: document.getElementById("ticket-use-dominant").checked,
-    buttonLabel: document.getElementById("ticket-button-label").value.trim() || "Create Ticket",
-    buttonColor: document.getElementById("ticket-button-color").value,
+    buttonLabel: document.getElementById("ticket-button-label")?.value?.trim() || "Create Ticket",
+    buttonColor: document.getElementById("ticket-button-color")?.value || "green",
     categoryId: document.getElementById("ticket-category").value || null,
     staffRoleId: document.getElementById("ticket-staff-role").value || null,
     transcriptChannelId: document.getElementById("ticket-transcript").value || null,
@@ -987,8 +987,8 @@ function renderTicketPreview() {
   const description = document.getElementById("ticket-description").value.trim();
   const imageUrl = document.getElementById("ticket-image").value.trim();
   const thumbnailUrl = document.getElementById("ticket-thumbnail").value.trim();
-  const buttonLabel = document.getElementById("ticket-button-label").value.trim() || "Create Ticket";
-  const buttonColor = document.getElementById("ticket-button-color").value;
+  const buttonLabel = document.getElementById("ticket-button-label")?.value?.trim() || "Create Ticket";
+  const buttonColor = document.getElementById("ticket-button-color")?.value || "green";
   const fields = getTicketFields();
   const components = getTicketComponents();
   const box = document.getElementById("ticket-preview-box");
