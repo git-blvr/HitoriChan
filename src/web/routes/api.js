@@ -110,7 +110,7 @@ router.get("/emojis/:guildId", requireAuth, async (req, res) => {
         name: e.name,
         animated: e.animated,
         value: e.animated ? `<a:${e.name}:${e.id}>` : `<:${e.name}:${e.id}>`,
-        url: e.url,
+        url: e.imageURL(),
       }))
     : [];
 
