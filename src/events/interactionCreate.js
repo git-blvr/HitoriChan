@@ -11,7 +11,7 @@ import * as TicketPanel from "../models/TicketPanel.js";
 import * as Ticket from "../models/Ticket.js";
 import { cv2 } from "../helpers/cv2.js";
 import { embErr, embWrn } from "../helpers/embeds.js";
-import { buildShopInterface, buildItemPreview, purchaseItem } from "../utils/shopManager.js";
+import { buildShopInterface, buildItemSelectMessage, buildItemPreview, purchaseItem } from "../utils/shopManager.js";
 
 function ticketButton(customId, label, color = "red") {
   const styleMap = {
@@ -66,7 +66,17 @@ async function handleShopInteraction(interaction) {
     if (!categoryId) {
       return interaction.update(await buildShopInterface(guildId));
     }
-    return interaction.update(await buildShopInterface(guildId, categoryId));
+    try {
+      await interaction.deferUpdate();
+      await interaction.editReply(await buildShopInterface(guildId, categoryId));
+      await interaction.followUp(await buildItemSelectMessage(guildId, categoryId, true));
+      return;
+    } catch (err) {
+      console.error("Shop category error:", err);
+      const error = { content: err.message, flags: MessageFlags.Ephemeral };
+      if (interaction.deferred || interaction.replied) return interaction.followUp(error);
+      return interaction.reply(error);
+    }
   }
 
   // Item select: shop_item:guildId:categoryId
@@ -76,10 +86,14 @@ async function handleShopInteraction(interaction) {
       return interaction.update(await buildShopInterface(guildId));
     }
     try {
-      const preview = await buildItemPreview(guildId, itemId, true);
-      return interaction.reply(preview);
+      return interaction.update(await buildItemPreview(guildId, itemId, true));
     } catch (err) {
-      return interaction.reply({ content: err.message, flags: MessageFlags.Ephemeral });
+      return interaction.update(await cv2({
+        color: 0xff0000,
+        title: "Item Error",
+        description: err.message,
+        ephemeral: true,
+      }));
     }
   }
 

@@ -113,8 +113,6 @@ async function resolveShopColor(settings) {
 
 export async function buildShopInterface(guildId, selectedCategoryId = null) {
   const categories = await ShopCategory.getByGuild(guildId);
-  const items = await ShopItem.getByGuild(guildId);
-  const config = await getGuildEconomyConfig(guildId);
   const guildSettings = await GuildSettings.getOrCreate(guildId);
   const color = await resolveShopColor(guildSettings);
 
@@ -135,25 +133,6 @@ export async function buildShopInterface(guildId, selectedCategoryId = null) {
       .setDisabled(categoryOptions.length === 0)
   );
 
-  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
-  const categoryItems = selectedCategory
-    ? items.filter((i) => i.categoryId === selectedCategory.id)
-    : [];
-
-  const itemOptions = categoryItems.map((item) => ({
-    label: `${item.name} - ${formatPriceShort(item, config)}`.slice(0, 100),
-    value: String(item.id),
-    description: item.description?.slice(0, 100) || undefined,
-  }));
-
-  const itemRow = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(ids.item(selectedCategoryId || 0))
-      .setPlaceholder(selectedCategory ? `Items in ${selectedCategory.name}...` : "Select a category first...")
-      .setOptions(itemOptions.length ? itemOptions : [{ label: "No items", value: "0" }])
-      .setDisabled(!selectedCategory || itemOptions.length === 0)
-  );
-
   const headerText = "**Shop**\nPick a category to see the available items.";
   const cv2Components = [
     text(headerText),
@@ -163,7 +142,40 @@ export async function buildShopInterface(guildId, selectedCategoryId = null) {
   return cv2({
     color,
     cv2Components,
-    components: [categoryRow, itemRow],
+    components: [categoryRow],
+  });
+}
+
+export async function buildItemSelectMessage(guildId, categoryId, ephemeral = true) {
+  const category = await ShopCategory.getById(categoryId);
+  if (!category) throw new Error("Category not found.");
+
+  const items = (await ShopItem.getByGuild(guildId)).filter((i) => i.categoryId === category.id);
+  const config = await getGuildEconomyConfig(guildId);
+  const guildSettings = await GuildSettings.getOrCreate(guildId);
+  const color = await resolveShopColor(guildSettings);
+  const ids = getShopCustomIds(guildId);
+
+  const itemOptions = items.map((item) => ({
+    label: `${item.name} - ${formatPriceShort(item, config)}`.slice(0, 100),
+    value: String(item.id),
+    description: item.description?.slice(0, 100) || undefined,
+  }));
+
+  const itemRow = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(ids.item(category.id))
+      .setPlaceholder(`Items in ${category.name}...`)
+      .setOptions(itemOptions.length ? itemOptions : [{ label: "No items", value: "0" }])
+      .setDisabled(itemOptions.length === 0)
+  );
+
+  return cv2({
+    color,
+    title: category.name,
+    description: "Choose an item to preview and buy.",
+    components: [itemRow],
+    ephemeral,
   });
 }
 
