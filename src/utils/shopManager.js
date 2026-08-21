@@ -9,7 +9,7 @@ import * as ShopItem from "../models/ShopItem.js";
 import * as ShopPurchase from "../models/ShopPurchase.js";
 import * as EconomyAccount from "../models/EconomyAccount.js";
 import * as GuildSettings from "../models/GuildSettings.js";
-import { cv2 } from "../helpers/cv2.js";
+import { cv2, text, mediaGallery, separator } from "../helpers/cv2.js";
 import { getGuildEconomyConfig } from "./economyManager.js";
 
 const CUSTOM_CATEGORY = "shop_cat";
@@ -42,14 +42,54 @@ export function getShopCustomIds(guildId) {
   };
 }
 
-export async function buildShopInterface(guildId, selectedCategoryId = null, selectedItemId = null) {
+export function formatPriceShort(item, config) {
+  const parts = [];
+  if (item.price > 0) parts.push(`${item.price.toLocaleString()} ${config.primary.name}`);
+  if (item.priceSecondary > 0) parts.push(`${item.priceSecondary.toLocaleString()} ${config.secondary.name}`);
+  return parts.length ? parts.join(" + ") : "Free";
+}
+
+export function buildItemDetails(item, config) {
+  const lines = [item.description || "No description."];
+  lines.push(`\n**Price:** ${formatPriceShort(item, config)}`);
+  if (item.roleId) lines.push(`**Role:** <@&${item.roleId}>`);
+  if (item.multiplierType) {
+    lines.push(`**Multiplier:** +${item.multiplierValue ?? 0} ${item.multiplierType}`);
+  }
+  if (item.specialCommands?.length) {
+    lines.push(`**Unlocks:** ${item.specialCommands.join(", ")}`);
+  }
+  if (item.stock !== null) lines.push(`**Stock:** ${item.stock} total`);
+  if (item.maxPurchases !== null) lines.push(`**Limit:** ${item.maxPurchases} per person`);
+  if (item.requiresRoleId) lines.push(`**Requires:** <@&${item.requiresRoleId}>`);
+  return lines.join("\n");
+}
+
+function buildInterfaceComponents(components) {
+  if (!Array.isArray(components)) return [];
+  const out = [];
+  for (const c of components) {
+    if (!c?.type) continue;
+    try {
+      if (c.type === "text" && c.content) out.push(text(c.content));
+      if (c.type === "image" && c.url) out.push(mediaGallery(c.url));
+      if (c.type === "media_gallery" && (c.urls?.length || c.url)) {
+        const urls = Array.isArray(c.urls) ? c.urls : [c.url].filter(Boolean);
+        out.push(mediaGallery(urls));
+      }
+      if (c.type === "separator") out.push(separator());
+    } catch (err) {
+      console.warn("Failed to build shop interface component:", err);
+    }
+  }
+  return out;
+}
+
+export async function buildShopInterface(guildId, selectedCategoryId = null) {
   const categories = await ShopCategory.getByGuild(guildId);
   const items = await ShopItem.getByGuild(guildId);
   const config = await getGuildEconomyConfig(guildId);
-
-  const headerText = categories.length === 0
-    ? "## Shop\nNo categories have been set up yet."
-    : "## Shop\nPick a category, then choose an item to buy.";
+  const guildSettings = await GuildSettings.getOrCreate(guildId);
 
   const ids = getShopCustomIds(guildId);
 
@@ -74,10 +114,9 @@ export async function buildShopInterface(guildId, selectedCategoryId = null, sel
     : [];
 
   const itemOptions = categoryItems.map((item) => ({
-    label: `${item.name} — ${formatPrice(item, config)}`.slice(0, 100),
+    label: `${item.name} - ${formatPriceShort(item, config)}`.slice(0, 100),
     value: String(item.id),
     description: item.description?.slice(0, 100) || undefined,
-    default: selectedItemId === item.id,
   }));
 
   const itemRow = new ActionRowBuilder().addComponents(
@@ -88,58 +127,41 @@ export async function buildShopInterface(guildId, selectedCategoryId = null, sel
       .setDisabled(!selectedCategory || itemOptions.length === 0)
   );
 
-  const buyButton = new ButtonBuilder()
-    .setCustomId(ids.buy(selectedItemId || 0))
-    .setLabel("Buy")
-    .setStyle(ButtonStyle.Success)
-    .setDisabled(!selectedItemId);
-
-  const buyRow = new ActionRowBuilder().addComponents(buyButton);
-
-  const components = [categoryRow, itemRow, buyRow];
-
-  const fields = [];
-  if (selectedItemId) {
-    const item = categoryItems.find((i) => i.id === selectedItemId);
-    if (item) {
-      fields.push({ name: item.name, value: buildItemDetails(item, config), inline: true });
-    }
-  }
+  const headerText = "**Shop**\nPick a category to see the available items.";
+  const cv2Components = [
+    text(headerText),
+    ...buildInterfaceComponents(guildSettings.shopInterfaceComponents),
+  ];
 
   return cv2({
     color: 0xffd700,
-    title: "Item Shop",
-    description: headerText,
-    fields,
-    components,
+    cv2Components,
+    components: [categoryRow, itemRow],
   });
 }
 
-export function buildItemDetails(item, config) {
-  const lines = [item.description || "No description."];
-  lines.push(`\n**Price:** ${formatPrice(item, config)}`);
-  if (item.roleId) lines.push(`**Role:** <@&${item.roleId}>`);
-  if (item.multiplierType) {
-    lines.push(`**Multiplier:** +${item.multiplierValue ?? 0} ${item.multiplierType}`);
-  }
-  if (item.specialCommands?.length) {
-    lines.push(`**Unlocks:** ${item.specialCommands.join(", ")}`);
-  }
-  if (item.stock !== null) lines.push(`**Stock:** ${item.stock} total`);
-  if (item.maxPurchases !== null) lines.push(`**Limit:** ${item.maxPurchases} per person`);
-  if (item.requiresRoleId) lines.push(`**Requires:** <@&${item.requiresRoleId}>`);
-  return lines.join("\n");
-}
+export async function buildItemPreview(guildId, itemId, ephemeral = true) {
+  const item = await ShopItem.getById(itemId);
+  if (!item) throw new Error("Item not found.");
 
-export function formatPrice(item, config) {
-  const parts = [];
-  if (item.price > 0) {
-    parts.push(`${config.primary.emoji ? `${config.primary.emoji} ` : ""}${config.primary.symbol}${item.price.toLocaleString()} ${config.primary.name}`);
-  }
-  if (item.priceSecondary > 0) {
-    parts.push(`${config.secondary.emoji ? `${config.secondary.emoji} ` : ""}${config.secondary.symbol}${item.priceSecondary.toLocaleString()} ${config.secondary.name}`);
-  }
-  return parts.length ? parts.join(" + ") : "Free";
+  const config = await getGuildEconomyConfig(guildId);
+  const ids = getShopCustomIds(guildId);
+
+  const details = buildItemDetails(item, config);
+  const buyButton = new ButtonBuilder()
+    .setCustomId(ids.buy(item.id))
+    .setLabel(`Buy for ${formatPriceShort(item, config)}`)
+    .setStyle(ButtonStyle.Success);
+
+  const buyRow = new ActionRowBuilder().addComponents(buyButton);
+
+  return cv2({
+    color: 0xffd700,
+    title: item.name,
+    description: details,
+    components: [buyRow],
+    ephemeral,
+  });
 }
 
 export async function hasShopItem(guildId, userId, itemId) {
@@ -228,6 +250,7 @@ export async function getShopSettings(guildId) {
     shopChannelId: settings.shopChannelId,
     shopMessageId: settings.shopMessageId,
     shopInterfaceEnabled: settings.shopInterfaceEnabled,
+    shopInterfaceComponents: settings.shopInterfaceComponents,
   };
 }
 

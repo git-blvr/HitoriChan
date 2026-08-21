@@ -301,6 +301,12 @@ const MIGRATIONS = [
       );
     `,
   },
+  {
+    version: 10,
+    sql: `
+      ALTER TABLE guild_settings ADD COLUMN shop_interface_components TEXT DEFAULT '[]';
+    `,
+  },
 ];
 
 export function migrate() {

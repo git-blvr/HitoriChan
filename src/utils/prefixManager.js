@@ -7,8 +7,14 @@ export async function getGuildSettings(guildId) {
   if (!guildId) {
     return {
       prefix: DEFAULT_PREFIX,
-      primaryCurrency: { name: "Starry Coins", symbol: "coins " },
-      secondaryCurrency: { name: "FOLTs", symbol: "folts " },
+      primaryCurrency: { name: "Starry Coins", symbol: "coins ", emoji: null },
+      secondaryCurrency: { name: "FOLTs", symbol: "folts ", emoji: null },
+      dailyMin: 100,
+      dailyMax: 500,
+      shopChannelId: null,
+      shopMessageId: null,
+      shopInterfaceEnabled: true,
+      shopInterfaceComponents: [],
     };
   }
 
@@ -32,6 +38,12 @@ export async function setPrefix(guildId, prefix) {
 
 export async function setGuildCurrencies(guildId, values) {
   const settings = await GuildSettings.setCurrencies(guildId, values);
+  cache.set(guildId, settings);
+  return settings;
+}
+
+export async function setShopSettings(guildId, values) {
+  const settings = await GuildSettings.setShop(guildId, values);
   cache.set(guildId, settings);
   return settings;
 }

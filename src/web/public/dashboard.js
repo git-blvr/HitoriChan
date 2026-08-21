@@ -238,6 +238,8 @@ const sections = {
     document.getElementById("shop-enabled").checked = settings.shopInterfaceEnabled;
     populateChannels("shop-channel", settings.shopChannelId || "", "-- None --");
 
+    renderShopInterfaceComponents(settings.shopInterfaceComponents || []);
+
     await renderShopCategories();
     hideShopItemEditor();
   },
@@ -1244,6 +1246,82 @@ window.showShopCategoryItems = (categoryId) => {
   `).join("") || '<tr><td colspan="5">No items</td></tr>';
 };
 
+// Shop interface builder
+function getShopInterfaceComponents() {
+  return Array.from(document.querySelectorAll(".shop-interface-component")).map((el) => {
+    const type = el.dataset.type;
+    if (type === "text") return { type, content: el.querySelector(".shop-comp-content").value };
+    if (type === "image") return { type, url: el.querySelector(".shop-comp-url").value.trim() };
+    if (type === "media_gallery") return { type, urls: el.querySelector(".shop-comp-urls").value.split(/\n+/).map((s) => s.trim()).filter(Boolean) };
+    if (type === "separator") return { type };
+    return { type };
+  }).filter((c) => {
+    if (c.type === "text" || c.type === "image") return c.content || c.url;
+    if (c.type === "media_gallery") return c.urls?.length;
+    return true;
+  });
+}
+
+function renderShopInterfaceComponents(components) {
+  const list = document.getElementById("shop-interface-list");
+  list.innerHTML = (components || []).map((c, i) => {
+    if (c.type === "text") return `
+      <div class="reorder-item shop-interface-component" data-type="text" data-index="${i}">
+        <header>Text <button type="button" class="remove-btn" onclick="removeShopInterfaceComponent(${i})">Remove</button></header>
+        <textarea class="shop-comp-content" rows="3">${escapeHtml(c.content || "")}</textarea>
+      </div>
+    `;
+    if (c.type === "image") return `
+      <div class="reorder-item shop-interface-component" data-type="image" data-index="${i}">
+        <header>Image <button type="button" class="remove-btn" onclick="removeShopInterfaceComponent(${i})">Remove</button></header>
+        <input type="text" class="shop-comp-url" value="${escapeHtml(c.url || "")}" placeholder="https://..." />
+      </div>
+    `;
+    if (c.type === "media_gallery") return `
+      <div class="reorder-item shop-interface-component" data-type="media_gallery" data-index="${i}">
+        <header>Media Gallery <button type="button" class="remove-btn" onclick="removeShopInterfaceComponent(${i})">Remove</button></header>
+        <textarea class="shop-comp-urls" rows="3" placeholder="One image URL per line">${escapeHtml((c.urls || []).join("\n"))}</textarea>
+      </div>
+    `;
+    if (c.type === "separator") return `
+      <div class="reorder-item shop-interface-component" data-type="separator" data-index="${i}">
+        <header>Separator <button type="button" class="remove-btn" onclick="removeShopInterfaceComponent(${i})">Remove</button></header>
+      </div>
+    `;
+    return "";
+  }).join("");
+}
+
+window.removeShopInterfaceComponent = (i) => {
+  const components = getShopInterfaceComponents();
+  components.splice(i, 1);
+  renderShopInterfaceComponents(components);
+};
+
+document.getElementById("shop-add-text").addEventListener("click", () => {
+  const components = getShopInterfaceComponents();
+  components.push({ type: "text", content: "" });
+  renderShopInterfaceComponents(components);
+});
+
+document.getElementById("shop-add-image").addEventListener("click", () => {
+  const components = getShopInterfaceComponents();
+  components.push({ type: "image", url: "" });
+  renderShopInterfaceComponents(components);
+});
+
+document.getElementById("shop-add-gallery").addEventListener("click", () => {
+  const components = getShopInterfaceComponents();
+  components.push({ type: "media_gallery", urls: [] });
+  renderShopInterfaceComponents(components);
+});
+
+document.getElementById("shop-add-separator").addEventListener("click", () => {
+  const components = getShopInterfaceComponents();
+  components.push({ type: "separator" });
+  renderShopInterfaceComponents(components);
+});
+
 // Shop forms
 document.getElementById("shop-settings-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -1253,6 +1331,7 @@ document.getElementById("shop-settings-form").addEventListener("submit", async (
     body: JSON.stringify({
       shopChannelId: document.getElementById("shop-channel").value || null,
       shopInterfaceEnabled: document.getElementById("shop-enabled").checked,
+      shopInterfaceComponents: getShopInterfaceComponents(),
     }),
   });
   showToast("Shop settings saved", "success");

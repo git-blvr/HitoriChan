@@ -557,14 +557,16 @@ router.get("/shop/settings/:guildId", requireAuth, async (req, res) => {
     shopChannelId: settings.shopChannelId,
     shopMessageId: settings.shopMessageId,
     shopInterfaceEnabled: settings.shopInterfaceEnabled,
+    shopInterfaceComponents: settings.shopInterfaceComponents,
   });
 });
 
 router.post("/shop/settings/:guildId", requireAuth, async (req, res) => {
-  const { shopChannelId, shopInterfaceEnabled } = req.body;
+  const { shopChannelId, shopInterfaceEnabled, shopInterfaceComponents } = req.body;
   await GuildSettings.save(req.params.guildId, {
     shopChannelId: shopChannelId?.trim() || null,
     shopInterfaceEnabled: shopInterfaceEnabled !== undefined ? Boolean(shopInterfaceEnabled) : undefined,
+    shopInterfaceComponents: Array.isArray(shopInterfaceComponents) ? shopInterfaceComponents : undefined,
   });
   res.json({ ok: true });
 });

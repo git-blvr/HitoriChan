@@ -72,6 +72,7 @@ export function cv2({
   author = null,
   footer = null,
   fields = [],
+  cv2Components = [],
   components = [],
   separators = false,
   timestamp = false,
@@ -156,6 +157,25 @@ export function cv2({
     if (parts.length) {
       if (separators) container.addSeparatorComponents(separator(false, false));
       container.addTextDisplayComponents(buildTextDisplay(parts.join(" • ")));
+    }
+  }
+
+  // Extra CV2 display components (text, sections, media gallery, separators)
+  if (cv2Components.length) {
+    for (const c of cv2Components) {
+      if (c instanceof TextDisplayBuilder) {
+        container.addTextDisplayComponents(c);
+      } else if (c instanceof SectionBuilder) {
+        container.addSectionComponents(c);
+      } else if (c instanceof MediaGalleryBuilder) {
+        container.addMediaGalleryComponents(c);
+      } else if (c instanceof SeparatorBuilder) {
+        container.addSeparatorComponents(c);
+      } else if (c?.toJSON) {
+        container.addActionRowComponents(new ActionRowBuilder().addComponents(c));
+      } else {
+        container.addTextDisplayComponents(buildTextDisplay(String(c)));
+      }
     }
   }
 

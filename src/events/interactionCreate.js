@@ -11,7 +11,7 @@ import * as TicketPanel from "../models/TicketPanel.js";
 import * as Ticket from "../models/Ticket.js";
 import { cv2 } from "../helpers/cv2.js";
 import { embErr, embWrn } from "../helpers/embeds.js";
-import { buildShopInterface, purchaseItem } from "../utils/shopManager.js";
+import { buildShopInterface, buildItemPreview, purchaseItem } from "../utils/shopManager.js";
 
 function ticketButton(customId, label, color = "red") {
   const styleMap = {
@@ -71,12 +71,16 @@ async function handleShopInteraction(interaction) {
 
   // Item select: shop_item:guildId:categoryId
   if (parts[0] === "shop_item") {
-    const categoryId = Number(parts[2]);
     const itemId = Number(interaction.values[0]);
     if (!itemId) {
-      return interaction.update(await buildShopInterface(guildId, categoryId));
+      return interaction.update(await buildShopInterface(guildId));
     }
-    return interaction.update(await buildShopInterface(guildId, categoryId, itemId));
+    try {
+      const preview = await buildItemPreview(guildId, itemId, true);
+      return interaction.reply(preview);
+    } catch (err) {
+      return interaction.reply({ content: err.message, flags: MessageFlags.Ephemeral });
+    }
   }
 
   // Buy button: shop_buy:itemId
@@ -87,7 +91,7 @@ async function handleShopInteraction(interaction) {
     }
 
     try {
-      const { item, account } = await purchaseItem(guildId, interaction.user.id, itemId, interaction.member);
+      const { item } = await purchaseItem(guildId, interaction.user.id, itemId, interaction.member);
       const currency = await import("../utils/economyManager.js").then((m) => m.getGuildEconomyConfig(guildId));
 
       const effects = [];
@@ -98,13 +102,19 @@ async function handleShopInteraction(interaction) {
       const confirm = cv2({
         color: 0x2ecc71,
         title: "Purchase Successful",
-        description: `You bought **${item.name}** for ${item.price > 0 ? `${currency.primary.symbol}${item.price.toLocaleString()} ${currency.primary.name}` : ""}${item.priceSecondary > 0 ? ` + ${currency.secondary.symbol}${item.priceSecondary.toLocaleString()} ${currency.secondary.name}` : ""}.`,
+        description: `You bought **${item.name}** for ${item.price > 0 ? `${item.price.toLocaleString()} ${currency.primary.name}` : ""}${item.priceSecondary > 0 ? ` + ${item.priceSecondary.toLocaleString()} ${currency.secondary.name}` : ""}.`,
         fields: effects.length ? [{ name: "Effects", value: effects.join("\n"), inline: true }] : [],
+        ephemeral: true,
       });
-      confirm.flags |= MessageFlags.Ephemeral;
-      return interaction.reply(confirm);
+      return interaction.update(confirm);
     } catch (err) {
-      return interaction.reply({ content: err.message, flags: MessageFlags.Ephemeral });
+      const error = cv2({
+        color: 0xff0000,
+        title: "Purchase Failed",
+        description: err.message,
+        ephemeral: true,
+      });
+      return interaction.update(error);
     }
   }
 }

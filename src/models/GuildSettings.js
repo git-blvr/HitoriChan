@@ -10,7 +10,17 @@ const DEFAULTS = {
   shopChannelId: null,
   shopMessageId: null,
   shopInterfaceEnabled: true,
+  shopInterfaceComponents: [],
 };
+
+function parseJson(json) {
+  if (!json) return [];
+  try {
+    return JSON.parse(json);
+  } catch {
+    return [];
+  }
+}
 
 const getStmt = db.prepare("SELECT * FROM guild_settings WHERE guild_id = ?");
 
@@ -19,8 +29,8 @@ const upsertStmt = db.prepare(`
     guild_id, prefix,
     primary_currency_name, primary_currency_symbol, primary_currency_emoji,
     secondary_currency_name, secondary_currency_symbol, secondary_currency_emoji,
-    daily_min, daily_max, shop_channel_id, shop_message_id, shop_interface_enabled
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    daily_min, daily_max, shop_channel_id, shop_message_id, shop_interface_enabled, shop_interface_components
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(guild_id) DO UPDATE SET
     prefix = excluded.prefix,
     primary_currency_name = excluded.primary_currency_name,
@@ -33,7 +43,8 @@ const upsertStmt = db.prepare(`
     daily_max = excluded.daily_max,
     shop_channel_id = excluded.shop_channel_id,
     shop_message_id = excluded.shop_message_id,
-    shop_interface_enabled = excluded.shop_interface_enabled
+    shop_interface_enabled = excluded.shop_interface_enabled,
+    shop_interface_components = excluded.shop_interface_components
 `);
 
 function fromRow(row) {
@@ -56,6 +67,7 @@ function fromRow(row) {
     shopChannelId: row.shop_channel_id ?? DEFAULTS.shopChannelId,
     shopMessageId: row.shop_message_id ?? DEFAULTS.shopMessageId,
     shopInterfaceEnabled: row.shop_interface_enabled === undefined ? DEFAULTS.shopInterfaceEnabled : Boolean(row.shop_interface_enabled),
+    shopInterfaceComponents: parseJson(row.shop_interface_components),
   };
 }
 
@@ -80,7 +92,8 @@ export async function getOrCreate(guildId) {
     DEFAULTS.dailyMax,
     DEFAULTS.shopChannelId,
     DEFAULTS.shopMessageId,
-    DEFAULTS.shopInterfaceEnabled ? 1 : 0
+    DEFAULTS.shopInterfaceEnabled ? 1 : 0,
+    JSON.stringify(DEFAULTS.shopInterfaceComponents)
   );
   return fromRow(getStmt.get(guildId));
 }
@@ -100,7 +113,8 @@ export async function save(guildId, values) {
     values.dailyMax !== undefined ? values.dailyMax : current.dailyMax,
     values.shopChannelId !== undefined ? values.shopChannelId : current.shopChannelId,
     values.shopMessageId !== undefined ? values.shopMessageId : current.shopMessageId,
-    values.shopInterfaceEnabled !== undefined ? (values.shopInterfaceEnabled ? 1 : 0) : (current.shopInterfaceEnabled ? 1 : 0)
+    values.shopInterfaceEnabled !== undefined ? (values.shopInterfaceEnabled ? 1 : 0) : (current.shopInterfaceEnabled ? 1 : 0),
+    JSON.stringify(values.shopInterfaceComponents !== undefined ? values.shopInterfaceComponents : current.shopInterfaceComponents)
   );
   return fromRow(getStmt.get(guildId));
 }
@@ -127,6 +141,7 @@ export async function setShop(guildId, values) {
     shopChannelId: values.shopChannelId,
     shopMessageId: values.shopMessageId,
     shopInterfaceEnabled: values.shopInterfaceEnabled,
+    shopInterfaceComponents: values.shopInterfaceComponents,
   });
 }
 
