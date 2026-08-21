@@ -216,7 +216,8 @@ async function handleTicketSelectMenu(interaction) {
       return interaction.reply({ content: "This ticket panel no longer exists.", flags: MessageFlags.Ephemeral });
     }
 
-    const category = (interaction.values[0] || "").trim();
+    const index = Number(interaction.values[0]);
+    const category = Array.isArray(panel.categories) && panel.categories[index] ? String(panel.categories[index].label).trim() : null;
     const existing = (await Ticket.getForUser(interaction.guildId, interaction.user.id)).find((t) => t.panelId === panel.id && t.status === "open");
     if (existing) {
       return interaction.reply({ content: `You already have an open ticket: <#${existing.channelId}>`, flags: MessageFlags.Ephemeral });
@@ -243,12 +244,22 @@ async function handleTicketButton(interaction, client) {
     }
 
     if (Array.isArray(panel.categories) && panel.categories.length) {
-      const options = panel.categories.map((c) =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(String(c.label).slice(0, 100))
-          .setValue(String(c.label).slice(0, 100))
-          .setDescription(String(c.description || "").slice(0, 100))
-      );
+      const options = panel.categories
+        .map((c, i) => ({ c, i }))
+        .filter(({ c }) => String(c.label).trim())
+        .map(({ c, i }) => {
+          const label = String(c.label).trim().slice(0, 100);
+          const builder = new StringSelectMenuOptionBuilder()
+            .setLabel(label)
+            .setValue(String(i));
+          const desc = String(c.description || "").trim().slice(0, 100);
+          if (desc) builder.setDescription(desc);
+          return builder;
+        });
+      if (!options.length) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        return createTicketFromInteraction(interaction, panel, null);
+      }
       const select = new StringSelectMenuBuilder()
         .setCustomId(`ticket:select_category:${panel.id}`)
         .setPlaceholder("Select a category")
