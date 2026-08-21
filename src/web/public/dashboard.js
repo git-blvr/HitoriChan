@@ -846,11 +846,16 @@ function pickEmoji(emoji, btn) {
 
 for (const id of ["econ-primary-emoji", "econ-secondary-emoji"]) {
   const input = document.getElementById(id);
-  const openPicker = () => {
+  const openPicker = async () => {
+    if (!currentGuild) {
+      showToast("Select a server first", "error");
+      return;
+    }
     activeEmojiInput = input;
     const picker = document.getElementById("emoji-picker");
     picker.hidden = false;
     positionPicker(input);
+    await loadEmojiPicker(currentGuild);
     showEmojiTab("discord");
     highlightEmoji(input.value);
   };

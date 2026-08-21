@@ -1158,9 +1158,7 @@ button[id^="shop-add-"]::before,
 button[id^="ticket-add-"]::before,
 .data-table button[onclick^="edit"]::before,
 .data-table button[onclick^="delete"]::before,
-#logout-btn::before,
-.emoji-tab[data-tab="discord"]::before,
-.emoji-tab[data-tab="server"]::before {
+#logout-btn::before {
   content: "";
   display: inline-block;
   width: 16px;
@@ -1170,6 +1168,7 @@ button[id^="ticket-add-"]::before,
   mask: center/contain no-repeat;
   -webkit-mask: center/contain no-repeat;
   background: currentColor;
+  pointer-events: none;
 }
 
 .reorder-item .remove-btn,
@@ -1186,15 +1185,6 @@ button[id^="ticket-add-"]::before { mask-image: var(--icon-plus); -webkit-mask-i
 .data-table button[onclick^="edit"]::before { mask-image: var(--icon-pencil); -webkit-mask-image: var(--icon-pencil); }
 .data-table button[onclick^="delete"]::before { mask-image: var(--icon-trash); -webkit-mask-image: var(--icon-trash); }
 #logout-btn::before { mask-image: var(--icon-logout); -webkit-mask-image: var(--icon-logout); }
-.emoji-tab[data-tab="discord"]::before { mask-image: var(--icon-discord); -webkit-mask-image: var(--icon-discord); }
-.emoji-tab[data-tab="server"]::before { mask-image: var(--icon-server); -webkit-mask-image: var(--icon-server); }
-
-.emoji-tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
 
 #logout-btn {
   display: inline-flex;
