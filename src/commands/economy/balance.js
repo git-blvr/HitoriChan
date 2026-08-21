@@ -1,8 +1,9 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
-import { getEconomyAccount, getGuildEconomyConfig, getExchangeRate } from "../../utils/economyManager.js";
+import { getEconomyAccount, getGuildEconomyConfig, getExchangeRate, formatMoney } from "../../utils/economyManager.js";
 import { embErr } from "../../helpers/embeds.js";
 import { resolveTarget } from "../../utils/resolveTarget.js";
+import { get_dominant_color } from "../../utils/color_utils.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -56,14 +57,18 @@ export default {
       status = `${target} currently has more ${config.secondary.name}, it seems like ${displayName} is playing too many games.`;
     }
 
+    const color = avatarUrl ? await get_dominant_color(avatarUrl) : 0x2f3136;
+    const emoji = (cfg) => cfg.emoji ? `${cfg.emoji} ` : "";
+
     await ctx.reply(cv2({
-      color: 0x5865f2,
+      color,
       title: `${displayName}'s Balance`,
       description: status,
       thumbnail: avatarUrl,
+      separators: true,
       fields: [
-        { name: `${config.primary.name}`, value: `${account.primary}`, inline: true },
-        { name: `${config.secondary.name}`, value: `${account.secondary}`, inline: true },
+        { name: `${emoji(config.primary)}${config.primary.name}`, value: `**${formatMoney(account.primary)}**`, inline: true },
+        { name: `${emoji(config.secondary)}${config.secondary.name}`, value: `**${formatMoney(account.secondary)}**`, inline: true },
       ],
       footer: { text: `Exchange Rate: 1 ${config.primary.name} = ${rate} ${config.secondary.name}` },
       timestamp: true,
