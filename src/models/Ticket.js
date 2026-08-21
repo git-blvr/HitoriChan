@@ -5,8 +5,8 @@ const getByChannelStmt = db.prepare("SELECT * FROM tickets WHERE channel_id = ?"
 const listForGuildStmt = db.prepare("SELECT * FROM tickets WHERE guild_id = ? ORDER BY created_at DESC LIMIT ?");
 const listForUserStmt = db.prepare("SELECT * FROM tickets WHERE guild_id = ? AND user_id = ? ORDER BY created_at DESC");
 const insertStmt = db.prepare(`
-  INSERT INTO tickets (guild_id, panel_id, channel_id, user_id, status, created_at)
-  VALUES (?, ?, ?, ?, ?, ?)
+  INSERT INTO tickets (guild_id, panel_id, channel_id, user_id, status, category, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
 `);
 const closeStmt = db.prepare("UPDATE tickets SET status = 'closed', closed_at = ? WHERE id = ?");
 const archiveStmt = db.prepare("UPDATE tickets SET status = 'archived', archived_at = ? WHERE id = ?");
@@ -23,6 +23,7 @@ function fromRow(row) {
     channelId: row.channel_id,
     userId: row.user_id,
     status: row.status,
+    category: row.category || null,
     claimerId: row.claimer_id,
     createdAt: new Date(row.created_at),
     closedAt: row.closed_at ? new Date(row.closed_at) : null,
@@ -48,7 +49,7 @@ export async function getForUser(guildId, userId) {
 
 export async function create(data) {
   const now = Date.now();
-  insertStmt.run(data.guildId, data.panelId, data.channelId, data.userId, data.status ?? "open", now);
+  insertStmt.run(data.guildId, data.panelId, data.channelId, data.userId, data.status ?? "open", data.category ?? null, now);
   const row = db.prepare("SELECT * FROM tickets WHERE rowid = last_insert_rowid()").get();
   return fromRow(row);
 }

@@ -4,11 +4,14 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
   EmbedBuilder,
   MessageFlags,
 } from "discord.js";
 import * as TicketPanel from "../models/TicketPanel.js";
 import * as Ticket from "../models/Ticket.js";
+import { resolveTicketPanelColor } from "../helpers/ticketPanels.js";
 import { cv2 } from "../helpers/cv2.js";
 import { embErr, embWrn } from "../helpers/embeds.js";
 import { buildShopInterface, buildItemSelectMessage, buildItemPreview, purchaseItem } from "../utils/shopManager.js";
@@ -49,6 +52,64 @@ async function createTicketChannel(guild, user, panel) {
     parent: panel.categoryId || undefined,
     permissionOverwrites: overwrites,
   });
+}
+
+function buildTicketWelcomeEmbed(panel, userId, category, claimerId, createdAt) {
+  const color = panel.color ?? 0x7c3aed;
+  const embed = new EmbedBuilder()
+    .setTitle("A ticket is open")
+    .setDescription(`By <@${userId}>`)
+    .setColor(color)
+    .addFields(
+      { name: "Category", value: category || "—", inline: true },
+      { name: "Claimed by", value: claimerId ? `<@${claimerId}>` : "No one", inline: true },
+      { name: "Created in", value: `<t:${Math.floor(createdAt / 1000)}:F>`, inline: false }
+    );
+  return embed;
+}
+
+function ticketActionRow(ticket, claimerId) {
+  if (claimerId) {
+    return new ActionRowBuilder().addComponents(
+      ticketButton(`ticket:unclaim:${ticket.id}`, "Unclaim Ticket", "gray"),
+      ticketButton(`ticket:close:${ticket.id}`, "Close Ticket", "red")
+    );
+  }
+  return new ActionRowBuilder().addComponents(
+    ticketButton(`ticket:claim:${ticket.id}`, "Claim Ticket", "blue"),
+    ticketButton(`ticket:close:${ticket.id}`, "Close Ticket", "red")
+  );
+}
+
+async function createTicketFromInteraction(interaction, panel, category = null) {
+  const existing = (await Ticket.getForUser(interaction.guildId, interaction.user.id)).find((t) => t.panelId === panel.id && t.status === "open");
+  if (existing) {
+    return interaction.editReply({ content: `You already have an open ticket: <#${existing.channelId}>` }).catch(() => {});
+  }
+
+  try {
+    const channel = await createTicketChannel(interaction.guild, interaction.user, panel);
+    const ticket = await Ticket.create({
+      guildId: interaction.guildId,
+      panelId: panel.id,
+      channelId: channel.id,
+      userId: interaction.user.id,
+      status: "open",
+      category,
+    });
+
+    const color = await resolveTicketPanelColor(panel);
+    if (color != null) panel.color = color;
+
+    const row = ticketActionRow(ticket, null);
+    const welcomeEmbed = buildTicketWelcomeEmbed(panel, interaction.user.id, ticket.category, null, ticket.createdAt.getTime());
+    await channel.send({ embeds: [welcomeEmbed], components: [row] });
+
+    return interaction.editReply({ content: `Ticket created: <#${channel.id}>` });
+  } catch (err) {
+    console.error("Ticket creation error:", err);
+    return interaction.editReply({ content: "Could not create the ticket. Check bot permissions." });
+  }
 }
 
 async function handleShopInteraction(interaction) {
@@ -133,192 +194,200 @@ async function handleShopInteraction(interaction) {
   }
 }
 
+async function updateWelcomeMessage(channel, ticket, panel) {
+  const welcomeMessage = await channel.messages.fetch({ limit: 10 }).then((msgs) => msgs.find((m) => m.components?.length)).catch(() => null);
+  if (!welcomeMessage) return;
+
+  const color = await resolveTicketPanelColor(panel);
+  if (color != null) panel.color = color;
+
+  const row = ticketActionRow(ticket, ticket.claimerId);
+  const embed = buildTicketWelcomeEmbed(panel, ticket.userId, ticket.category, ticket.claimerId, ticket.createdAt.getTime());
+  await welcomeMessage.edit({ embeds: [embed], components: [row] });
+}
+
+async function handleTicketSelectMenu(interaction) {
+  const [prefix, action, id] = interaction.customId.split(":");
+  if (prefix !== "ticket") return;
+
+  if (action === "select_category") {
+    const panel = await TicketPanel.get(id);
+    if (!panel || panel.guildId !== interaction.guildId) {
+      return interaction.reply({ content: "This ticket panel no longer exists.", flags: MessageFlags.Ephemeral });
+    }
+
+    const category = (interaction.values[0] || "").trim();
+    const existing = (await Ticket.getForUser(interaction.guildId, interaction.user.id)).find((t) => t.panelId === panel.id && t.status === "open");
+    if (existing) {
+      return interaction.reply({ content: `You already have an open ticket: <#${existing.channelId}>`, flags: MessageFlags.Ephemeral });
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    return createTicketFromInteraction(interaction, panel, category || null);
+  }
+}
+
+async function handleTicketButton(interaction, client) {
+  const [prefix, action, id] = interaction.customId.split(":");
+  if (prefix !== "ticket") return;
+
+  if (action === "create") {
+    const panel = await TicketPanel.get(id);
+    if (!panel || panel.guildId !== interaction.guildId) {
+      return interaction.reply({ content: "This ticket panel no longer exists.", flags: MessageFlags.Ephemeral });
+    }
+
+    const existing = (await Ticket.getForUser(interaction.guildId, interaction.user.id)).find((t) => t.panelId === panel.id && t.status === "open");
+    if (existing) {
+      return interaction.reply({ content: `You already have an open ticket: <#${existing.channelId}>`, flags: MessageFlags.Ephemeral });
+    }
+
+    if (Array.isArray(panel.categories) && panel.categories.length) {
+      const options = panel.categories.map((c) =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(String(c.label).slice(0, 100))
+          .setValue(String(c.label).slice(0, 100))
+          .setDescription(String(c.description || "").slice(0, 100))
+      );
+      const select = new StringSelectMenuBuilder()
+        .setCustomId(`ticket:select_category:${panel.id}`)
+        .setPlaceholder("Select a category")
+        .addOptions(options);
+      const row = new ActionRowBuilder().addComponents(select);
+      return interaction.reply({ content: "Choose a category for your ticket:", components: [row], flags: MessageFlags.Ephemeral });
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    return createTicketFromInteraction(interaction, panel, null);
+  }
+
+  if (action === "close") {
+    const ticket = await Ticket.get(id);
+    if (!ticket || ticket.guildId !== interaction.guildId) {
+      return interaction.reply({ content: "This ticket no longer exists.", flags: MessageFlags.Ephemeral });
+    }
+
+    const panel = await TicketPanel.get(ticket.panelId);
+    const isStaff = panel?.staffRoleId ? interaction.member.roles.cache.has(panel.staffRoleId) : false;
+    if (ticket.userId !== interaction.user.id && !isStaff && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      return interaction.reply({ content: "You cannot close this ticket.", flags: MessageFlags.Ephemeral });
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    try {
+      const channel = client.channels.cache.get(ticket.channelId);
+      const transcriptId = panel?.transcriptChannelId;
+
+      if (transcriptId && channel) {
+        const transcriptChannel = client.channels.cache.get(transcriptId);
+        if (transcriptChannel?.isTextBased()) {
+          const embed = new EmbedBuilder()
+            .setTitle(`Ticket closed`)
+            .setDescription(`Ticket <#${ticket.channelId}> was closed by <@${interaction.user.id}>`)
+            .setColor(0x7c3aed)
+            .setFooter({ text: `User: ${ticket.userId}` })
+            .setTimestamp();
+          await transcriptChannel.send({ embeds: [embed] });
+        }
+      }
+
+      const replied = await interaction.editReply({ content: "Ticket closed." }).catch((e) => {
+        console.error("editReply failed before delete:", e.message);
+        return null;
+      });
+
+      await Ticket.close(ticket.id);
+      if (channel) await channel.delete("Ticket closed").catch(() => {});
+
+      return replied;
+    } catch (err) {
+      console.error("Ticket close error:", err);
+      return interaction.editReply({ content: "Could not close the ticket." }).catch(() => {});
+    }
+  }
+
+  if (action === "claim") {
+    const ticket = await Ticket.get(id);
+    if (!ticket || ticket.guildId !== interaction.guildId) {
+      return interaction.reply({ content: "This ticket no longer exists.", flags: MessageFlags.Ephemeral });
+    }
+
+    const panel = await TicketPanel.get(ticket.panelId);
+    const isStaff = panel?.staffRoleId ? interaction.member.roles.cache.has(panel.staffRoleId) : false;
+    if (ticket.claimerId && ticket.claimerId !== interaction.user.id && !isStaff && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      return interaction.reply({ content: "This ticket is already claimed.", flags: MessageFlags.Ephemeral });
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    try {
+      const channel = client.channels.cache.get(ticket.channelId);
+      if (channel) {
+        await channel.permissionOverwrites.create(interaction.user.id, {
+          ViewChannel: true,
+          SendMessages: true,
+          ReadMessageHistory: true,
+        });
+      }
+
+      const updated = await Ticket.claim(ticket.id, interaction.user.id);
+      if (channel && panel) await updateWelcomeMessage(channel, updated, panel);
+
+      return interaction.editReply({ content: `You claimed this ticket.` });
+    } catch (err) {
+      console.error("Ticket claim error:", err);
+      return interaction.editReply({ content: "Could not claim the ticket." });
+    }
+  }
+
+  if (action === "unclaim") {
+    const ticket = await Ticket.get(id);
+    if (!ticket || ticket.guildId !== interaction.guildId) {
+      return interaction.reply({ content: "This ticket no longer exists.", flags: MessageFlags.Ephemeral });
+    }
+    if (ticket.claimerId !== interaction.user.id && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      return interaction.reply({ content: "You cannot unclaim this ticket.", flags: MessageFlags.Ephemeral });
+    }
+
+    const panel = await TicketPanel.get(ticket.panelId);
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    try {
+      const channel = client.channels.cache.get(ticket.channelId);
+      if (channel && ticket.claimerId) {
+        await channel.permissionOverwrites.delete(ticket.claimerId).catch(() => {});
+      }
+
+      const updated = await Ticket.unclaim(ticket.id);
+      if (channel && panel) await updateWelcomeMessage(channel, updated, panel);
+
+      return interaction.editReply({ content: "Ticket unclaimed." });
+    } catch (err) {
+      console.error("Ticket unclaim error:", err);
+      return interaction.editReply({ content: "Could not unclaim the ticket." });
+    }
+  }
+}
+
 export default {
   name: "interactionCreate",
   async execute(interaction, client) {
     if (interaction.isStringSelectMenu()) {
-      return handleShopInteraction(interaction);
+      if (interaction.customId.startsWith("ticket:")) {
+        return handleTicketSelectMenu(interaction);
+      }
+      if (interaction.customId.startsWith("shop_")) {
+        return handleShopInteraction(interaction);
+      }
+      return;
     }
 
     if (interaction.isButton()) {
       if (interaction.customId.startsWith("shop_")) {
         return handleShopInteraction(interaction);
       }
-    } else {
-      return;
-    }
-
-    const [prefix, action, id] = interaction.customId.split(":");
-    if (prefix !== "ticket") return;
-
-    if (action === "create") {
-      const panel = await TicketPanel.get(id);
-      if (!panel || panel.guildId !== interaction.guildId) {
-        return interaction.reply({ content: "This ticket panel no longer exists.", flags: MessageFlags.Ephemeral });
-      }
-
-      const existing = (await Ticket.getForUser(interaction.guildId, interaction.user.id)).find((t) => t.panelId === panel.id && t.status === "open");
-      if (existing) {
-        return interaction.reply({ content: `You already have an open ticket: <#${existing.channelId}>`, flags: MessageFlags.Ephemeral });
-      }
-
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-      try {
-        const channel = await createTicketChannel(interaction.guild, interaction.user, panel);
-        const ticket = await Ticket.create({
-          guildId: interaction.guildId,
-          panelId: panel.id,
-          channelId: channel.id,
-          userId: interaction.user.id,
-          status: "open",
-        });
-
-        const row = new ActionRowBuilder().addComponents(
-          ticketButton(`ticket:claim:${ticket.id}`, "Claim Ticket", "blue"),
-          ticketButton(`ticket:close:${ticket.id}`, "Close Ticket", "red")
-        );
-
-        const welcome = panel.welcomeMessage?.replace(/\{user\}/g, `<@${interaction.user.id}>`) || `Ticket opened by <@${interaction.user.id}>.`;
-        await channel.send({ content: welcome, components: [row] });
-
-        return interaction.editReply({ content: `Ticket created: <#${channel.id}>` });
-      } catch (err) {
-        console.error("Ticket creation error:", err);
-        return interaction.editReply({ content: "Could not create the ticket. Check bot permissions." });
-      }
-    }
-
-    if (action === "close") {
-      const ticket = await Ticket.get(id);
-      if (!ticket || ticket.guildId !== interaction.guildId) {
-        return interaction.reply({ content: "This ticket no longer exists.", flags: MessageFlags.Ephemeral });
-      }
-
-      const panel = await TicketPanel.get(ticket.panelId);
-      const isStaff = panel?.staffRoleId ? interaction.member.roles.cache.has(panel.staffRoleId) : false;
-      if (ticket.userId !== interaction.user.id && !isStaff && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
-        return interaction.reply({ content: "You cannot close this ticket.", flags: MessageFlags.Ephemeral });
-      }
-
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-      try {
-        const channel = client.channels.cache.get(ticket.channelId);
-        const transcriptId = panel?.transcriptChannelId;
-
-        if (transcriptId && channel) {
-          const transcriptChannel = client.channels.cache.get(transcriptId);
-          if (transcriptChannel?.isTextBased()) {
-            const embed = new EmbedBuilder()
-              .setTitle(`Ticket closed`)
-              .setDescription(`Ticket <#${ticket.channelId}> was closed by <@${interaction.user.id}>`)
-              .setColor(0x7c3aed)
-              .setFooter({ text: `User: ${ticket.userId}` })
-              .setTimestamp();
-            await transcriptChannel.send({ embeds: [embed] });
-          }
-        }
-
-        // Reply before deleting the channel, otherwise the original deferred message becomes unreachable.
-        const replied = await interaction.editReply({ content: "Ticket closed." }).catch((e) => {
-          console.error("editReply failed before delete:", e.message);
-          return null;
-        });
-
-        await Ticket.close(ticket.id);
-        if (channel) await channel.delete("Ticket closed").catch(() => {});
-
-        return replied;
-      } catch (err) {
-        console.error("Ticket close error:", err);
-        return interaction.editReply({ content: "Could not close the ticket." }).catch(() => {});
-      }
-    }
-
-    if (action === "claim") {
-      const ticket = await Ticket.get(id);
-      if (!ticket || ticket.guildId !== interaction.guildId) {
-        return interaction.reply({ content: "This ticket no longer exists.", flags: MessageFlags.Ephemeral });
-      }
-
-      const panel = await TicketPanel.get(ticket.panelId);
-      const isStaff = panel?.staffRoleId ? interaction.member.roles.cache.has(panel.staffRoleId) : false;
-      if (ticket.claimerId && ticket.claimerId !== interaction.user.id && !isStaff && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
-        return interaction.reply({ content: "This ticket is already claimed.", flags: MessageFlags.Ephemeral });
-      }
-
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-      try {
-        const channel = client.channels.cache.get(ticket.channelId);
-        if (channel) {
-          await channel.permissionOverwrites.create(interaction.user.id, {
-            ViewChannel: true,
-            SendMessages: true,
-            ReadMessageHistory: true,
-          });
-        }
-
-        const updated = await Ticket.claim(ticket.id, interaction.user.id);
-
-        const row = new ActionRowBuilder().addComponents(
-          ticketButton(`ticket:unclaim:${updated.id}`, "Unclaim Ticket", "gray"),
-          ticketButton(`ticket:close:${updated.id}`, "Close Ticket", "red")
-        );
-
-        const welcomeMessage = await channel.messages.fetch({ limit: 10 }).then((msgs) => msgs.find((m) => m.components?.length)).catch(() => null);
-        if (welcomeMessage) {
-          await welcomeMessage.edit({
-            content: welcomeMessage.content + `\n\n**Claimed by <@${updated.claimerId}>**`,
-            components: [row],
-          });
-        }
-
-        return interaction.editReply({ content: `You claimed this ticket.` });
-      } catch (err) {
-        console.error("Ticket claim error:", err);
-        return interaction.editReply({ content: "Could not claim the ticket." });
-      }
-    }
-
-    if (action === "unclaim") {
-      const ticket = await Ticket.get(id);
-      if (!ticket || ticket.guildId !== interaction.guildId) {
-        return interaction.reply({ content: "This ticket no longer exists.", flags: MessageFlags.Ephemeral });
-      }
-      if (ticket.claimerId !== interaction.user.id && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
-        return interaction.reply({ content: "You cannot unclaim this ticket.", flags: MessageFlags.Ephemeral });
-      }
-
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-      try {
-        const channel = client.channels.cache.get(ticket.channelId);
-        if (channel && ticket.claimerId) {
-          await channel.permissionOverwrites.delete(ticket.claimerId).catch(() => {});
-        }
-
-        const updated = await Ticket.unclaim(ticket.id);
-
-        const row = new ActionRowBuilder().addComponents(
-          ticketButton(`ticket:claim:${updated.id}`, "Claim Ticket", "blue"),
-          ticketButton(`ticket:close:${updated.id}`, "Close Ticket", "red")
-        );
-
-        const welcomeMessage = await channel.messages.fetch({ limit: 10 }).then((msgs) => msgs.find((m) => m.components?.length)).catch(() => null);
-        if (welcomeMessage) {
-          await welcomeMessage.edit({
-            content: (welcomeMessage.content || "").replace(/\n\n\*\*Claimed by <@!?\d+>\*\*$/, ""),
-            components: [row],
-          });
-        }
-
-        return interaction.editReply({ content: "Ticket unclaimed." });
-      } catch (err) {
-        console.error("Ticket unclaim error:", err);
-        return interaction.editReply({ content: "Could not unclaim the ticket." });
-      }
+      return handleTicketButton(interaction, client);
     }
   },
 };

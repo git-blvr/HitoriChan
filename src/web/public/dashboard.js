@@ -920,6 +920,7 @@ function resetTicketEditor() {
   populateChannels("ticket-send-channel", "", "-- Select a channel --");
   renderTicketFields([]);
   renderTicketComponents([]);
+  renderTicketCategories([]);
   updateTicketTypeVisibility();
   ticketEditor.hidden = false;
 }
@@ -931,6 +932,7 @@ function hideTicketEditor() {
   document.getElementById("ticket-payload-preview").hidden = true;
   renderTicketFields([]);
   renderTicketComponents([]);
+  renderTicketCategories([]);
 }
 
 function getTicketFields() {
@@ -959,6 +961,26 @@ function getTicketComponents() {
   });
 }
 
+function getTicketCategories() {
+  return Array.from(document.querySelectorAll(".ticket-category")).map((el) => ({
+    label: el.querySelector(".cat-label").value.trim(),
+    description: el.querySelector(".cat-desc").value.trim() || null,
+  })).filter((c) => c.label);
+}
+
+function renderTicketCategories(categories) {
+  const list = document.getElementById("ticket-categories-list");
+  list.innerHTML = (categories || []).map((c, i) => `
+    <div class="ticket-category reorder-item">
+      <div class="inline-fields" style="width:100%">
+        <label class="grow">Label <input type="text" class="cat-label" value="${escapeHtml(c.label)}" placeholder="Bug report" /></label>
+        <label class="grow">Description <input type="text" class="cat-desc" value="${escapeHtml(c.description || "")}" placeholder="Short description (optional)" /></label>
+      </div>
+      <button type="button" class="save-btn" onclick="removeTicketCategory(${i})">Remove</button>
+    </div>
+  `).join("");
+}
+
 function getTicketPanelPayload() {
   return {
     name: document.getElementById("ticket-name").value.trim(),
@@ -977,6 +999,7 @@ function getTicketPanelPayload() {
     welcomeMessage: document.getElementById("ticket-welcome").value.trim() || null,
     fields: getTicketFields(),
     components: getTicketComponents(),
+    categories: getTicketCategories(),
   };
 }
 
@@ -1112,6 +1135,12 @@ window.removeTicketComponent = (i) => {
   renderTicketComponents(components);
 };
 
+window.removeTicketCategory = (i) => {
+  const categories = getTicketCategories();
+  categories.splice(i, 1);
+  renderTicketCategories(categories);
+};
+
 function fillTicketEditor(panel) {
   document.getElementById("ticket-id").value = panel.id || "";
   document.getElementById("ticket-name").value = panel.name || "";
@@ -1133,6 +1162,7 @@ function fillTicketEditor(panel) {
   document.getElementById("ticket-welcome").value = panel.welcomeMessage || "";
   renderTicketFields(panel.fields || []);
   renderTicketComponents(panel.components || []);
+  renderTicketCategories(panel.categories || []);
   updateTicketTypeVisibility();
   document.getElementById("ticket-payload-preview").hidden = true;
   document.getElementById("ticket-editor-title").textContent = panel.id ? "Edit Ticket Panel" : "New Ticket Panel";
@@ -1213,6 +1243,12 @@ document.getElementById("ticket-add-ticket").addEventListener("click", () => {
   const components = getTicketComponents();
   components.push({ type: "ticket", label: "Create Ticket", color: "green" });
   renderTicketComponents(components);
+});
+
+document.getElementById("ticket-add-category").addEventListener("click", () => {
+  const categories = getTicketCategories();
+  categories.push({ label: "", description: "" });
+  renderTicketCategories(categories);
 });
 
 document.getElementById("ticket-import-toggle").addEventListener("click", () => {

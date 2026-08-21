@@ -327,6 +327,15 @@
 
           <label>Welcome Message <textarea id="ticket-welcome" rows="3" placeholder="Message sent inside the ticket channel. Use {user} to ping the user."></textarea></label>
 
+          <div class="panel sub-panel" id="ticket-categories-panel">
+            <h3>Ticket Categories</h3>
+            <p class="hint">Shown as a dropdown when users open a ticket. Leave empty to skip.</p>
+            <div id="ticket-categories-list" class="reorder-list"></div>
+            <div class="inline-form" style="margin-top:10px">
+              <button type="button" id="ticket-add-category" class="save-btn">+ Category</button>
+            </div>
+          </div>
+
           <label>Send Panel To
             <select id="ticket-send-channel">
               <option value="">-- Select a channel --</option>

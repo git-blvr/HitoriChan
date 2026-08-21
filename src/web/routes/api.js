@@ -336,6 +336,7 @@ function parsePanelBody(body) {
     welcomeMessage: body.welcomeMessage?.trim() || null,
     fields: Array.isArray(body.fields) ? body.fields.filter((f) => f?.name && f?.value) : [],
     components: Array.isArray(body.components) ? body.components : [],
+    categories: Array.isArray(body.categories) ? body.categories.filter((c) => c?.label?.trim()) : [],
   };
 }
 

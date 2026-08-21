@@ -321,6 +321,13 @@ const MIGRATIONS = [
       ALTER TABLE tickets ADD COLUMN archived_at INTEGER;
     `,
   },
+  {
+    version: 13,
+    sql: `
+      ALTER TABLE ticket_panels ADD COLUMN categories TEXT DEFAULT '[]';
+      ALTER TABLE tickets ADD COLUMN category TEXT;
+    `,
+  },
 ];
 
 export function migrate() {
