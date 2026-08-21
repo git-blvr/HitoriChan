@@ -275,6 +275,13 @@
               <button type="button" id="ticket-add-image" class="save-btn">+ Image</button>
               <button type="button" id="ticket-add-separator" class="save-btn">+ Separator</button>
               <button type="button" id="ticket-add-ticket" class="save-btn">+ Ticket Button</button>
+              <button type="button" id="ticket-import-toggle" class="save-btn">Import from Payload</button>
+            </div>
+            <div id="ticket-import-panel" hidden>
+              <textarea id="ticket-payload-input" rows="6" placeholder="Paste a Discord embed or CV2 payload JSON here..."></textarea>
+              <div class="inline-form">
+                <button type="button" id="ticket-import-btn" class="save-btn">Import</button>
+              </div>
             </div>
           </div>
 
@@ -358,6 +365,13 @@
           <button type="button" id="shop-add-image" class="save-btn">Add Image</button>
           <button type="button" id="shop-add-gallery" class="save-btn">Add Media Gallery</button>
           <button type="button" id="shop-add-separator" class="save-btn">Add Separator</button>
+          <button type="button" id="shop-import-toggle" class="save-btn">Import from Payload</button>
+        </div>
+        <div id="shop-import-panel" hidden>
+          <textarea id="shop-payload-input" rows="6" placeholder="Paste a Discord embed or CV2 payload JSON here..."></textarea>
+          <div class="inline-form">
+            <button type="button" id="shop-import-btn" class="save-btn">Import</button>
+          </div>
         </div>
         <div id="shop-interface-list" class="reorder-list"></div>
       </div>

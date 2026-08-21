@@ -111,6 +111,119 @@ function formatDate(ts) {
   return new Date(ts).toLocaleString();
 }
 
+function parsePayloadToComponents(raw) {
+  let payload;
+  try {
+    payload = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch (e) {
+    throw new Error("Invalid JSON payload.");
+  }
+
+  const out = [];
+  let color = null;
+
+  if (payload.content) out.push({ type: "text", content: String(payload.content) });
+
+  if (payload.embeds?.length) {
+    for (const embed of payload.embeds) out.push(...parseEmbedToComponents(embed));
+    if (payload.embeds[0].color) color = payload.embeds[0].color;
+  } else if (payload.embed) {
+    out.push(...parseEmbedToComponents(payload.embed));
+    if (payload.embed.color) color = payload.embed.color;
+  }
+
+  if (payload.components?.length) {
+    for (const top of payload.components) {
+      const accent = top?.accent_color ?? top?.accentColor;
+      if (accent != null && color === null) color = accent;
+      const extracted = parseContainerToComponents(top);
+      out.push(...extracted.components);
+      if (extracted.color != null && color === null) color = extracted.color;
+    }
+  }
+
+  return { components: out, color };
+}
+
+function parseEmbedToComponents(embed) {
+  const out = [];
+  const parts = [];
+  if (embed.author?.name) parts.push(`**${embed.author.name}**`);
+  if (embed.title) {
+    let title = embed.title;
+    if (embed.url) title = `[${title}](${embed.url})`;
+    parts.push(`**${title}**`);
+  }
+  if (embed.description) parts.push(embed.description);
+  if (parts.length) out.push({ type: "text", content: parts.join("\n\n") });
+
+  if (embed.image?.url) out.push({ type: "image", url: embed.image.url });
+  else if (embed.thumbnail?.url) out.push({ type: "image", url: embed.thumbnail.url });
+
+  if (embed.fields?.length) {
+    out.push({
+      type: "text",
+      content: embed.fields.map((f) => `**${f.name}**\n${f.value}`).join("\n\n"),
+    });
+  }
+
+  if (embed.footer?.text || embed.timestamp) {
+    const footer = [];
+    if (embed.footer?.text) footer.push(embed.footer.text);
+    if (embed.timestamp) footer.push(new Date(embed.timestamp).toLocaleString());
+    if (footer.length) out.push({ type: "text", content: footer.join(" • ") });
+  }
+
+  return out;
+}
+
+function parseContainerToComponents(container) {
+  const components = [];
+  let color = container?.accent_color ?? container?.accentColor ?? null;
+
+  const children = container?.components ?? (Array.isArray(container) ? container : []);
+  for (const c of children) {
+    if (!c) continue;
+
+    // TextDisplay (type 10)
+    if (c.content != null) {
+      components.push({ type: "text", content: String(c.content) });
+      continue;
+    }
+
+    // Section (type 11) with text components + optional thumbnail accessory
+    if (c.components?.length) {
+      const textParts = c.components.filter((x) => x?.content != null).map((x) => String(x.content));
+      if (textParts.length) components.push({ type: "text", content: textParts.join("\n\n") });
+      if (c.accessory?.media?.url) components.push({ type: "image", url: c.accessory.media.url });
+      continue;
+    }
+
+    // MediaGallery (type 12)
+    if (c.items?.length) {
+      const urls = c.items.map((i) => i?.media?.url ?? i?.url).filter(Boolean);
+      if (urls.length === 1) components.push({ type: "image", url: urls[0] });
+      else if (urls.length > 1) components.push({ type: "media_gallery", urls });
+      continue;
+    }
+
+    // Separator (type 13)
+    if (c.divider != null || c.type === 13) {
+      components.push({ type: "separator" });
+      continue;
+    }
+
+    // Nested container (type 17)
+    if (c.type === 17 || c.accent_color != null) {
+      const nested = parseContainerToComponents(c);
+      components.push(...nested.components);
+      if (nested.color != null && color === null) color = nested.color;
+    }
+  }
+
+  return { components, color };
+}
+
 const sections = {
   overview: async () => {
     const [overview, guilds] = await Promise.all([json("/api/overview"), json("/api/guilds")]);
@@ -1035,6 +1148,30 @@ document.getElementById("ticket-add-ticket").addEventListener("click", () => {
   renderTicketComponents(components);
 });
 
+document.getElementById("ticket-import-toggle").addEventListener("click", () => {
+  document.getElementById("ticket-import-panel").hidden = !document.getElementById("ticket-import-panel").hidden;
+});
+
+document.getElementById("ticket-import-btn").addEventListener("click", () => {
+  try {
+    const raw = document.getElementById("ticket-payload-input").value;
+    const { components, color } = parsePayloadToComponents(raw);
+    if (!components.length) {
+      showToast("No supported components found in the payload.", "error");
+      return;
+    }
+    // Ticket CV2 builder doesn't support media galleries; flatten to images
+    const flat = components.flatMap((c) =>
+      c.type === "media_gallery" ? c.urls.map((url) => ({ type: "image", url })) : [c]
+    );
+    renderTicketComponents(flat);
+    if (color != null) document.getElementById("ticket-color").value = intToHex(color);
+    showToast(`Imported ${flat.length} component(s)`, "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
 document.getElementById("ticket-dominant-btn").addEventListener("click", async () => {
   const source = getTicketImageSource();
   if (!source) {
@@ -1322,6 +1459,29 @@ document.getElementById("shop-add-separator").addEventListener("click", () => {
   const components = getShopInterfaceComponents();
   components.push({ type: "separator" });
   renderShopInterfaceComponents(components);
+});
+
+document.getElementById("shop-import-toggle").addEventListener("click", () => {
+  document.getElementById("shop-import-panel").hidden = !document.getElementById("shop-import-panel").hidden;
+});
+
+document.getElementById("shop-import-btn").addEventListener("click", () => {
+  try {
+    const raw = document.getElementById("shop-payload-input").value;
+    const { components, color } = parsePayloadToComponents(raw);
+    if (!components.length) {
+      showToast("No supported components found in the payload.", "error");
+      return;
+    }
+    renderShopInterfaceComponents(components);
+    if (color != null) {
+      document.getElementById("shop-interface-color").value = intToHex(color);
+      document.getElementById("shop-use-dominant").checked = false;
+    }
+    showToast(`Imported ${components.length} component(s)`, "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
 });
 
 // Shop forms
