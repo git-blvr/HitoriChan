@@ -242,6 +242,22 @@ const sections = {
     hideShopItemEditor();
   },
 
+  boost: async () => {
+    if (!currentGuild) return;
+    await loadGuildData(currentGuild);
+
+    const settings = await json(`/api/boost/${currentGuild}`);
+    document.getElementById("boost-enabled").checked = settings.enabled;
+    document.getElementById("boost-reward-primary").value = settings.rewardPrimary;
+    document.getElementById("boost-reward-secondary").value = settings.rewardSecondary;
+    populateRoles("boost-role", settings.roleId || "");
+    document.getElementById("boost-earnings").value = settings.earningsMultiplier;
+    document.getElementById("boost-level").value = settings.level;
+    document.getElementById("boost-commands").value = (settings.specialCommands || []).join("\n");
+    populateChannels("boost-channel", settings.messageChannelId || "", "-- None --");
+    document.getElementById("boost-message").value = settings.thankMessage || "";
+  },
+
   triggers: async () => {
     if (!currentGuild) return;
     const rows = await json(`/api/triggers/${currentGuild}`);
@@ -1274,6 +1290,28 @@ document.getElementById("shop-item-form").addEventListener("submit", async (e) =
 });
 
 document.getElementById("shop-item-cancel").addEventListener("click", hideShopItemEditor);
+
+document.getElementById("boost-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+
+  const commands = document.getElementById("boost-commands").value.split(/\n+/).map((s) => s.trim()).filter(Boolean);
+  await json(`/api/boost/${currentGuild}`, {
+    method: "POST",
+    body: JSON.stringify({
+      enabled: document.getElementById("boost-enabled").checked,
+      rewardPrimary: document.getElementById("boost-reward-primary").value,
+      rewardSecondary: document.getElementById("boost-reward-secondary").value,
+      roleId: document.getElementById("boost-role").value || null,
+      earningsMultiplier: document.getElementById("boost-earnings").value,
+      level: document.getElementById("boost-level").value,
+      specialCommands: commands,
+      messageChannelId: document.getElementById("boost-channel").value || null,
+      thankMessage: document.getElementById("boost-message").value.trim() || null,
+    }),
+  });
+  showToast("Boost settings saved", "success");
+});
 
 // Init
 loadGuilds().then(() => showSection("overview"));

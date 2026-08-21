@@ -281,6 +281,26 @@ const MIGRATIONS = [
       ALTER TABLE guild_settings ADD COLUMN shop_interface_enabled INTEGER NOT NULL DEFAULT 1;
     `,
   },
+  {
+    version: 9,
+    sql: `
+      ALTER TABLE economy_accounts ADD COLUMN unlocked_commands TEXT DEFAULT '[]';
+
+      CREATE TABLE IF NOT EXISTS boost_settings (
+        guild_id TEXT PRIMARY KEY,
+        enabled INTEGER NOT NULL DEFAULT 0,
+        reward_primary INTEGER NOT NULL DEFAULT 0,
+        reward_secondary INTEGER NOT NULL DEFAULT 0,
+        role_id TEXT,
+        earnings_multiplier REAL DEFAULT 0,
+        level INTEGER DEFAULT 0,
+        special_commands TEXT DEFAULT '[]',
+        message_channel_id TEXT,
+        thank_message TEXT,
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+    `,
+  },
 ];
 
 export function migrate() {

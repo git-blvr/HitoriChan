@@ -10,9 +10,9 @@ const getStmt = db.prepare("SELECT * FROM economy_accounts WHERE guild_id = ? AN
 const upsertStmt = db.prepare(`
   INSERT INTO economy_accounts (
     guild_id, user_id, primary_balance, secondary_balance, last_daily,
-    earnings_multiplier, level, shop_item_ids, created_at, updated_at
+    earnings_multiplier, level, shop_item_ids, unlocked_commands, created_at, updated_at
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(guild_id, user_id) DO UPDATE SET
     primary_balance = excluded.primary_balance,
     secondary_balance = excluded.secondary_balance,
@@ -20,6 +20,7 @@ const upsertStmt = db.prepare(`
     earnings_multiplier = excluded.earnings_multiplier,
     level = excluded.level,
     shop_item_ids = excluded.shop_item_ids,
+    unlocked_commands = excluded.unlocked_commands,
     updated_at = excluded.updated_at
 `);
 
@@ -60,6 +61,7 @@ function fromRow(row) {
     earningsMultiplier: row.earnings_multiplier ?? 1.0,
     level: row.level ?? 1,
     shopItemIds: parseJson(row.shop_item_ids),
+    unlockedCommands: parseJson(row.unlocked_commands),
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -74,7 +76,7 @@ export async function getOrCreate(guildId, userId) {
   if (existing) return fromRow(existing);
 
   const now = Date.now();
-  upsertStmt.run(guildId, userId, 0, 0, null, 1.0, 1, "[]", now, now);
+  upsertStmt.run(guildId, userId, 0, 0, null, 1.0, 1, "[]", "[]", now, now);
   return fromRow(getStmt.get(guildId, userId));
 }
 
@@ -90,6 +92,7 @@ export async function save(account) {
     account.earningsMultiplier ?? 1.0,
     account.level ?? 1,
     JSON.stringify(account.shopItemIds ?? []),
+    JSON.stringify(account.unlockedCommands ?? []),
     account.createdAt?.getTime?.() ?? now,
     now
   );

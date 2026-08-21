@@ -5,6 +5,7 @@ import { walkDirectory } from "../utils/fileWalker.js";
 import { createCtx } from "../utils/ctx.js";
 import { getPrefix } from "../utils/prefixManager.js";
 import { hasShopCommand } from "../utils/shopManager.js";
+import { hasUnlockedCommand } from "../utils/boostManager.js";
 import { embErr } from "../helpers/embeds.js";
 import { handleStreak } from "./streakHandler.js";
 import { handleChat } from "./chatHandler.js";
@@ -53,9 +54,11 @@ export function registerCommandListeners(client) {
 
     if (command.shopItem) {
       const shopItems = Array.isArray(command.shopItem) ? command.shopItem : [command.shopItem];
-      const results = await Promise.all(shopItems.map((name) => hasShopCommand(ctx.guild?.id, ctx.user.id, name)));
+      const results = await Promise.all(shopItems.map(async (name) =>
+        (await hasShopCommand(ctx.guild?.id, ctx.user.id, name)) || (await hasUnlockedCommand(ctx.guild?.id, ctx.user.id, name))
+      ));
       if (!results.some(Boolean)) {
-        return interaction.reply(embErr(`This command is locked. Buy it from the shop first.`, true));
+        return interaction.reply(embErr(`This command is locked. Buy it from the shop or boost the server first.`, true));
       }
     }
 
@@ -115,9 +118,11 @@ export function registerCommandListeners(client) {
 
     if (command.shopItem) {
       const shopItems = Array.isArray(command.shopItem) ? command.shopItem : [command.shopItem];
-      const results = await Promise.all(shopItems.map((name) => hasShopCommand(ctx.guild?.id, ctx.user.id, name)));
+      const results = await Promise.all(shopItems.map(async (name) =>
+        (await hasShopCommand(ctx.guild?.id, ctx.user.id, name)) || (await hasUnlockedCommand(ctx.guild?.id, ctx.user.id, name))
+      ));
       if (!results.some(Boolean)) {
-        return message.reply(embErr(`This command is locked. Buy it from the shop first.`, false));
+        return message.reply(embErr(`This command is locked. Buy it from the shop or boost the server first.`, false));
       }
     }
 

@@ -16,6 +16,7 @@ import * as TicketPanel from "../../models/TicketPanel.js";
 import * as Ticket from "../../models/Ticket.js";
 import * as ShopCategory from "../../models/ShopCategory.js";
 import * as ShopItem from "../../models/ShopItem.js";
+import * as BoostSettings from "../../models/BoostSettings.js";
 import { buildTicketPanelPayload } from "../../helpers/ticketPanels.js";
 import { get_dominant_color } from "../../utils/color_utils.js";
 
@@ -565,6 +566,33 @@ router.post("/shop/settings/:guildId", requireAuth, async (req, res) => {
     shopChannelId: shopChannelId?.trim() || null,
     shopInterfaceEnabled: shopInterfaceEnabled !== undefined ? Boolean(shopInterfaceEnabled) : undefined,
   });
+  res.json({ ok: true });
+});
+
+// Boost settings
+router.get("/boost/:guildId", requireAuth, async (req, res) => {
+  const settings = await BoostSettings.getOrCreate(req.params.guildId);
+  res.json(settings);
+});
+
+router.post("/boost/:guildId", requireAuth, async (req, res) => {
+  const {
+    enabled, rewardPrimary, rewardSecondary, roleId,
+    earningsMultiplier, level, specialCommands, messageChannelId, thankMessage,
+  } = req.body;
+
+  await BoostSettings.save(req.params.guildId, {
+    enabled: enabled !== undefined ? Boolean(enabled) : undefined,
+    rewardPrimary: rewardPrimary !== undefined ? Math.max(0, Number(rewardPrimary) || 0) : undefined,
+    rewardSecondary: rewardSecondary !== undefined ? Math.max(0, Number(rewardSecondary) || 0) : undefined,
+    roleId: roleId?.trim() || null,
+    earningsMultiplier: earningsMultiplier !== undefined ? Number(earningsMultiplier) || 0 : undefined,
+    level: level !== undefined ? Number(level) || 0 : undefined,
+    specialCommands: specialCommands !== undefined ? parseSpecialCommands(specialCommands) : undefined,
+    messageChannelId: messageChannelId?.trim() || null,
+    thankMessage: thankMessage?.trim() || null,
+  });
+
   res.json({ ok: true });
 });
 

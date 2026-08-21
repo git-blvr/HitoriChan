@@ -19,6 +19,7 @@
       <a href="#cases" data-section="cases">Cases</a>
       <a href="#tickets" data-section="tickets">Tickets</a>
       <a href="#shop" data-section="shop">Shop</a>
+      <a href="#boost" data-section="boost">Boost</a>
       <a href="#triggers" data-section="triggers">Triggers</a>
       <a href="#logs" data-section="logs">Logs</a>
     </nav>
@@ -412,6 +413,45 @@
             <button type="submit" class="save-btn" id="shop-item-btn">Save Item</button>
             <button type="button" id="shop-item-cancel" class="save-btn">Cancel</button>
           </div>
+        </form>
+      </div>
+    </section>
+
+    <section id="boost" class="content-section">
+      <div class="panel">
+        <h2>Booster Perks</h2>
+        <form id="boost-form" class="config-form">
+          <label><input type="checkbox" id="boost-enabled" /> Enabled</label>
+
+          <div class="inline-fields">
+            <label class="grow">Primary Reward <input type="number" id="boost-reward-primary" min="0" value="0" /></label>
+            <label class="grow">Secondary Reward <input type="number" id="boost-reward-secondary" min="0" value="0" /></label>
+          </div>
+
+          <label>Booster Role
+            <select id="boost-role">
+              <option value="">-- None --</option>
+            </select>
+          </label>
+
+          <div class="inline-fields">
+            <label class="grow">Earnings Multiplier <input type="number" id="boost-earnings" step="0.1" value="0" /></label>
+            <label class="grow">Level Bonus <input type="number" id="boost-level" min="0" value="0" /></label>
+          </div>
+
+          <label>Unlocks Commands
+            <textarea id="boost-commands" rows="2" placeholder="One command name per line"></textarea>
+          </label>
+
+          <label>Thank-you Channel
+            <select id="boost-channel">
+              <option value="">-- None --</option>
+            </select>
+          </label>
+
+          <label>Thank-you Message <input type="text" id="boost-message" placeholder="Thanks {user} for boosting!" /></label>
+
+          <button type="submit" class="save-btn">Save Boost Settings</button>
         </form>
       </div>
     </section>
