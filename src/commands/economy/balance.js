@@ -67,8 +67,8 @@ export default {
       thumbnail: avatarUrl,
       separators: true,
       fields: [
-        { name: `${emoji(config.primary)}${config.primary.name}`, value: `**${formatMoney(account.primary)}**`, inline: true },
-        { name: `${emoji(config.secondary)}${config.secondary.name}`, value: `**${formatMoney(account.secondary)}**`, inline: true },
+        { name: `${emoji(config.primary)}${config.primary.name}`, value: `**${formatMoney(account.primary)}**`, inline: false },
+        { name: `${emoji(config.secondary)}${config.secondary.name}`, value: `**${formatMoney(account.secondary)}**`, inline: false },
       ],
       footer: { text: `Exchange Rate: 1 ${config.primary.name} = ${rate} ${config.secondary.name}` },
       timestamp: true,

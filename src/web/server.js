@@ -2,7 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { verifyCredentials, createSessionToken, generateInitialPassword } from "./auth.js";
+import { verifyCredentials, createSessionToken, generateInitialPassword, getLoginLockout, recordFailedLogin, resetLoginAttempts } from "./auth.js";
 import { requireAuth } from "./middleware/auth.js";
 import api from "./routes/api.js";
 
@@ -22,9 +22,22 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
 
   app.post("/api/login", (req, res) => {
     const { username, password } = req.body || {};
+    const ip = req.ip || req.socket?.remoteAddress || "unknown";
+
+    const lockout = getLoginLockout(ip);
+    if (lockout) {
+      return res.status(429).json({ error: lockout.message });
+    }
+
     if (!verifyCredentials(username, password)) {
+      const newLockout = recordFailedLogin(ip);
+      if (newLockout) {
+        return res.status(429).json({ error: newLockout.message });
+      }
       return res.status(401).json({ error: "Invalid username or password" });
     }
+
+    resetLoginAttempts(ip);
     const token = createSessionToken();
     res.cookie("token", token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: "strict", secure: req.secure });
     res.json({ ok: true });
