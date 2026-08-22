@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HitoriChan Dashboard — Login</title>
   <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/ui.css" />
 </head>
 <body class="login-body">
   <div class="login-wrapper">
@@ -17,7 +18,10 @@
           <label for="username">Username</label>
           <input id="username" name="username" type="text" autocomplete="username" required />
           <label for="password">Password</label>
-          <input id="password" name="password" type="password" placeholder="Insert your password here." autocomplete="current-password" required />
+          <div class="password-wrap">
+            <input id="password" name="password" type="password" placeholder="Insert your password here." autocomplete="current-password" required />
+            <button type="button" class="toggle-password" id="toggle-password" title="Show password">👁</button>
+          </div>
           <button type="submit" class="login-btn">Login</button>
         </form>
         <p id="login-error" class="login-error" hidden></p>

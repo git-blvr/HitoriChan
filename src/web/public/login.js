@@ -1,8 +1,23 @@
+const passwordInput = document.getElementById("password");
+const toggleBtn = document.getElementById("toggle-password");
+
+toggleBtn?.addEventListener("click", () => {
+  const isHidden = passwordInput.type === "password";
+  passwordInput.type = isHidden ? "text" : "password";
+  toggleBtn.textContent = isHidden ? "🙈" : "👁";
+  toggleBtn.title = isHidden ? "Hide password" : "Show password";
+});
+
 document.getElementById("login-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
+  const password = passwordInput.value;
   const errorEl = document.getElementById("login-error");
+  const btn = e.target.querySelector(".login-btn");
+
+  btn.disabled = true;
+  btn.textContent = "Logging in...";
+  errorEl.hidden = true;
 
   try {
     const res = await fetch("/api/login", {
@@ -21,5 +36,8 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
   } catch {
     errorEl.textContent = "Could not reach the server";
     errorEl.hidden = false;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Login";
   }
 });
