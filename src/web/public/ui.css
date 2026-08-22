@@ -294,6 +294,15 @@ body {
   transform: translateX(3px);
 }
 
+.nav-links a.docs-link {
+  color: #c084fc;
+}
+
+.nav-links a.docs-link:hover {
+  color: #e9d5ff;
+  background: rgba(139, 92, 246, 0.1);
+}
+
 .nav-links a.active {
   color: #fff;
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.22) 0%, rgba(124, 58, 237, 0.12) 100%);

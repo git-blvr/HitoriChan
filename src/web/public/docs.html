@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HitoriChan Dashboard Docs</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/ui.css" />
+  <style>
+    .docs-body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 15% 20%, #11111a 0%, #06060a 45%, #020203 100%);
+    }
+
+    .docs-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 28px;
+      background: var(--surface-glass);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+    }
+
+    .docs-header h1 {
+      font-size: 1.3rem;
+      margin: 0;
+      background: linear-gradient(90deg, #c084fc, #8b5cf6);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .docs-header a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+    }
+
+    .docs-header a:hover { color: var(--text); }
+
+    .docs-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 32px;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 28px 80px;
+    }
+
+    .docs-sidebar {
+      position: sticky;
+      top: 82px;
+      height: calc(100vh - 120px);
+      overflow-y: auto;
+      padding-right: 16px;
+    }
+
+    .docs-sidebar ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .docs-sidebar li + li { margin-top: 4px; }
+
+    .docs-sidebar a {
+      display: block;
+      padding: 8px 14px;
+      border-radius: 10px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.92rem;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .docs-sidebar a:hover,
+    .docs-sidebar a.active {
+      background: rgba(139, 92, 246, 0.12);
+      color: var(--text);
+    }
+
+    .docs-content h2 {
+      margin-top: 0;
+      padding-top: 82px;
+      margin-top: -82px;
+      color: var(--text);
+      font-size: 1.6rem;
+    }
+
+    .docs-content h3 {
+      color: var(--text);
+      font-size: 1.2rem;
+      margin-top: 28px;
+    }
+
+    .docs-content p,
+    .docs-content li {
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .docs-content strong { color: var(--text); }
+
+    .docs-content .panel {
+      margin-bottom: 24px;
+    }
+
+    .docs-content code {
+      background: var(--input);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.9em;
+    }
+
+    .docs-content pre {
+      background: var(--input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 0.9rem;
+    }
+
+    .docs-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+    }
+
+    .docs-content th,
+    .docs-content td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.92rem;
+    }
+
+    .docs-content th { color: var(--text); }
+
+    .docs-tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      font-size: 0.78rem;
+      color: #d8b4fe;
+      margin-right: 6px;
+    }
+
+    @media (max-width: 900px) {
+      .docs-layout {
+        grid-template-columns: 1fr;
+      }
+      .docs-sidebar {
+        position: static;
+        height: auto;
+        padding-right: 0;
+      }
+      .docs-sidebar ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+    }
+  </style>
+</head>
+<body class="docs-body">
+  <header class="docs-header">
+    <h1>HitoriChan Dashboard Docs</h1>
+    <a href="/dashboard">Back to Dashboard</a>
+  </header>
+
+  <div class="docs-layout">
+    <aside class="docs-sidebar">
+      <nav>
+        <ul>
+          <li><a href="#overview">Overview</a></li>
+          <li><a href="#economy">Economy</a></li>
+          <li><a href="#ai">AI Config</a></li>
+          <li><a href="#streak">Streak</a></li>
+          <li><a href="#moderation">Moderation</a></li>
+          <li><a href="#cases">Cases</a></li>
+          <li><a href="#tickets">Tickets</a></li>
+          <li><a href="#shop">Shop</a></li>
+          <li><a href="#boost">Boost</a></li>
+          <li><a href="#triggers">Triggers</a></li>
+          <li><a href="#logs">Logs</a></li>
+          <li><a href="#quests">Quests</a></li>
+          <li><a href="#users">Dashboard Users</a></li>
+          <li><a href="#tips">Tips & Shortcuts</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="docs-content">
+      <section class="panel" id="overview">
+        <h2>Overview</h2>
+        <p>The Overview page is the landing screen after you pick a server from the top-left dropdown. It gives you a quick snapshot of the bot's health and server activity.</p>
+
+        <h3>Stats cards</h3>
+        <table>
+          <tr><th>Card</th><th>What it shows</th></tr>
+          <tr><td>Servers</td><td>Number of Discord servers the bot is in.</td></tr>
+          <tr><td>Users</td><td>Total members across all servers the bot can see.</td></tr>
+          <tr><td>Total Messages</td><td>Total messages logged by the bot.</td></tr>
+          <tr><td>Voice Hours</td><td>Total hours spent in voice channels.</td></tr>
+          <tr><td>Collaborators</td><td>Number of dashboard accounts that exist.</td></tr>
+          <tr><td>Uptime</td><td>How long the bot has been running since the last restart.</td></tr>
+        </table>
+
+        <h3>Server Activity chart</h3>
+        <p>The chart shows message activity over the last 7, 30 or 90 days. Use the <strong>Range</strong> dropdown to change the window.</p>
+
+        <h3>System Status</h3>
+        <p>Shows the bot status (online/offline), Node.js version, platform, memory usage and CPU count.</p>
+
+        <p><span class="docs-tag">Tip</span> Click the refresh icon in the top right of any section to reload its data.</p>
+      </section>
+
+      <section class="panel" id="economy">
+        <h2>Economy</h2>
+        <p>The economy system lets you set up one or two currencies that users earn through chatting, streaks, dailies and shop sales.</p>
+
+        <h3>Primary &amp; Secondary Currency</h3>
+        <ul>
+          <li><strong>Name</strong> — the display name of the currency, e.g. "Starry Coins".</li>
+          <li><strong>Symbol</strong> — a short symbol, e.g. "SC".</li>
+          <li><strong>Emoji</strong> — an emoji shown next to balances. Click the input to open the emoji picker or type your own.</li>
+        </ul>
+
+        <h3>Daily Reward</h3>
+        <p>Sets the min/max range users can receive when they run the daily command. A random amount between min and max is given.</p>
+
+        <h3>Server Richboard</h3>
+        <p>The table shows the top users by primary and secondary balance, with avatars and display names.</p>
+      </section>
+
+      <section class="panel" id="ai">
+        <h2>AI Config</h2>
+        <p>The AI module lets the bot reply to messages using Groq. You can make it respond everywhere or only in one channel.</p>
+
+        <ul>
+          <li><strong>Enabled</strong> — turn the AI on/off.</li>
+          <li><strong>Mode</strong> — <code>Everywhere</code> replies to mentions and direct replies; <code>Specific channel</code> only talks in the chosen channel.</li>
+          <li><strong>Channel</strong> — the channel the AI watches when in "Specific channel" mode.</li>
+          <li><strong>Custom Prompt</strong> — system instructions for the AI's personality. Use the <strong>Import payload</strong> button to extract text from a Discord message or embed JSON.</li>
+        </ul>
+      </section>
+
+      <section class="panel" id="streak">
+        <h2>Streak</h2>
+        <p>Streaks reward users for sending messages consistently. Every day a user sends a message in the tracked channel, their streak grows.</p>
+
+        <ul>
+          <li><strong>Enabled</strong> — turn the streak tracker on/off.</li>
+          <li><strong>Track Channel</strong> — the channel that counts towards streaks. Leave empty to track all channels.</li>
+          <li><strong>Notify Channel</strong> — the channel where streak up/lost notifications are sent. Leave empty to use the tracked channel.</li>
+        </ul>
+      </section>
+
+      <section class="panel" id="moderation">
+        <h2>Moderation</h2>
+        <p>Global moderation settings used by warn, mute, kick, ban and timeout commands.</p>
+
+        <ul>
+          <li><strong>Log Channel</strong> — where moderation cases and logs are posted.</li>
+          <li><strong>Mod Role</strong> — the role that can use moderation commands (besides server admins).</li>
+        </ul>
+
+        <h3>Command Prefix</h3>
+        <p>The character that starts prefix commands, e.g. <code>!</code> or <code>~</code>. Slash commands do not use this prefix.</p>
+      </section>
+
+      <section class="panel" id="cases">
+        <h2>Cases</h2>
+        <p>Lists all moderation cases for the selected server. Each case shows the action, target user, moderator, reason and date. User IDs are resolved into avatars + display names automatically.</p>
+      </section>
+
+      <section class="panel" id="tickets">
+        <h2>Tickets</h2>
+        <p>Ticket panels are the messages users click to open a ticket. You can build them as a normal Discord embed or as a Components V2 (CV2) message.</p>
+
+        <h3>Panel basics</h3>
+        <ul>
+          <li><strong>Name</strong> — internal name for the panel.</li>
+          <li><strong>Type</strong> — <code>Embed</code> or <code>CV2</code>.</li>
+          <li><strong>Button Label / Color</strong> — the button users press to open a ticket.</li>
+          <li><strong>Title / Description</strong> — panel text. The <strong>Import payload</strong> button lets you paste a Discord message and extract the title or description.</li>
+          <li><strong>Color / Dominant color</strong> — accent color of the panel. Click <strong>Dominant color</strong> to sample the last image URL.</li>
+          <li><strong>Image / Thumbnail URL</strong> — optional media shown on the panel.</li>
+        </ul>
+
+        <h3>Embed fields</h3>
+        <p>Add, reorder or import fields for the embed version. Use <strong>Payload</strong> to paste a full embed JSON.</p>
+
+        <h3>CV2 Components</h3>
+        <p>Build a Components V2 message with text, images, separators and ticket buttons. You can also import an existing CV2 payload.</p>
+
+        <h3>Categories</h3>
+        <p>When a user opens a ticket they can pick a category from a dropdown. Add categories with a label and optional description.</p>
+
+        <h3>Other settings</h3>
+        <ul>
+          <li><strong>Ticket Category</strong> — channel category new ticket channels are created under.</li>
+          <li><strong>Staff Role</strong> — role that can claim/close tickets.</li>
+          <li><strong>Transcript Channel</strong> — where a close summary is posted.</li>
+          <li><strong>Welcome Message</strong> — message sent inside the new ticket channel. <code>{user}</code> pings the author.</li>
+          <li><strong>Send Panel To</strong> — channel to post the finished panel in.</li>
+        </ul>
+      </section>
+
+      <section class="panel" id="shop">
+        <h2>Shop</h2>
+        <p>The shop lets users buy roles, multipliers and unlocked commands with economy currency.</p>
+
+        <h3>Shop Settings</h3>
+        <ul>
+          <li><strong>Shop interface enabled</strong> — show the shop CV2 interface.</li>
+          <li><strong>Shop Channel</strong> — the channel where <code>/shop</code> posts the interface.</li>
+          <li><strong>Accent Color / Dominant color</strong> — styling for the shop CV2 message.</li>
+        </ul>
+
+        <h3>Shop Interface Builder</h3>
+        <p>Build the shop's CV2 message with text, images, media galleries and separators. Use <strong>Import from Payload</strong> to load an existing CV2 JSON.</p>
+
+        <h3>Categories</h3>
+        <p>Items are grouped into categories. Each category has a name, description and sort order.</p>
+
+        <h3>Items</h3>
+        <p>Items can have a price, optional role reward, earnings/level multiplier, required role, limited stock and a max per user. You can also list commands the item unlocks.</p>
+      </section>
+
+      <section class="panel" id="boost">
+        <h2>Boost</h2>
+        <p>Booster perks run when someone boosts the server.</p>
+
+        <ul>
+          <li><strong>Enabled</strong> — turn booster rewards on/off.</li>
+          <li><strong>Primary / Secondary Reward</strong> — economy given on boost.</li>
+          <li><strong>Booster Role</strong> — role assigned to boosters (also removed when boost ends).</li>
+          <li><strong>Earnings Multiplier / Level Bonus</strong> — passive boost to the user's economy multiplier and level.</li>
+          <li><strong>Unlocks Commands</strong> — one command name per line that boosters can use.</li>
+          <li><strong>Thank-you Channel / Message</strong> — channel and message sent when someone boosts. <code>{user}</code> pings the booster.</li>
+        </ul>
+      </section>
+
+      <section class="panel" id="triggers">
+        <h2>Triggers</h2>
+        <p>Keyword triggers run a command when a user types a keyword in chat. Use the searchable command picker to pick which command fires.</p>
+
+        <ul>
+          <li><strong>Keyword</strong> — the word that triggers the command.</li>
+          <li><strong>Command</strong> — slash or prefix command to run. Type to filter the list.</li>
+        </ul>
+      </section>
+
+      <section class="panel" id="logs">
+        <h2>Logs</h2>
+        <p>The Logs section shows two tables:</p>
+
+        <ul>
+          <li><strong>Command Logs</strong> — every command used, with user, command, source (slash/prefix) and success/failure. Filter by user, command or success status.</li>
+          <li><strong>Message Logs</strong> — messages the bot has logged. Filter by user or content. User and channel IDs are resolved into names.</li>
+        </ul>
+
+        <p><span class="docs-tag">Tip</span> The user filters are searchable dropdowns loaded from the server's member list.</p>
+      </section>
+
+      <section class="panel" id="quests">
+        <h2>Quests</h2>
+        <p>Quests are custom objectives you write in a small DSL. When a user's actions match the condition, the quest completes and runs one or more tasks.</p>
+
+        <h3>Schedule</h3>
+        <ul>
+          <li><strong>Once</strong> — one completion per user, ever.</li>
+          <li><strong>Daily</strong> — resets every day so users can complete it again.</li>
+          <li><strong>Weekly</strong> — resets every week.</li>
+        </ul>
+
+        <h3>DSL syntax</h3>
+        <pre>IF condition, EXECUTE TASK taskname</pre>
+
+        <h3>Operators</h3>
+        <table>
+          <tr><th>Operator</th><th>Meaning</th></tr>
+          <tr><td><code>&</code></td><td>AND</td></tr>
+          <tr><td><code>|</code></td><td>OR</td></tr>
+          <tr><td><code>!</code></td><td>NOT</td></tr>
+          <tr><td><code>=</code></td><td>Equals</td></tr>
+          <tr><td><code>!=</code></td><td>Not equals</td></tr>
+          <tr><td><code>&gt;=</code></td><td>Greater than or equal</td></tr>
+          <tr><td><code>&lt;=</code></td><td>Less than or equal</td></tr>
+          <tr><td><code>&gt;</code></td><td>Greater than</td></tr>
+          <tr><td><code>&lt;</code></td><td>Less than</td></tr>
+          <tr><td><code>INCLUDE</code></td><td>Text contains (case-insensitive)</td></tr>
+          <tr><td><code>STARTS_WITH</code></td><td>Text starts with</td></tr>
+          <tr><td><code>ENDS_WITH</code></td><td>Text ends with</td></tr>
+        </table>
+
+        <h3>Entities &amp; fields</h3>
+        <table>
+          <tr><th>Entity</th><th>Fields / Methods</th></tr>
+          <tr><td><code>message</code></td><td><code>content</code>, <code>channel</code>, <code>author</code>, <code>attachments</code></td></tr>
+          <tr><td><code>messages</code></td><td><code>sent</code>, <code>in_channel "id"</code>, <code>with_content "text"</code></td></tr>
+          <tr><td><code>user</code></td><td><code>id</code>, <code>username</code>, <code>display_name</code>, <code>is_bot</code>, <code>boosted</code>, <code>has_role "id"</code>, <code>has_any_role "id,id"</code></td></tr>
+          <tr><td><code>voice</code></td><td><code>minutes</code>, <code>joined</code></td></tr>
+          <tr><td><code>commands</code></td><td><code>count</code>, <code>used "name"</code></td></tr>
+          <tr><td><code>reactions</code></td><td><code>count</code></td></tr>
+          <tr><td><code>invites</code></td><td><code>count</code></td></tr>
+          <tr><td><code>economy</code></td><td><code>primary</code>, <code>secondary</code></td></tr>
+          <tr><td><code>channel</code></td><td><code>message</code>, <code>id</code>, <code>name</code></td></tr>
+        </table>
+
+        <h3>Examples</h3>
+        <pre>IF message.content INCLUDE "welcome", EXECUTE TASK welcome
+IF messages.sent >= 10 & user.has_role "123456789", EXECUTE TASK reward
+IF voice.minutes >= 5 | reactions.count >= 5, EXECUTE TASK chatter
+IF ! user.has_role "muted", EXECUTE TASK free
+IF (messages.sent >= 10 & ! user.has_role "muted"), EXECUTE TASK reward</pre>
+
+        <h3>Variables</h3>
+        <p>Variables are defined in the <strong>Variables (JSON)</strong> field. Reference them with a <code>$</code> prefix:</p>
+        <pre>{ "welcomeWord": "welcome" }
+
+IF message.content INCLUDE $welcomeWord, EXECUTE TASK welcome</pre>
+
+        <h3>Tasks (JSON)</h3>
+        <p>Tasks are the actions the quest runs. They must match the name in <code>EXECUTE TASK ...</code>.</p>
+        <pre>[{
+  "name": "welcome",
+  "type": "send_message",
+  "payload": {
+    "channelId": "CHANNEL_ID",
+    "content": "Hello {user}!"
+  }
+}]</pre>
+
+        <h3>Task types</h3>
+        <table>
+          <tr><th>Type</th><th>Payload</th></tr>
+          <tr><td><code>send_message</code></td><td><code>channelId</code>, <code>content</code></td></tr>
+          <tr><td><code>send_dm</code></td><td><code>content</code></td></tr>
+          <tr><td><code>give_role</code></td><td><code>roleId</code></td></tr>
+          <tr><td><code>remove_role</code></td><td><code>roleId</code></td></tr>
+          <tr><td><code>give_currency</code></td><td><code>currency</code> (primary/secondary), <code>amount</code></td></tr>
+        </table>
+
+        <h3>Reward</h3>
+        <p>Besides tasks, a quest can have a direct reward. Choose <strong>Currency</strong> (value = <code>primary</code> or <code>secondary</code>) or <strong>Role</strong> (value = role ID), and an amount.</p>
+      </section>
+
+      <section class="panel" id="users">
+        <h2>Dashboard Users</h2>
+        <p>Create and manage accounts for people who can log into this dashboard. The default <strong>Admin</strong> account always exists and has all permissions.</p>
+
+        <ul>
+          <li><strong>Username</strong> — login name.</li>
+          <li><strong>Password</strong> — required when creating a user; leave empty when editing to keep the current password.</li>
+          <li><strong>Permissions</strong> — sections the user can access. Uncheck everything to give read-only access to overview.</li>
+        </ul>
+
+        <p>All dashboard passwords are hashed with scrypt. Failed login attempts are limited to 3 per IP, with a 15 minute lockout.</p>
+      </section>
+
+      <section class="panel" id="tips">
+        <h2>Tips &amp; Shortcuts</h2>
+        <ul>
+          <li><strong>Guild selector</strong> — most sections need a server selected to load data. The bot must be in that server.</li>
+          <li><strong>Searchable dropdowns</strong> — long channel, role and member lists have a filter input. Type to narrow options.</li>
+          <li><strong>Import payload</strong> — many text inputs and textareas have an <strong>Import payload</strong> button. Paste a Discord message, embed or CV2 JSON and the text is extracted.</li>
+          <li><strong>Dominant color</strong> — ticket and shop builders can sample the dominant color from an image URL.</li>
+          <li><strong>Refresh</strong> — the circular arrow in the top bar re-runs the current section's loader.</li>
+          <li><strong>Mobile</strong> — the dashboard is responsive. On small screens the sidebar becomes a horizontal nav.</li>
+        </ul>
+      </section>
+
+      <p style="text-align:center; color:var(--muted); font-size:0.85rem; margin-top: 40px;">Documentation version matches the dashboard. Last updated with the Quests release.</p>
+    </main>
+  </div>
+
+  <script>
+    const links = document.querySelectorAll('.docs-sidebar a');
+    const sections = document.querySelectorAll('.docs-content .panel');
+
+    function onScroll() {
+      let current = '';
+      const offset = 100;
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= offset) {
+          current = section.id;
+        }
+      }
+      links.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === `#${current}`);
+      });
+    }
+
+    window.addEventListener('scroll', onScroll);
+    onScroll();
+  </script>
+</body>
+</html>
