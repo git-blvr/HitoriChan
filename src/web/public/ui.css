@@ -585,6 +585,98 @@ body {
 }
 
 /* =========================================================
+   Quest DSL editor
+   ========================================================= */
+
+.dsl-editor {
+  position: relative;
+  width: 100%;
+  min-height: 96px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--input);
+  overflow: hidden;
+}
+
+.dsl-editor textarea,
+.dsl-editor pre {
+  width: 100%;
+  height: 100%;
+  min-height: 96px;
+  padding: 14px;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: transparent;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: auto;
+  resize: vertical;
+  tab-size: 2;
+}
+
+.dsl-editor textarea {
+  position: relative;
+  z-index: 2;
+  caret-color: var(--text);
+  outline: none;
+}
+
+.dsl-editor textarea:focus { box-shadow: none; }
+
+.dsl-highlighter {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: none;
+  color: var(--text);
+  overflow: hidden;
+}
+
+.dsl-token-keyword { color: #c084fc; font-weight: 600; }
+.dsl-token-string { color: #86efac; }
+.dsl-token-number { color: #fdba74; }
+.dsl-token-operator { color: #60a5fa; }
+.dsl-token-variable { color: #f9a8d4; }
+.dsl-token-entity { color: #a5f3fc; }
+.dsl-token-punct { color: #94a3b8; }
+
+.quest-task-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.quest-task-card h4 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.quest-task-payload { margin-top: 10px; }
+
+.quest-variable-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.quest-variable-row input,
+.quest-task-payload input,
+.quest-task-payload select,
+.quest-task-payload textarea {
+  flex: 1;
+  min-width: 0;
+}
+
+/* =========================================================
    Payload import modal
    ========================================================= */
 

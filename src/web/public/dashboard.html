@@ -609,16 +609,25 @@
           </div>
 
           <label class="hint" style="margin-top:8px">DSL <span class="hint">Write: IF condition, EXECUTE TASK taskname. Operators: & (AND), | (OR), ! (NOT), INCLUDE, =, !=, >=, etc.</span>
-            <textarea id="quest-dsl" rows="4" placeholder='IF message.content INCLUDE &quot;welcome&quot;, EXECUTE TASK welcome' required></textarea>
+            <div class="dsl-editor">
+              <pre id="dsl-highlighter" class="dsl-highlighter" aria-hidden="true"></pre>
+              <textarea id="quest-dsl" rows="4" placeholder='IF message.content INCLUDE &quot;welcome&quot;, EXECUTE TASK welcome' required></textarea>
+            </div>
           </label>
 
-          <label>Variables (JSON)
-            <textarea id="quest-variables" rows="3" placeholder='{ &quot;welcomeWord&quot;: &quot;welcome&quot; }'></textarea>
-          </label>
+          <div class="panel sub-panel" id="quest-variables-panel">
+            <h3>Variables</h3>
+            <p class="hint">Reference them in the DSL with <code>$name</code>.</p>
+            <div id="quest-variables-list" class="quest-list"></div>
+            <button type="button" id="quest-add-variable" class="save-btn" style="margin-top:10px">+ Variable</button>
+          </div>
 
-          <label>Tasks (JSON)
-            <textarea id="quest-tasks" rows="4" placeholder='[{ &quot;name&quot;: &quot;welcome&quot;, &quot;type&quot;: &quot;send_message&quot;, &quot;payload&quot;: { &quot;channelId&quot;: &quot;...&quot;, &quot;content&quot;: &quot;Hello {user}!&quot; } }]'></textarea>
-          </label>
+          <div class="panel sub-panel" id="quest-tasks-panel">
+            <h3>Tasks</h3>
+            <p class="hint">Actions the quest runs when the condition is true.</p>
+            <div id="quest-tasks-list" class="quest-list"></div>
+            <button type="button" id="quest-add-task" class="save-btn" style="margin-top:10px">+ Task</button>
+          </div>
 
           <div class="inline-fields">
             <label class="grow">Reward Type

@@ -647,6 +647,7 @@ const sections = {
 
   quests: async () => {
     if (!currentGuild) return;
+    await loadGuildData(currentGuild);
     const quests = await json(`/api/quests/${currentGuild}`);
     const tbody = document.querySelector("#quests-table tbody");
     tbody.innerHTML = quests.map((q) => `
@@ -2009,22 +2010,246 @@ document.getElementById("user-form").addEventListener("submit", async (e) => {
 document.getElementById("user-cancel-btn").addEventListener("click", resetUserEditor);
 
 // Quests
+// DSL syntax highlighting
+const dslKeywords = new Set(["IF", "EXECUTE", "TASK", "AND", "OR", "NOT"]);
+const dslOperators = new Set([">=", "<=", "!=", "==", "=", "<", ">", "&", "|", "!", "INCLUDE", "STARTS_WITH", "ENDS_WITH"]);
+
+function highlightDsl(text) {
+  const re = /("(?:\\"|[^"])*"|'(?:\\'|[^'])*'|>=|<=|!=|==|=|<|>|&|\||!|\.|\(|\)|,|\$[A-Za-z_][A-Za-z0-9_]*|[A-Za-z_][A-Za-z0-9_]*|\d+\.?\d*|\n|\s+|.)/g;
+  let html = "";
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const token = m[1];
+    if (!token) break;
+    if (/^\s+$/.test(token) || token === "\n") {
+      html += token.replace(/\n/g, "<br>").replace(/ /g, " ");
+      continue;
+    }
+    let cls = "dsl-token-punct";
+    if (dslKeywords.has(token)) cls = "dsl-token-keyword";
+    else if (dslOperators.has(token)) cls = "dsl-token-operator";
+    else if (token.startsWith('"') || token.startsWith("'")) cls = "dsl-token-string";
+    else if (/^\d/.test(token)) cls = "dsl-token-number";
+    else if (token.startsWith("$")) cls = "dsl-token-variable";
+    else if (/^[A-Za-z_]/.test(token)) cls = "dsl-token-entity";
+    html += `<span class="${cls}">${escapeHtml(token)}</span>`;
+  }
+  return html;
+}
+
+function syncDslHighlighter() {
+  const textarea = document.getElementById("quest-dsl");
+  const highlighter = document.getElementById("dsl-highlighter");
+  if (!textarea || !highlighter) return;
+  highlighter.innerHTML = highlightDsl(textarea.value);
+  highlighter.scrollTop = textarea.scrollTop;
+  highlighter.scrollLeft = textarea.scrollLeft;
+}
+
+function initDslHighlighter() {
+  const textarea = document.getElementById("quest-dsl");
+  if (!textarea) return;
+  textarea.addEventListener("input", syncDslHighlighter);
+  textarea.addEventListener("scroll", syncDslHighlighter);
+  syncDslHighlighter();
+}
+
+// Quest variables UI
+function buildQuestVariables(data = {}) {
+  const list = document.getElementById("quest-variables-list");
+  if (!list) return;
+  list.innerHTML = "";
+  for (const [key, value] of Object.entries(data)) {
+    addQuestVariableRow(key, value);
+  }
+}
+
+function addQuestVariableRow(key = "", value = "") {
+  const list = document.getElementById("quest-variables-list");
+  if (!list) return;
+  const row = document.createElement("div");
+  row.className = "quest-variable-row";
+  row.innerHTML = `
+    <input type="text" class="quest-var-key" placeholder="name" value="${escapeHtml(key)}" />
+    <input type="text" class="quest-var-value" placeholder="value" value="${escapeHtml(String(value))}" />
+    <button type="button" class="save-btn quest-remove-variable" style="background:var(--surface-2)">Remove</button>
+  `;
+  row.querySelector(".quest-remove-variable").addEventListener("click", () => row.remove());
+  list.appendChild(row);
+}
+
+function getQuestVariables() {
+  const result = {};
+  document.querySelectorAll(".quest-variable-row").forEach((row) => {
+    const key = row.querySelector(".quest-var-key")?.value.trim();
+    const value = row.querySelector(".quest-var-value")?.value.trim();
+    if (key) {
+      let parsed = value;
+      if (value === "true") parsed = true;
+      else if (value === "false") parsed = false;
+      else if (value && !isNaN(Number(value)) && value !== "") parsed = Number(value);
+      result[key] = parsed;
+    }
+  });
+  return result;
+}
+
+// Quest tasks UI
+const QUEST_TASK_TYPES = {
+  send_message: "Send Message",
+  send_dm: "Send DM",
+  give_role: "Give Role",
+  remove_role: "Remove Role",
+  give_currency: "Give Currency",
+};
+
+function buildQuestTasks(tasks = []) {
+  const list = document.getElementById("quest-tasks-list");
+  if (!list) return;
+  list.innerHTML = "";
+  for (const task of tasks) {
+    addQuestTaskCard(task);
+  }
+}
+
+function makeSelectSearchableIfNeeded(select) {
+  if (select && !select._searchFilter) makeSelectSearchable(select);
+}
+
+function addQuestTaskCard(task = { name: "", type: "send_message", payload: {} }) {
+  const list = document.getElementById("quest-tasks-list");
+  if (!list) return;
+
+  const card = document.createElement("div");
+  card.className = "quest-task-card";
+  card.dataset.type = task.type;
+
+  const typeOptions = Object.entries(QUEST_TASK_TYPES).map(([k, l]) =>
+    `<option value="${k}" ${k === task.type ? "selected" : ""}>${l}</option>`
+  ).join("");
+
+  card.innerHTML = `
+    <div class="inline-fields">
+      <label class="grow">Task Name <input type="text" class="quest-task-name" value="${escapeHtml(task.name)}" required /></label>
+      <label class="grow">Type
+        <select class="quest-task-type">${typeOptions}</select>
+      </label>
+      <button type="button" class="save-btn quest-remove-task" style="background:var(--surface-2); align-self:flex-end">Remove</button>
+    </div>
+    <div class="quest-task-payload"></div>
+  `;
+
+  card.querySelector(".quest-remove-task").addEventListener("click", () => card.remove());
+  const typeSelect = card.querySelector(".quest-task-type");
+  typeSelect.addEventListener("change", () => renderTaskPayload(card, {}));
+
+  renderTaskPayload(card, task.payload);
+  list.appendChild(card);
+}
+
+function renderTaskPayload(card, payload = {}) {
+  const type = card.querySelector(".quest-task-type").value;
+  card.dataset.type = type;
+  const container = card.querySelector(".quest-task-payload");
+  if (!container) return;
+  let html = "";
+
+  if (type === "send_message") {
+    const channelId = payload.channelId || "";
+    const content = payload.content || "";
+    html = `
+      <label>Channel
+        <select class="quest-task-channel" data-searchable="true"><option value="">-- None --</option></select>
+      </label>
+      <label>Message <textarea class="quest-task-content" rows="2" placeholder="Hello {user}!">${escapeHtml(content)}</textarea></label>
+    `;
+  } else if (type === "send_dm") {
+    html = `<label>Message <textarea class="quest-task-content" rows="2" placeholder="Hello {user}!">${escapeHtml(payload.content || "")}</textarea></label>`;
+  } else if (type === "give_role" || type === "remove_role") {
+    html = `<label>Role <select class="quest-task-role" data-searchable="true"><option value="">-- None --</option></select></label>`;
+  } else if (type === "give_currency") {
+    const currency = payload.currency || "primary";
+    const amount = payload.amount || 0;
+    html = `
+      <div class="inline-fields">
+        <label class="grow">Currency
+          <select class="quest-task-currency">
+            <option value="primary" ${currency === "primary" ? "selected" : ""}>Primary</option>
+            <option value="secondary" ${currency === "secondary" ? "selected" : ""}>Secondary</option>
+          </select>
+        </label>
+        <label class="grow">Amount <input type="number" class="quest-task-amount" min="0" value="${amount}" /></label>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+
+  if (type === "send_message") {
+    const channelSelect = container.querySelector(".quest-task-channel");
+    if (channelSelect) {
+      makeSelectSearchableIfNeeded(channelSelect);
+      populateChannelsForEl(channelSelect, payload.channelId || "");
+    }
+  } else if (type === "give_role" || type === "remove_role") {
+    const roleSelect = container.querySelector(".quest-task-role");
+    if (roleSelect) {
+      makeSelectSearchableIfNeeded(roleSelect);
+      populateRolesForEl(roleSelect, payload.roleId || "");
+    }
+  }
+}
+
+function populateChannelsForEl(select, selectedId) {
+  select.innerHTML = '<option value="">-- None --</option>' +
+    (guildData.channels || []).map((c) =>
+      `<option value="${c.id}" ${c.id === selectedId ? "selected" : ""}>#${escapeHtml(c.name)}</option>`
+    ).join("");
+  refreshSelectFilter(select);
+}
+
+function populateRolesForEl(select, selectedId) {
+  select.innerHTML = '<option value="">-- None --</option>' +
+    (guildData.roles || []).map((r) =>
+      `<option value="${r.id}" ${r.id === selectedId ? "selected" : ""}>${escapeHtml(r.name)}</option>`
+    ).join("");
+  refreshSelectFilter(select);
+}
+
+function getQuestTasks() {
+  const tasks = [];
+  document.querySelectorAll(".quest-task-card").forEach((card) => {
+    const name = card.querySelector(".quest-task-name")?.value.trim();
+    if (!name) return;
+    const type = card.querySelector(".quest-task-type")?.value;
+    const payload = {};
+
+    if (type === "send_message") {
+      payload.channelId = card.querySelector(".quest-task-channel")?.value || null;
+      payload.content = card.querySelector(".quest-task-content")?.value.trim() || "";
+    } else if (type === "send_dm") {
+      payload.content = card.querySelector(".quest-task-content")?.value.trim() || "";
+    } else if (type === "give_role" || type === "remove_role") {
+      payload.roleId = card.querySelector(".quest-task-role")?.value || null;
+    } else if (type === "give_currency") {
+      payload.currency = card.querySelector(".quest-task-currency")?.value || "primary";
+      payload.amount = Number(card.querySelector(".quest-task-amount")?.value) || 0;
+    }
+
+    tasks.push({ name, type, payload });
+  });
+  return tasks;
+}
+
 function resetQuestEditor() {
   document.getElementById("quest-form").reset();
   document.getElementById("quest-id").value = "";
   document.getElementById("quest-enabled").value = "1";
   document.getElementById("quest-reward-amount").value = "0";
   document.getElementById("quest-save-btn").textContent = "Create Quest";
-}
-
-function parseJsonField(id) {
-  const raw = document.getElementById(id).value.trim();
-  if (!raw) return {};
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    throw new Error(`${id}: ${err.message}`);
-  }
+  buildQuestVariables({});
+  buildQuestTasks([]);
+  syncDslHighlighter();
 }
 
 window.editQuest = async (id) => {
@@ -2035,12 +2260,14 @@ window.editQuest = async (id) => {
   document.getElementById("quest-schedule").value = q.schedule;
   document.getElementById("quest-enabled").value = q.enabled ? "1" : "0";
   document.getElementById("quest-dsl").value = q.dsl;
-  document.getElementById("quest-variables").value = JSON.stringify(q.variables || {}, null, 2);
-  document.getElementById("quest-tasks").value = JSON.stringify(q.tasks || [], null, 2);
   document.getElementById("quest-reward-type").value = q.rewardType || "";
   document.getElementById("quest-reward-value").value = q.rewardValue || "";
   document.getElementById("quest-reward-amount").value = q.rewardAmount || 0;
   document.getElementById("quest-save-btn").textContent = "Update Quest";
+
+  buildQuestVariables(q.variables || {});
+  buildQuestTasks(q.tasks || []);
+  syncDslHighlighter();
 };
 
 window.deleteQuest = async (id) => {
@@ -2050,19 +2277,16 @@ window.deleteQuest = async (id) => {
   showToast("Quest deleted", "success");
 };
 
+document.getElementById("quest-add-variable").addEventListener("click", () => addQuestVariableRow());
+document.getElementById("quest-add-task").addEventListener("click", () => addQuestTaskCard());
+
 document.getElementById("quest-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!currentGuild) return;
 
   const id = document.getElementById("quest-id").value;
-  let variables, tasks;
-  try {
-    variables = parseJsonField("quest-variables");
-    tasks = parseJsonField("quest-tasks");
-  } catch (err) {
-    showToast(err.message, "error");
-    return;
-  }
+  const variables = getQuestVariables();
+  const tasks = getQuestTasks();
 
   const body = {
     name: document.getElementById("quest-name").value.trim(),
@@ -2093,6 +2317,8 @@ document.getElementById("quest-form").addEventListener("submit", async (e) => {
 });
 
 document.getElementById("quest-cancel-btn").addEventListener("click", resetQuestEditor);
+
+initDslHighlighter();
 
 const payloadModal = document.getElementById("payload-import-modal");
 const payloadText = document.getElementById("payload-import-text");
