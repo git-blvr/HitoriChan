@@ -153,7 +153,7 @@
               <option value="">-- None --</option>
             </select>
           </label>
-          <label>Custom Prompt <textarea id="ai-prompt" rows="6" placeholder="Custom instructions..."></textarea></label>
+          <label>Custom Prompt <textarea id="ai-prompt" rows="6" data-payload-import="text" placeholder="Custom instructions..."></textarea></label>
           <button type="submit" class="save-btn">Save AI Settings</button>
         </form>
       </div>
@@ -254,8 +254,8 @@
             </label>
           </div>
 
-          <label>Title <input type="text" id="ticket-title" placeholder="Support tickets" /></label>
-          <label>Description <textarea id="ticket-description" rows="4" placeholder="Click the button below to open a ticket."></textarea></label>
+          <label>Title <input type="text" id="ticket-title" data-payload-import="text" placeholder="Support tickets" /></label>
+          <label>Description <textarea id="ticket-description" rows="4" data-payload-import="text" placeholder="Click the button below to open a ticket."></textarea></label>
 
           <div class="inline-fields" style="align-items:flex-end">
             <label class="grow">Color
@@ -327,7 +327,7 @@
             </select>
           </label>
 
-          <label>Welcome Message <textarea id="ticket-welcome" rows="3" placeholder="Message sent inside the ticket channel. Use {user} to ping the user."></textarea></label>
+          <label>Welcome Message <textarea id="ticket-welcome" rows="3" data-payload-import="text" placeholder="Message sent inside the ticket channel. Use {user} to ping the user."></textarea></label>
 
           <div class="panel sub-panel" id="ticket-categories-panel">
             <h3>Ticket Categories</h3>
@@ -439,11 +439,11 @@
           <input type="hidden" id="shop-item-category-id" />
 
           <div class="inline-fields">
-            <label class="grow">Name <input type="text" id="shop-item-name" required /></label>
+            <label class="grow">Name <input type="text" id="shop-item-name" data-payload-import="text" required /></label>
             <label class="grow">Sort Order <input type="number" id="shop-item-sort" value="0" /></label>
           </div>
 
-          <label>Description <textarea id="shop-item-desc" rows="3"></textarea></label>
+          <label>Description <textarea id="shop-item-desc" rows="3" data-payload-import="text"></textarea></label>
 
           <div class="inline-fields">
             <label class="grow">Primary Price <input type="number" id="shop-item-price" min="0" value="0" /></label>
@@ -522,7 +522,7 @@
             </select>
           </label>
 
-          <label>Thank-you Message <input type="text" id="boost-message" placeholder="Thanks {user} for boosting!" /></label>
+          <label>Thank-you Message <input type="text" id="boost-message" data-payload-import="text" placeholder="Thanks {user} for boosting!" /></label>
 
           <button type="submit" class="save-btn">Save Boost Settings</button>
         </form>
@@ -551,7 +551,9 @@
       <div class="panel">
         <h2>Command Logs</h2>
         <div class="filter-bar">
-          <input type="text" id="cmd-filter-user" placeholder="User" />
+          <select id="cmd-filter-user" data-searchable="true" data-entity="user">
+            <option value="">-- Any user --</option>
+          </select>
           <input type="text" id="cmd-filter-command" placeholder="Command" />
           <select id="cmd-filter-success">
             <option value="all" selected>All</option>
@@ -568,7 +570,9 @@
       <div class="panel">
         <h2>Message Logs</h2>
         <div class="filter-bar">
-          <input type="text" id="msg-filter-user" placeholder="User" />
+          <select id="msg-filter-user" data-searchable="true" data-entity="user">
+            <option value="">-- Any user --</option>
+          </select>
           <input type="text" id="msg-filter-content" placeholder="Content" />
           <button type="button" id="msg-filter-btn" class="save-btn">Filter</button>
         </div>
@@ -603,6 +607,20 @@
   </main>
 
   <div id="toast-container"></div>
+
+  <div id="payload-import-modal" class="payload-modal" hidden>
+    <div class="payload-modal-backdrop"></div>
+    <div class="payload-modal-card">
+      <h3>Import from payload</h3>
+      <p class="hint">Paste a Discord message / embed / CV2 JSON. The text content will be extracted.</p>
+      <textarea id="payload-import-text" rows="8" placeholder="{ \"content\": \"...\" }"></textarea>
+      <div class="inline-form" style="margin-top:12px; justify-content:flex-end">
+        <button type="button" id="payload-import-cancel" class="save-btn" style="background:var(--surface-2)">Cancel</button>
+        <button type="button" id="payload-import-confirm" class="save-btn">Import</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/dashboard.js"></script>
 </body>
 </html>

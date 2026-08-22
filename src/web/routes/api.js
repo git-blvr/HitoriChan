@@ -63,6 +63,76 @@ router.get("/guilds/:guildId/roles", requireAuth, async (req, res) => {
   res.json(roles);
 });
 
+router.get("/guilds/:guildId/members", requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const guild = client.guilds.cache.get(req.params.guildId);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  const query = req.query.q?.trim();
+  const limit = Math.min(Number(req.query.limit) || 100, 1000);
+  let members;
+
+  try {
+    if (query) {
+      members = await guild.members.fetch({ query, limit: Math.min(limit, 100) });
+    } else if (guild.memberCount <= limit) {
+      members = await guild.members.fetch({ limit });
+    } else {
+      members = guild.members.cache;
+    }
+  } catch (err) {
+    console.error("Guild members fetch failed:", err.message);
+    members = guild.members.cache;
+  }
+
+  const result = Array.from(members.values())
+    .filter((m) => !m.user.bot)
+    .map((m) => ({
+      id: m.id,
+      displayName: m.displayName,
+      username: m.user.username,
+      avatar: m.user.displayAvatarURL?.({ size: 64 }) ?? null,
+      roles: m.roles.cache.map((r) => r.id),
+    }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+  res.json(result);
+});
+
+router.post("/guilds/:guildId/resolve", requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const guild = client.guilds.cache.get(req.params.guildId);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  const { users = [], roles = [], channels = [] } = req.body || {};
+  const result = { users: {}, roles: {}, channels: {} };
+
+  for (const id of users) {
+    const member = guild.members.cache.get(id) || client.users.cache.get(id);
+    if (member) {
+      const user = member.user || member;
+      result.users[id] = {
+        id,
+        displayName: member.displayName ?? user.username,
+        username: user.username,
+        avatar: user.displayAvatarURL?.({ size: 64 }) ?? member.displayAvatarURL?.({ size: 64 }) ?? null,
+      };
+    }
+  }
+
+  for (const id of roles) {
+    const role = guild.roles.cache.get(id);
+    if (role) result.roles[id] = { id, name: role.name, color: role.color };
+  }
+
+  for (const id of channels) {
+    const channel = client.channels.cache.get(id) || guild.channels.cache.get(id);
+    if (channel) result.channels[id] = { id, name: channel.name, type: channel.type };
+  }
+
+  res.json(result);
+});
+
 // Economy
 router.get("/economy/:guildId", requireAuth, async (req, res) => {
   const client = req.app.get("client");

@@ -9,7 +9,8 @@ let allCommands = [];
 let allPermissions = [];
 let currentUser = { isAdmin: false, permissions: [] };
 let activityChart = null;
-let guildData = { id: null, channels: [], roles: [] };
+let guildData = { id: null, channels: [], roles: [], categories: [], members: [] };
+const resolvedCache = { users: {}, roles: {}, channels: {} };
 
 function api(path, options = {}) {
   return fetch(path, { credentials: "same-origin", ...options });
@@ -123,18 +124,99 @@ function populateCommandDatalist(datalistId) {
 
 async function loadGuildData(guildId) {
   if (!guildId) {
-    guildData = { id: null, channels: [], roles: [], categories: [] };
+    guildData = { id: null, channels: [], roles: [], categories: [], members: [] };
     return;
   }
   if (guildData.id === guildId) return;
 
-  const [channels, roles, categories] = await Promise.all([
+  const [channels, roles, categories, members] = await Promise.all([
     json(`/api/guilds/${guildId}/channels`),
     json(`/api/guilds/${guildId}/roles`),
     json(`/api/guilds/${guildId}/categories`),
+    json(`/api/guilds/${guildId}/members?limit=1000`),
   ]);
 
-  guildData = { id: guildId, channels, roles, categories };
+  guildData = { id: guildId, channels, roles, categories, members: members || [] };
+  resolvedCache.users = {};
+  resolvedCache.roles = {};
+  resolvedCache.channels = {};
+}
+
+async function resolveEntityIds(guildId, users = [], roles = [], channels = []) {
+  const missingUsers = users.filter((id) => !resolvedCache.users[id] && !guildData.members.find((m) => m.id === id));
+  const missingRoles = roles.filter((id) => !resolvedCache.roles[id] && !guildData.roles.find((r) => r.id === id));
+  const missingChannels = channels.filter((id) => !resolvedCache.channels[id] && !guildData.channels.find((c) => c.id === id));
+
+  if (missingUsers.length || missingRoles.length || missingChannels.length) {
+    try {
+      const res = await json(`/api/guilds/${guildId}/resolve`, {
+        method: "POST",
+        body: JSON.stringify({ users: missingUsers, roles: missingRoles, channels: missingChannels }),
+      });
+      Object.assign(resolvedCache.users, res.users || {});
+      Object.assign(resolvedCache.roles, res.roles || {});
+      Object.assign(resolvedCache.channels, res.channels || {});
+    } catch {
+      // ignore resolution failures; display raw IDs
+    }
+  }
+}
+
+function resolveUser(id) {
+  if (guildData.members) {
+    const member = guildData.members.find((m) => m.id === id);
+    if (member) return member;
+  }
+  return resolvedCache.users[id] || null;
+}
+
+function resolveChannel(id) {
+  const channel = guildData.channels.find((c) => c.id === id);
+  if (channel) return channel;
+  return resolvedCache.channels[id] || null;
+}
+
+function resolveRole(id) {
+  const role = guildData.roles.find((r) => r.id === id);
+  if (role) return role;
+  return resolvedCache.roles[id] || null;
+}
+
+function userCell(id, fallback = null) {
+  const user = resolveUser(id);
+  const name = escapeHtml(user?.displayName || user?.username || fallback || id);
+  const avatar = user?.avatar;
+  return `
+    <div class="user-cell" title="${escapeHtml(id)}">
+      ${avatar ? `<img src="${escapeHtml(avatar)}" alt="" class="table-avatar" />` : ""}
+      <span>${name}</span>
+    </div>
+  `;
+}
+
+function channelPill(id, fallback = null) {
+  const channel = resolveChannel(id);
+  const name = escapeHtml(channel?.name ? `#${channel.name}` : (fallback || id));
+  return `<span class="entity-pill" title="${escapeHtml(id)}">${name}</span>`;
+}
+
+function rolePill(id, fallback = null) {
+  const role = resolveRole(id);
+  const color = role?.color ? `#${role.color.toString(16).padStart(6, "0")}` : "var(--text)";
+  const name = escapeHtml(role?.name || fallback || id);
+  return `<span class="entity-pill" style="color:${color}" title="${escapeHtml(id)}">${name}</span>`;
+}
+
+function populateUserSelect(selectId, selectedId, placeholder = "-- Any user --") {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const options = (guildData.members || [])
+    .slice()
+    .sort((a, b) => (a.displayName || a.username).localeCompare(b.displayName || b.username))
+    .map((m) => `<option value="${m.id}" ${m.id === selectedId ? "selected" : ""}>${escapeHtml(m.displayName || m.username)}</option>`)
+    .join("");
+  select.innerHTML = `<option value="">${escapeHtml(placeholder)}</option>` + options;
+  if (select.dataset.searchable === "true") refreshSelectFilter(select);
 }
 
 function populateChannels(selectId, selectedId, placeholder = "-- None --") {
@@ -471,13 +553,16 @@ const sections = {
   cases: async () => {
     if (!currentGuild) return;
     const rows = await json(`/api/moderation/cases/${currentGuild}`);
+    const userIds = [...new Set([...rows.map((c) => c.targetId), ...rows.map((c) => c.moderatorId)].filter(Boolean))];
+    await resolveEntityIds(currentGuild, userIds, [], []);
+
     const tbody = document.querySelector("#cases-table tbody");
     tbody.innerHTML = rows.map((c) => `
       <tr>
         <td>${escapeHtml(c.caseId)}</td>
         <td>${escapeHtml(c.action)}</td>
-        <td title="${escapeHtml(c.targetId)}">${escapeHtml(c.targetName || c.targetId)}</td>
-        <td title="${escapeHtml(c.moderatorId)}">${escapeHtml(c.moderatorName || c.moderatorId)}</td>
+        <td>${userCell(c.targetId, c.targetName)}</td>
+        <td>${userCell(c.moderatorId, c.moderatorName)}</td>
         <td>${escapeHtml(c.reason)}</td>
         <td>${formatDate(c.createdAt)}</td>
       </tr>
@@ -554,6 +639,9 @@ const sections = {
 
   logs: async () => {
     if (!currentGuild) return;
+    await loadGuildData(currentGuild);
+    populateUserSelect("cmd-filter-user", document.getElementById("cmd-filter-user").value);
+    populateUserSelect("msg-filter-user", document.getElementById("msg-filter-user").value);
     await Promise.all([loadCommandLogs(), loadMessageLogs()]);
   },
 
@@ -592,12 +680,14 @@ async function loadCommandLogs() {
   if (success !== "all") params.set("success", success);
 
   const cmdLogs = await json(`/api/logs/commands/${currentGuild}?${params}`);
+  const userIds = [...new Set(cmdLogs.map((l) => l.userId).filter(Boolean))];
+  await resolveEntityIds(currentGuild, userIds, [], []);
 
   const cmdBody = document.querySelector("#command-logs-table tbody");
   cmdBody.innerHTML = cmdLogs.map((l) => `
     <tr>
       <td>${formatDate(l.createdAt)}</td>
-      <td>${escapeHtml(l.userName || l.userId)}</td>
+      <td>${userCell(l.userId, l.userName)}</td>
       <td>${escapeHtml(l.commandName)}</td>
       <td>${escapeHtml(l.source)}</td>
       <td class="${l.success ? 'status-ok' : 'status-err'}">${l.success ? 'Yes' : 'No'}</td>
@@ -614,13 +704,16 @@ async function loadMessageLogs() {
   if (content) params.set("content", content);
 
   const msgLogs = await json(`/api/logs/messages/${currentGuild}?${params}`);
+  const userIds = [...new Set(msgLogs.map((l) => l.userId).filter(Boolean))];
+  const channelIds = [...new Set(msgLogs.map((l) => l.channelId).filter(Boolean))];
+  await resolveEntityIds(currentGuild, userIds, [], channelIds);
 
   const msgBody = document.querySelector("#message-logs-table tbody");
   msgBody.innerHTML = msgLogs.map((l) => `
     <tr>
       <td>${formatDate(l.createdAt)}</td>
-      <td>${escapeHtml(l.userName || l.userId)}</td>
-      <td>${l.channelId}</td>
+      <td>${userCell(l.userId, l.userName)}</td>
+      <td>${channelPill(l.channelId)}</td>
       <td>${escapeHtml(l.content)}</td>
     </tr>
   `).join("") || '<tr><td colspan="4">No message logs</td></tr>';
@@ -1894,6 +1987,97 @@ document.getElementById("user-form").addEventListener("submit", async (e) => {
 
 document.getElementById("user-cancel-btn").addEventListener("click", resetUserEditor);
 
+const payloadModal = document.getElementById("payload-import-modal");
+const payloadText = document.getElementById("payload-import-text");
+let payloadImportTarget = null;
+
+function extractTextFromPayload(payload) {
+  if (!payload) return "";
+
+  // Plain message
+  if (typeof payload.content === "string" && payload.content) return payload.content;
+
+  // Embed
+  if (payload.embeds?.length) {
+    const embed = payload.embeds[0];
+    if (embed.description) return embed.description;
+    if (embed.title) return embed.title;
+  }
+
+  // CV2 Container / components
+  const components = Array.isArray(payload) ? payload : payload.components;
+  if (components?.length) {
+    for (const top of components) {
+      const container = top?.components || (top?.type === 17 ? top.components : null);
+      if (!Array.isArray(container)) continue;
+      for (const c of container) {
+        if (c?.content) return c.content;
+        if (c?.components) {
+          for (const inner of c.components) {
+            if (inner?.content) return inner.content;
+          }
+        }
+      }
+    }
+  }
+
+  // Fallback to JSON string if it looks short
+  const str = typeof payload === "string" ? payload : JSON.stringify(payload);
+  return str.length < 2000 ? str : "";
+}
+
+function openPayloadImport(target) {
+  payloadImportTarget = target;
+  payloadText.value = "";
+  payloadModal.hidden = false;
+  payloadText.focus();
+}
+
+function closePayloadImport() {
+  payloadModal.hidden = true;
+  payloadImportTarget = null;
+}
+
+function applyPayloadImport() {
+  if (!payloadImportTarget) return;
+  const raw = payloadText.value.trim();
+  if (!raw) {
+    showToast("Paste a payload first", "error");
+    return;
+  }
+
+  try {
+    const payload = JSON.parse(raw);
+    const text = extractTextFromPayload(payload);
+    if (!text) {
+      showToast("Could not find text content in payload", "error");
+      return;
+    }
+    payloadImportTarget.value = text;
+    payloadImportTarget.dispatchEvent(new Event("input", { bubbles: true }));
+    showToast("Payload imported", "success");
+    closePayloadImport();
+  } catch (err) {
+    showToast("Invalid JSON: " + err.message, "error");
+  }
+}
+
+document.getElementById("payload-import-confirm")?.addEventListener("click", applyPayloadImport);
+document.getElementById("payload-import-cancel")?.addEventListener("click", closePayloadImport);
+payloadModal?.querySelector(".payload-modal-backdrop")?.addEventListener("click", closePayloadImport);
+
+function initPayloadImportButtons() {
+  document.querySelectorAll('input[data-payload-import], textarea[data-payload-import]').forEach((el) => {
+    if (el.parentElement?.querySelector('.payload-import-btn')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'payload-import-btn';
+    btn.textContent = 'Import payload';
+    btn.addEventListener('click', () => openPayloadImport(el));
+    el.parentElement?.appendChild(btn);
+  });
+}
+
 function initSelectFilters() {
   const excluded = new Set([
     "chart-range",
@@ -1911,4 +2095,5 @@ function initSelectFilters() {
 
 // Init
 initSelectFilters();
+initPayloadImportButtons();
 initUser().then(() => loadGuilds().then(() => showSection("overview")));
