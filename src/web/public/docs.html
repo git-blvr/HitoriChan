@@ -375,7 +375,7 @@
 
       <section class="panel" id="quests">
         <h2>Quests</h2>
-        <p>Quests are custom objectives you write in a small DSL. When a user's actions match the condition, the quest completes and runs one or more tasks.</p>
+        <p>Quests are custom objectives built with dropdowns. When a user's actions match the conditions, the quest completes and runs all tasks you add.</p>
 
         <h3>Schedule</h3>
         <ul>
@@ -384,72 +384,45 @@
           <li><strong>Weekly</strong> — resets every week.</li>
         </ul>
 
-        <h3>DSL syntax</h3>
-        <pre>IF condition, EXECUTE TASK taskname</pre>
+        <h3>Condition builder</h3>
+        <p>Each quest has one or more condition blocks. You can set the whole quest to require <strong>All</strong> (AND) or <strong>Any</strong> (OR) of them.</p>
 
-        <h3>Operators</h3>
-        <table>
-          <tr><th>Operator</th><th>Meaning</th></tr>
-          <tr><td><code>&</code></td><td>AND</td></tr>
-          <tr><td><code>|</code></td><td>OR</td></tr>
-          <tr><td><code>!</code></td><td>NOT</td></tr>
-          <tr><td><code>=</code></td><td>Equals</td></tr>
-          <tr><td><code>!=</code></td><td>Not equals</td></tr>
-          <tr><td><code>&gt;=</code></td><td>Greater than or equal</td></tr>
-          <tr><td><code>&lt;=</code></td><td>Less than or equal</td></tr>
-          <tr><td><code>&gt;</code></td><td>Greater than</td></tr>
-          <tr><td><code>&lt;</code></td><td>Less than</td></tr>
-          <tr><td><code>INCLUDE</code></td><td>Text contains (case-insensitive)</td></tr>
-          <tr><td><code>STARTS_WITH</code></td><td>Text starts with</td></tr>
-          <tr><td><code>ENDS_WITH</code></td><td>Text ends with</td></tr>
-        </table>
+        <p>Each block has:</p>
+        <ul>
+          <li><strong>NOT</strong> — invert the condition.</li>
+          <li><strong>Entity</strong> — what you are checking (Message, Messages, User, Voice, Commands, Reactions, Invites, Economy, Channel, Guild).</li>
+          <li><strong>Field</strong> — the specific thing to check (e.g. Content, Channel, Has role).</li>
+          <li><strong>Operator</strong> — how to compare (INCLUDE, =, >=, etc.).</li>
+          <li><strong>Value</strong> — the number, text, channel, role or user to check against. Text inputs can use <code>$variable</code> to reference a variable.</li>
+        </ul>
 
         <h3>Entities &amp; fields</h3>
         <table>
-          <tr><th>Entity</th><th>Fields / Methods</th></tr>
-          <tr><td><code>message</code></td><td><code>content</code>, <code>channel</code>, <code>author</code>, <code>attachments</code></td></tr>
-          <tr><td><code>messages</code></td><td><code>sent</code>, <code>in_channel "id"</code>, <code>with_content "text"</code></td></tr>
-          <tr><td><code>user</code></td><td><code>id</code>, <code>username</code>, <code>display_name</code>, <code>is_bot</code>, <code>boosted</code>, <code>has_role "id"</code>, <code>has_any_role "id,id"</code></td></tr>
-          <tr><td><code>voice</code></td><td><code>minutes</code>, <code>joined</code></td></tr>
-          <tr><td><code>commands</code></td><td><code>count</code>, <code>used "name"</code></td></tr>
-          <tr><td><code>reactions</code></td><td><code>count</code></td></tr>
-          <tr><td><code>invites</code></td><td><code>count</code></td></tr>
-          <tr><td><code>economy</code></td><td><code>primary</code>, <code>secondary</code></td></tr>
-          <tr><td><code>channel</code></td><td><code>message</code>, <code>id</code>, <code>name</code></td></tr>
+          <tr><th>Entity</th><th>Fields</th></tr>
+          <tr><td><code>Message</code></td><td>Content, Channel, Author, Attachment count</td></tr>
+          <tr><td><code>Messages</code></td><td>Total sent, Sent in channel, Containing text</td></tr>
+          <tr><td><code>User</code></td><td>ID, Username, Display name, Is bot, Is boosting, Has role, Has any role, In channel</td></tr>
+          <tr><td><code>Voice</code></td><td>Minutes, Joins</td></tr>
+          <tr><td><code>Commands</code></td><td>Total used, Used command</td></tr>
+          <tr><td><code>Reactions</code></td><td>Total reactions</td></tr>
+          <tr><td><code>Invites</code></td><td>Count</td></tr>
+          <tr><td><code>Economy</code></td><td>Primary balance, Secondary balance</td></tr>
+          <tr><td><code>Channel</code></td><td>Message content</td></tr>
+          <tr><td><code>Guild</code></td><td>Guild ID</td></tr>
         </table>
 
-        <h3>Examples</h3>
-        <pre>IF message.content INCLUDE "welcome", EXECUTE TASK welcome
-IF messages.sent >= 10 & user.has_role "123456789", EXECUTE TASK reward
-IF voice.minutes >= 5 | reactions.count >= 5, EXECUTE TASK chatter
-IF ! user.has_role "muted", EXECUTE TASK free
-IF (messages.sent >= 10 & ! user.has_role "muted"), EXECUTE TASK reward</pre>
-
         <h3>Variables</h3>
-        <p>Variables are defined in the <strong>Variables (JSON)</strong> field. Reference them with a <code>$</code> prefix:</p>
-        <pre>{ "welcomeWord": "welcome" }
+        <p>Add variables with the <strong>+ Variable</strong> button. Reference them in any text value with a <code>$</code> prefix, e.g. <code>$welcomeWord</code>.</p>
 
-IF message.content INCLUDE $welcomeWord, EXECUTE TASK welcome</pre>
-
-        <h3>Tasks (JSON)</h3>
-        <p>Tasks are the actions the quest runs. They must match the name in <code>EXECUTE TASK ...</code>.</p>
-        <pre>[{
-  "name": "welcome",
-  "type": "send_message",
-  "payload": {
-    "channelId": "CHANNEL_ID",
-    "content": "Hello {user}!"
-  }
-}]</pre>
-
-        <h3>Task types</h3>
+        <h3>Tasks</h3>
+        <p>Add tasks with the <strong>+ Task</strong> button. When the condition is met, all tasks run.</p>
         <table>
           <tr><th>Type</th><th>Payload</th></tr>
-          <tr><td><code>send_message</code></td><td><code>channelId</code>, <code>content</code></td></tr>
-          <tr><td><code>send_dm</code></td><td><code>content</code></td></tr>
-          <tr><td><code>give_role</code></td><td><code>roleId</code></td></tr>
-          <tr><td><code>remove_role</code></td><td><code>roleId</code></td></tr>
-          <tr><td><code>give_currency</code></td><td><code>currency</code> (primary/secondary), <code>amount</code></td></tr>
+          <tr><td><code>send_message</code></td><td>channel, content</td></tr>
+          <tr><td><code>send_dm</code></td><td>content</td></tr>
+          <tr><td><code>give_role</code></td><td>role</td></tr>
+          <tr><td><code>remove_role</code></td><td>role</td></tr>
+          <tr><td><code>give_currency</code></td><td>primary/secondary, amount</td></tr>
         </table>
 
         <h3>Reward</h3>
