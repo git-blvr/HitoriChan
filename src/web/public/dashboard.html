@@ -22,6 +22,7 @@
       <a href="#boost" data-section="boost">Boost</a>
       <a href="#triggers" data-section="triggers">Triggers</a>
       <a href="#logs" data-section="logs">Logs</a>
+      <a href="#users" data-section="users">Users</a>
     </nav>
     <div class="nav-footer">
       <button id="logout-btn" class="logout-btn">Logout</button>
@@ -572,6 +573,28 @@
         </div>
         <table class="data-table" id="message-logs-table">
           <thead><tr><th>Time</th><th>User</th><th>Channel</th><th>Content</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="users" class="content-section">
+      <div class="panel">
+        <h2>Dashboard Users</h2>
+        <form id="user-form" class="config-form" style="margin-bottom:16px">
+          <input type="hidden" id="user-id" />
+          <label>Username <input type="text" id="user-username" required autocomplete="off" /></label>
+          <label>Password <input type="text" id="user-password" placeholder="Leave empty when editing to keep current" /></label>
+          <p class="hint">Pick which dashboard sections this user can access.</p>
+          <div id="user-permissions" class="checkbox-group"></div>
+          <div class="inline-form" style="margin-top:10px">
+            <button type="submit" class="save-btn" id="user-save-btn">Create User</button>
+            <button type="button" id="user-cancel-btn" class="save-btn">Cancel</button>
+          </div>
+        </form>
+
+        <table class="data-table" id="users-table">
+          <thead><tr><th>Username</th><th>Permissions</th><th>Created</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>

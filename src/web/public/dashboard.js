@@ -6,6 +6,8 @@ let currentGuild = "";
 let currentSection = "overview";
 let allGuilds = [];
 let allCommands = [];
+let allPermissions = [];
+let currentUser = { isAdmin: false, permissions: [] };
 let activityChart = null;
 let guildData = { id: null, channels: [], roles: [] };
 
@@ -53,6 +55,43 @@ async function loadGuilds() {
 
   refreshSelectFilter(guildSelect);
   return allGuilds;
+}
+
+function canAccessSection(section) {
+  if (currentUser.isAdmin) return true;
+  if (section === "overview") return true;
+  return currentUser.permissions.includes(section);
+}
+
+async function initUser() {
+  try {
+    const { permissions, user } = await json("/api/users/permissions");
+    allPermissions = permissions || [];
+    currentUser = user || { isAdmin: false, permissions: [] };
+    updateNavVisibility();
+  } catch {
+    currentUser = { isAdmin: false, permissions: [] };
+  }
+}
+
+function updateNavVisibility() {
+  document.querySelectorAll(".nav-links a").forEach((link) => {
+    const section = link.dataset.section;
+    if (section === "users" && !canAccessSection("users")) {
+      link.hidden = true;
+      return;
+    }
+    link.hidden = !canAccessSection(section);
+  });
+}
+
+function permissionCheckbox(perm) {
+  return `
+    <label class="checkbox-label" style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer">
+      <input type="checkbox" id="perm-${perm}" name="permissions" value="${perm}" />
+      <span>${perm[0].toUpperCase() + perm.slice(1)}</span>
+    </label>
+  `;
 }
 
 async function loadCommands(guildId) {
@@ -517,6 +556,29 @@ const sections = {
     if (!currentGuild) return;
     await Promise.all([loadCommandLogs(), loadMessageLogs()]);
   },
+
+  users: async () => {
+    const [users, perms] = await Promise.all([json("/api/users"), json("/api/users/permissions")]);
+    allPermissions = perms.permissions || [];
+
+    const permissionsHtml = allPermissions.map(permissionCheckbox).join("");
+    document.getElementById("user-permissions").innerHTML = permissionsHtml;
+
+    const tbody = document.querySelector("#users-table tbody");
+    tbody.innerHTML = users.map((u) => `
+      <tr>
+        <td>${escapeHtml(u.username)}</td>
+        <td>${escapeHtml((u.permissions || []).join(", "))}</td>
+        <td>${formatDate(u.createdAt)}</td>
+        <td>
+          <button onclick="editUser(${u.id})">Edit</button>
+          <button onclick="deleteUser(${u.id})">Delete</button>
+        </td>
+      </tr>
+    `).join("") || '<tr><td colspan="4">No users</td></tr>';
+
+    resetUserEditor();
+  },
 };
 
 async function loadCommandLogs() {
@@ -575,6 +637,10 @@ async function refreshSection() {
 }
 
 function showSection(name) {
+  if (!canAccessSection(name)) {
+    showToast("You don't have permission to access this section.", "error");
+    name = "overview";
+  }
   currentSection = name;
   sectionTitle.textContent = name[0].toUpperCase() + name.slice(1);
   document.querySelectorAll(".content-section").forEach((el) => el.classList.remove("active"));
@@ -1768,6 +1834,66 @@ document.getElementById("boost-form").addEventListener("submit", async (e) => {
   showToast("Boost settings saved", "success");
 });
 
+function getUserFormPermissions() {
+  return Array.from(document.querySelectorAll('input[name="permissions"]:checked')).map((cb) => cb.value);
+}
+
+function resetUserEditor() {
+  document.getElementById("user-form").reset();
+  document.getElementById("user-id").value = "";
+  document.getElementById("user-password").value = "";
+  document.getElementById("user-password").placeholder = "Leave empty when editing to keep current";
+  document.getElementById("user-save-btn").textContent = "Create User";
+}
+
+window.editUser = async (id) => {
+  const user = await json(`/api/users/${id}`);
+  document.getElementById("user-id").value = user.id;
+  document.getElementById("user-username").value = user.username;
+  document.getElementById("user-password").value = "";
+  document.getElementById("user-password").placeholder = "Enter new password (leave empty to keep current)";
+  document.getElementById("user-save-btn").textContent = "Update User";
+
+  document.querySelectorAll('input[name="permissions"]').forEach((cb) => {
+    cb.checked = (user.permissions || []).includes(cb.value);
+  });
+};
+
+window.deleteUser = async (id) => {
+  if (!confirm("Delete this user?")) return;
+  await json(`/api/users/${id}`, { method: "DELETE" });
+  refreshSection();
+  showToast("User deleted", "success");
+};
+
+document.getElementById("user-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("user-id").value;
+  const username = document.getElementById("user-username").value.trim();
+  const password = document.getElementById("user-password").value;
+  const permissions = getUserFormPermissions();
+
+  const body = { username, permissions };
+  if (password) body.password = password;
+
+  if (id) {
+    await json(`/api/users/${id}`, { method: "POST", body: JSON.stringify(body) });
+    showToast("User updated", "success");
+  } else {
+    if (!password) {
+      showToast("Password is required when creating a user", "error");
+      return;
+    }
+    await json("/api/users", { method: "POST", body: JSON.stringify(body) });
+    showToast("User created", "success");
+  }
+
+  resetUserEditor();
+  refreshSection();
+});
+
+document.getElementById("user-cancel-btn").addEventListener("click", resetUserEditor);
+
 function initSelectFilters() {
   const excluded = new Set([
     "chart-range",
@@ -1785,4 +1911,4 @@ function initSelectFilters() {
 
 // Init
 initSelectFilters();
-loadGuilds().then(() => showSection("overview"));
+initUser().then(() => loadGuilds().then(() => showSection("overview")));

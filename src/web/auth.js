@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { randomBytes } from "crypto";
+import * as User from "../models/User.js";
 
 const DEFAULT_USER = "Admin";
 const PASSWORD_LENGTH = 10;
@@ -31,8 +32,17 @@ export function getPassword() {
   return adminPassword ?? generateInitialPassword();
 }
 
-export function verifyCredentials(username, password) {
+export function verifyAdminCredentials(username, password) {
   return username === DEFAULT_USER && password === getPassword();
+}
+
+export async function verifyCredentials(username, password) {
+  if (verifyAdminCredentials(username, password)) {
+    return { username: DEFAULT_USER, isAdmin: true, permissions: User.ALL_PERMISSIONS };
+  }
+  const user = await User.verify(username, password);
+  if (!user) return null;
+  return { username: user.username, isAdmin: false, permissions: user.permissions, id: user.id };
 }
 
 function now() {
@@ -72,9 +82,15 @@ export function resetLoginAttempts(ip) {
   attempts.delete(ip);
 }
 
-export function createSessionToken() {
+export function createSessionToken(user) {
   const secret = process.env.JWT_SECRET ?? "hitorichan-default-secret";
-  return jwt.sign({ user: DEFAULT_USER }, secret, { expiresIn: "24h" });
+  const payload = {
+    username: user.username,
+    isAdmin: user.isAdmin,
+    permissions: user.permissions || [],
+    id: user.id ?? null,
+  };
+  return jwt.sign(payload, secret, { expiresIn: "24h" });
 }
 
 export function verifySessionToken(token) {
@@ -84,4 +100,12 @@ export function verifySessionToken(token) {
   } catch {
     return null;
   }
+}
+
+export function hasPermission(user, permission) {
+  if (!user) return false;
+  if (user.isAdmin) return true;
+  if (permission === "users" && user.permissions?.includes("users")) return true;
+  if (Array.isArray(permission)) return permission.some((p) => hasPermission(user, p));
+  return user.permissions?.includes(permission);
 }

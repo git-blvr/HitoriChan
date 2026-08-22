@@ -2,8 +2,8 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { verifyCredentials, createSessionToken, generateInitialPassword, getLoginLockout, recordFailedLogin, resetLoginAttempts } from "./auth.js";
-import { requireAuth } from "./middleware/auth.js";
+import { verifyCredentials, createSessionToken, generateInitialPassword, getLoginLockout, recordFailedLogin, resetLoginAttempts, hasPermission } from "./auth.js";
+import { requireAuth, authPage } from "./middleware/auth.js";
 import api from "./routes/api.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -20,7 +20,7 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
   app.use(cookieParser());
   app.use(express.static(PUBLIC_DIR));
 
-  app.post("/api/login", (req, res) => {
+  app.post("/api/login", async (req, res) => {
     const { username, password } = req.body || {};
     const ip = req.ip || req.socket?.remoteAddress || "unknown";
 
@@ -29,7 +29,8 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
       return res.status(429).json({ error: lockout.message });
     }
 
-    if (!verifyCredentials(username, password)) {
+    const user = await verifyCredentials(username, password);
+    if (!user) {
       const newLockout = recordFailedLogin(ip);
       if (newLockout) {
         return res.status(429).json({ error: newLockout.message });
@@ -38,9 +39,9 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
     }
 
     resetLoginAttempts(ip);
-    const token = createSessionToken();
+    const token = createSessionToken(user);
     res.cookie("token", token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: "strict", secure: req.secure });
-    res.json({ ok: true });
+    res.json({ ok: true, user: { username: user.username, isAdmin: user.isAdmin, permissions: user.permissions } });
   });
 
   app.post("/api/logout", (req, res) => {
@@ -50,7 +51,7 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
 
   app.use("/api", api);
 
-  app.get("/dashboard", (req, res) => {
+  app.get("/dashboard", authPage, (req, res) => {
     res.sendFile(join(PUBLIC_DIR, "dashboard.html"));
   });
 

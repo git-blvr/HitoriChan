@@ -328,6 +328,19 @@ const MIGRATIONS = [
       ALTER TABLE tickets ADD COLUMN category TEXT;
     `,
   },
+  {
+    version: 14,
+    sql: `
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        permissions TEXT NOT NULL DEFAULT '[]',
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+      CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+    `,
+  },
 ];
 
 export function migrate() {

@@ -19,6 +19,8 @@ import * as ShopItem from "../../models/ShopItem.js";
 import * as BoostSettings from "../../models/BoostSettings.js";
 import { buildTicketPanelPayload } from "../../helpers/ticketPanels.js";
 import { get_dominant_color } from "../../utils/color_utils.js";
+import * as User from "../../models/User.js";
+import { requirePermission } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -602,6 +604,54 @@ router.post("/shop/settings/:guildId", requireAuth, async (req, res) => {
     shopInterfaceColor: shopInterfaceColor !== undefined && shopInterfaceColor !== "" ? Number(shopInterfaceColor) : undefined,
     shopInterfaceUseDominantColor: shopInterfaceUseDominantColor !== undefined ? Boolean(shopInterfaceUseDominantColor) : undefined,
   });
+  res.json({ ok: true });
+});
+
+// Users
+router.get("/users", requireAuth, requirePermission("users"), async (req, res) => {
+  const users = await User.getAll();
+  res.json(users.map((u) => ({ id: u.id, username: u.username, permissions: u.permissions, createdAt: u.createdAt })));
+});
+
+router.get("/users/permissions", requireAuth, (req, res) => {
+  res.json({ permissions: User.ALL_PERMISSIONS, user: req.user });
+});
+
+router.get("/users/:id", requireAuth, requirePermission("users"), async (req, res) => {
+  const user = await User.get(Number(req.params.id));
+  if (!user) return res.status(404).json({ error: "User not found" });
+  res.json({ id: user.id, username: user.username, permissions: user.permissions, createdAt: user.createdAt });
+});
+
+router.post("/users", requireAuth, requirePermission("users"), async (req, res) => {
+  const { username, password, permissions } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+  const existing = await User.getByUsername(username);
+  if (existing) return res.status(409).json({ error: "Username already exists" });
+  try {
+    const user = await User.create({ username, password, permissions });
+    res.json({ id: user.id, username: user.username, permissions: user.permissions, createdAt: user.createdAt });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post("/users/:id", requireAuth, requirePermission("users"), async (req, res) => {
+  const user = await User.get(Number(req.params.id));
+  if (!user) return res.status(404).json({ error: "User not found" });
+  const { username, password, permissions } = req.body || {};
+  try {
+    const updated = await User.update(user.id, { username, password, permissions });
+    res.json({ id: updated.id, username: updated.username, permissions: updated.permissions, createdAt: updated.createdAt });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete("/users/:id", requireAuth, requirePermission("users"), async (req, res) => {
+  const user = await User.get(Number(req.params.id));
+  if (!user) return res.status(404).json({ error: "User not found" });
+  await User.remove(user.id);
   res.json({ ok: true });
 });
 
