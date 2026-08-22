@@ -407,6 +407,13 @@ const MIGRATIONS = [
       ALTER TABLE guild_settings ADD COLUMN goodbye_use_dominant_color INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    version: 19,
+    sql: `
+      ALTER TABLE guild_settings ADD COLUMN welcome_components TEXT DEFAULT '[]';
+      ALTER TABLE guild_settings ADD COLUMN goodbye_components TEXT DEFAULT '[]';
+    `,
+  },
 ];
 
 export function migrate() {

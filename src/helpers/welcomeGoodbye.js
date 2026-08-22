@@ -1,4 +1,4 @@
-import { cv2 } from "./cv2.js";
+import { cv2, buildCV2Components, findFirstCV2ImageUrl } from "./cv2.js";
 import { get_dominant_color } from "../utils/color_utils.js";
 
 function replaceMemberVars(text, member) {
@@ -8,6 +8,15 @@ function replaceMemberVars(text, member) {
     .replace(/\{username\}/g, member.user?.username || "")
     .replace(/\{displayName\}/g, member.displayName || member.user?.username || "")
     .replace(/\{guild\}/g, member.guild?.name || "");
+}
+
+function replaceComponentVars(component, member) {
+  if (!component) return component;
+  const out = { ...component };
+  if (out.content != null) out.content = replaceMemberVars(out.content, member);
+  if (out.url) out.url = replaceMemberVars(out.url, member);
+  if (Array.isArray(out.urls)) out.urls = out.urls.map((u) => replaceMemberVars(u, member));
+  return out;
 }
 
 export async function sendWelcomeOrGoodbye(client, member, type = "welcome") {
@@ -20,8 +29,7 @@ export async function sendWelcomeOrGoodbye(client, member, type = "welcome") {
   if (!enabled) return;
 
   const channelId = isWelcome ? settings.welcomeChannelId : settings.goodbyeChannelId;
-  const title = isWelcome ? settings.welcomeTitle : settings.goodbyeTitle;
-  const description = isWelcome ? settings.welcomeDescription : settings.goodbyeDescription;
+  const components = isWelcome ? (settings.welcomeComponents || []) : (settings.goodbyeComponents || []);
   const fallbackColor = isWelcome ? settings.welcomeColor : settings.goodbyeColor;
   const useDominantColor = isWelcome ? settings.welcomeUseDominantColor : settings.goodbyeUseDominantColor;
 
@@ -31,20 +39,24 @@ export async function sendWelcomeOrGoodbye(client, member, type = "welcome") {
   const avatar = member.user?.displayAvatarURL?.({ size: 128, forceStatic: true }) ?? null;
 
   let color = fallbackColor;
-  if (useDominantColor && avatar) {
-    try {
-      color = await get_dominant_color(avatar);
-    } catch (err) {
-      console.error("[welcomeGoodbye] Dominant color error:", err.message);
+  if (useDominantColor) {
+    const imageUrl = findFirstCV2ImageUrl(components) || avatar;
+    if (imageUrl) {
+      try {
+        color = await get_dominant_color(imageUrl);
+      } catch (err) {
+        console.error("[welcomeGoodbye] Dominant color error:", err.message);
+      }
     }
   }
   if (color == null || isNaN(color)) color = 0x8b5cf6;
 
+  const cv2Components = buildCV2Components(components.map((c) => replaceComponentVars(c, member)));
+
   const payload = cv2({
     color,
-    title: replaceMemberVars(title, member),
-    description: replaceMemberVars(description, member),
     thumbnail: avatar,
+    cv2Components,
   });
 
   try {

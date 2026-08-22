@@ -689,12 +689,14 @@ router.get("/welcome/:guildId", requireAuth, async (req, res) => {
     welcomeDescription: settings.welcomeDescription,
     welcomeColor: settings.welcomeColor,
     welcomeUseDominantColor: settings.welcomeUseDominantColor,
+    welcomeComponents: settings.welcomeComponents,
     goodbyeEnabled: settings.goodbyeEnabled,
     goodbyeChannelId: settings.goodbyeChannelId,
     goodbyeTitle: settings.goodbyeTitle,
     goodbyeDescription: settings.goodbyeDescription,
     goodbyeColor: settings.goodbyeColor,
     goodbyeUseDominantColor: settings.goodbyeUseDominantColor,
+    goodbyeComponents: settings.goodbyeComponents,
   });
 });
 
@@ -707,12 +709,14 @@ router.post("/welcome/:guildId", requireAuth, async (req, res) => {
     welcomeDescription: values.welcomeDescription !== undefined ? (values.welcomeDescription?.trim() || null) : undefined,
     welcomeColor: values.welcomeColor !== undefined && values.welcomeColor !== "" ? Number(values.welcomeColor) : undefined,
     welcomeUseDominantColor: values.welcomeUseDominantColor !== undefined ? Boolean(values.welcomeUseDominantColor) : undefined,
+    welcomeComponents: values.welcomeComponents !== undefined ? (Array.isArray(values.welcomeComponents) ? values.welcomeComponents : []) : undefined,
     goodbyeEnabled: values.goodbyeEnabled !== undefined ? Boolean(values.goodbyeEnabled) : undefined,
     goodbyeChannelId: values.goodbyeChannelId !== undefined ? (values.goodbyeChannelId?.trim() || null) : undefined,
     goodbyeTitle: values.goodbyeTitle !== undefined ? (values.goodbyeTitle?.trim() || null) : undefined,
     goodbyeDescription: values.goodbyeDescription !== undefined ? (values.goodbyeDescription?.trim() || null) : undefined,
     goodbyeColor: values.goodbyeColor !== undefined && values.goodbyeColor !== "" ? Number(values.goodbyeColor) : undefined,
     goodbyeUseDominantColor: values.goodbyeUseDominantColor !== undefined ? Boolean(values.goodbyeUseDominantColor) : undefined,
+    goodbyeComponents: values.goodbyeComponents !== undefined ? (Array.isArray(values.goodbyeComponents) ? values.goodbyeComponents : []) : undefined,
   });
   res.json({ ok: true });
 });

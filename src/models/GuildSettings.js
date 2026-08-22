@@ -19,12 +19,14 @@ const DEFAULTS = {
   welcomeDescription: "Welcome to the server, {user}!",
   welcomeColor: 0x8b5cf6,
   welcomeUseDominantColor: false,
+  welcomeComponents: [],
   goodbyeEnabled: false,
   goodbyeChannelId: null,
   goodbyeTitle: "Goodbye!",
   goodbyeDescription: "Goodbye, {user}. We will miss you.",
   goodbyeColor: 0x8b5cf6,
   goodbyeUseDominantColor: false,
+  goodbyeComponents: [],
 };
 
 function parseJson(json) {
@@ -45,9 +47,9 @@ const upsertStmt = db.prepare(`
     secondary_currency_name, secondary_currency_symbol, secondary_currency_emoji,
     daily_min, daily_max, shop_channel_id, shop_message_id, shop_interface_enabled, shop_interface_components,
     shop_interface_color, shop_interface_use_dominant_color,
-    welcome_enabled, welcome_channel_id, welcome_title, welcome_description, welcome_color, welcome_use_dominant_color,
-    goodbye_enabled, goodbye_channel_id, goodbye_title, goodbye_description, goodbye_color, goodbye_use_dominant_color
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    welcome_enabled, welcome_channel_id, welcome_title, welcome_description, welcome_color, welcome_use_dominant_color, welcome_components,
+    goodbye_enabled, goodbye_channel_id, goodbye_title, goodbye_description, goodbye_color, goodbye_use_dominant_color, goodbye_components
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(guild_id) DO UPDATE SET
     prefix = excluded.prefix,
     primary_currency_name = excluded.primary_currency_name,
@@ -70,12 +72,14 @@ const upsertStmt = db.prepare(`
     welcome_description = excluded.welcome_description,
     welcome_color = excluded.welcome_color,
     welcome_use_dominant_color = excluded.welcome_use_dominant_color,
+    welcome_components = excluded.welcome_components,
     goodbye_enabled = excluded.goodbye_enabled,
     goodbye_channel_id = excluded.goodbye_channel_id,
     goodbye_title = excluded.goodbye_title,
     goodbye_description = excluded.goodbye_description,
     goodbye_color = excluded.goodbye_color,
-    goodbye_use_dominant_color = excluded.goodbye_use_dominant_color
+    goodbye_use_dominant_color = excluded.goodbye_use_dominant_color,
+    goodbye_components = excluded.goodbye_components
 `);
 
 function fromRow(row) {
@@ -107,12 +111,14 @@ function fromRow(row) {
     welcomeDescription: row.welcome_description ?? DEFAULTS.welcomeDescription,
     welcomeColor: row.welcome_color ?? DEFAULTS.welcomeColor,
     welcomeUseDominantColor: row.welcome_use_dominant_color === undefined ? DEFAULTS.welcomeUseDominantColor : Boolean(row.welcome_use_dominant_color),
+    welcomeComponents: parseJson(row.welcome_components),
     goodbyeEnabled: row.goodbye_enabled === undefined ? DEFAULTS.goodbyeEnabled : Boolean(row.goodbye_enabled),
     goodbyeChannelId: row.goodbye_channel_id ?? DEFAULTS.goodbyeChannelId,
     goodbyeTitle: row.goodbye_title ?? DEFAULTS.goodbyeTitle,
     goodbyeDescription: row.goodbye_description ?? DEFAULTS.goodbyeDescription,
     goodbyeColor: row.goodbye_color ?? DEFAULTS.goodbyeColor,
     goodbyeUseDominantColor: row.goodbye_use_dominant_color === undefined ? DEFAULTS.goodbyeUseDominantColor : Boolean(row.goodbye_use_dominant_color),
+    goodbyeComponents: parseJson(row.goodbye_components),
   };
 }
 
@@ -147,12 +153,14 @@ export async function getOrCreate(guildId) {
     DEFAULTS.welcomeDescription,
     DEFAULTS.welcomeColor,
     DEFAULTS.welcomeUseDominantColor ? 1 : 0,
+    JSON.stringify(DEFAULTS.welcomeComponents),
     DEFAULTS.goodbyeEnabled ? 1 : 0,
     DEFAULTS.goodbyeChannelId,
     DEFAULTS.goodbyeTitle,
     DEFAULTS.goodbyeDescription,
     DEFAULTS.goodbyeColor,
-    DEFAULTS.goodbyeUseDominantColor ? 1 : 0
+    DEFAULTS.goodbyeUseDominantColor ? 1 : 0,
+    JSON.stringify(DEFAULTS.goodbyeComponents)
   );
   return fromRow(getStmt.get(guildId));
 }
@@ -182,12 +190,14 @@ export async function save(guildId, values) {
     values.welcomeDescription !== undefined ? (values.welcomeDescription ?? DEFAULTS.welcomeDescription) : current.welcomeDescription,
     values.welcomeColor !== undefined ? (values.welcomeColor ?? DEFAULTS.welcomeColor) : current.welcomeColor,
     values.welcomeUseDominantColor !== undefined ? (values.welcomeUseDominantColor ? 1 : 0) : (current.welcomeUseDominantColor ? 1 : 0),
+    JSON.stringify(values.welcomeComponents !== undefined ? values.welcomeComponents : current.welcomeComponents),
     values.goodbyeEnabled !== undefined ? (values.goodbyeEnabled ? 1 : 0) : (current.goodbyeEnabled ? 1 : 0),
     values.goodbyeChannelId !== undefined ? (values.goodbyeChannelId || null) : current.goodbyeChannelId,
     values.goodbyeTitle !== undefined ? (values.goodbyeTitle ?? DEFAULTS.goodbyeTitle) : current.goodbyeTitle,
     values.goodbyeDescription !== undefined ? (values.goodbyeDescription ?? DEFAULTS.goodbyeDescription) : current.goodbyeDescription,
     values.goodbyeColor !== undefined ? (values.goodbyeColor ?? DEFAULTS.goodbyeColor) : current.goodbyeColor,
-    values.goodbyeUseDominantColor !== undefined ? (values.goodbyeUseDominantColor ? 1 : 0) : (current.goodbyeUseDominantColor ? 1 : 0)
+    values.goodbyeUseDominantColor !== undefined ? (values.goodbyeUseDominantColor ? 1 : 0) : (current.goodbyeUseDominantColor ? 1 : 0),
+    JSON.stringify(values.goodbyeComponents !== undefined ? values.goodbyeComponents : current.goodbyeComponents)
   );
   return fromRow(getStmt.get(guildId));
 }

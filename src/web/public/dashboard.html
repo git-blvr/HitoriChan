@@ -22,7 +22,7 @@
       <a href="#shop" data-section="shop">Shop</a>
       <a href="#boost" data-section="boost">Boost</a>
       <a href="#triggers" data-section="triggers">Triggers</a>
-      <a href="#welcome" data-section="welcome">Welcome</a>
+      <a href="#welcome" data-section="welcome">System messages</a>
       <a href="#logs" data-section="logs">Logs</a>
       <a href="#quests" data-section="quests">Quests</a>
       <a href="#users" data-section="users">Users</a>
@@ -552,7 +552,7 @@
 
     <section id="welcome" class="content-section">
       <div class="panel">
-        <h2>Welcome &amp; Goodbye</h2>
+        <h2>System Messages</h2>
         <p class="hint">Send CV2 messages when users join or leave. Variables: <code>{user}</code>, <code>{username}</code>, <code>{displayName}</code>, <code>{guild}</code>.</p>
 
         <div class="panel sub-panel">
@@ -564,13 +564,29 @@
                 <option value="">-- System channel --</option>
               </select>
             </label>
-            <label>Title <input type="text" id="welcome-title" data-payload-import="text" placeholder="Welcome!" /></label>
-            <label>Description <textarea id="welcome-desc" rows="2" data-payload-import="text" placeholder="Welcome to the server, {user}!"></textarea></label>
+
             <div class="inline-fields">
               <label class="grow">Color <input type="color" id="welcome-color" value="#8b5cf6" /></label>
               <label class="grow" style="display:flex;align-items:center;gap:8px;margin-top:22px"><input type="checkbox" id="welcome-dominant" /> Use avatar dominant color</label>
             </div>
-            <button type="submit" class="save-btn">Save Welcome</button>
+
+            <h4 style="margin:18px 0 10px;font-size:0.95rem">CV2 Builder</h4>
+            <div class="inline-form">
+              <button type="button" id="welcome-add-text" class="save-btn">Add Text</button>
+              <button type="button" id="welcome-add-image" class="save-btn">Add Image</button>
+              <button type="button" id="welcome-add-gallery" class="save-btn">Add Media Gallery</button>
+              <button type="button" id="welcome-add-separator" class="save-btn">Add Separator</button>
+              <button type="button" id="welcome-import-toggle" class="save-btn">Import from Payload</button>
+            </div>
+            <div id="welcome-import-panel" hidden>
+              <textarea id="welcome-payload-input" rows="4" placeholder="Paste a Discord message or CV2 payload JSON here..."></textarea>
+              <div class="inline-form">
+                <button type="button" id="welcome-import-btn" class="save-btn">Import</button>
+              </div>
+            </div>
+            <div id="welcome-components-list" class="reorder-list"></div>
+
+            <button type="submit" class="save-btn" style="margin-top:14px">Save Welcome</button>
           </form>
         </div>
 
@@ -583,13 +599,29 @@
                 <option value="">-- System channel --</option>
               </select>
             </label>
-            <label>Title <input type="text" id="goodbye-title" data-payload-import="text" placeholder="Goodbye!" /></label>
-            <label>Description <textarea id="goodbye-desc" rows="2" data-payload-import="text" placeholder="Goodbye, {user}. We will miss you."></textarea></label>
+
             <div class="inline-fields">
               <label class="grow">Color <input type="color" id="goodbye-color" value="#8b5cf6" /></label>
               <label class="grow" style="display:flex;align-items:center;gap:8px;margin-top:22px"><input type="checkbox" id="goodbye-dominant" /> Use avatar dominant color</label>
             </div>
-            <button type="submit" class="save-btn">Save Goodbye</button>
+
+            <h4 style="margin:18px 0 10px;font-size:0.95rem">CV2 Builder</h4>
+            <div class="inline-form">
+              <button type="button" id="goodbye-add-text" class="save-btn">Add Text</button>
+              <button type="button" id="goodbye-add-image" class="save-btn">Add Image</button>
+              <button type="button" id="goodbye-add-gallery" class="save-btn">Add Media Gallery</button>
+              <button type="button" id="goodbye-add-separator" class="save-btn">Add Separator</button>
+              <button type="button" id="goodbye-import-toggle" class="save-btn">Import from Payload</button>
+            </div>
+            <div id="goodbye-import-panel" hidden>
+              <textarea id="goodbye-payload-input" rows="4" placeholder="Paste a Discord message or CV2 payload JSON here..."></textarea>
+              <div class="inline-form">
+                <button type="button" id="goodbye-import-btn" class="save-btn">Import</button>
+              </div>
+            </div>
+            <div id="goodbye-components-list" class="reorder-list"></div>
+
+            <button type="submit" class="save-btn" style="margin-top:14px">Save Goodbye</button>
           </form>
         </div>
       </div>

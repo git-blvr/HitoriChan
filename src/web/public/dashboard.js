@@ -644,17 +644,15 @@ const sections = {
 
     document.getElementById("welcome-enabled").checked = settings.welcomeEnabled;
     populateChannels("welcome-channel", settings.welcomeChannelId || "", "-- System channel --");
-    document.getElementById("welcome-title").value = settings.welcomeTitle || "";
-    document.getElementById("welcome-desc").value = settings.welcomeDescription || "";
     document.getElementById("welcome-color").value = intToHex(settings.welcomeColor);
     document.getElementById("welcome-dominant").checked = settings.welcomeUseDominantColor;
+    renderWelcomeComponents(settings.welcomeComponents || []);
 
     document.getElementById("goodbye-enabled").checked = settings.goodbyeEnabled;
     populateChannels("goodbye-channel", settings.goodbyeChannelId || "", "-- System channel --");
-    document.getElementById("goodbye-title").value = settings.goodbyeTitle || "";
-    document.getElementById("goodbye-desc").value = settings.goodbyeDescription || "";
     document.getElementById("goodbye-color").value = intToHex(settings.goodbyeColor);
     document.getElementById("goodbye-dominant").checked = settings.goodbyeUseDominantColor;
+    renderGoodbyeComponents(settings.goodbyeComponents || []);
   },
 
   logs: async () => {
@@ -771,13 +769,19 @@ async function refreshSection() {
   }
 }
 
+const sectionDisplayNames = {
+  ai: "AI Config",
+  welcome: "System Messages",
+};
+
 function showSection(name) {
   if (!canAccessSection(name)) {
     showToast("You don't have permission to access this section.", "error");
     name = "overview";
   }
   currentSection = name;
-  sectionTitle.textContent = name[0].toUpperCase() + name.slice(1);
+  const display = sectionDisplayNames[name] || (name[0].toUpperCase() + name.slice(1));
+  sectionTitle.textContent = display;
   document.querySelectorAll(".content-section").forEach((el) => el.classList.remove("active"));
   document.getElementById(name).classList.add("active");
   navLinks.forEach((l) => l.classList.toggle("active", l.dataset.section === name));
@@ -1970,20 +1974,105 @@ document.getElementById("boost-form").addEventListener("submit", async (e) => {
   showToast("Boost settings saved", "success");
 });
 
+// System messages (welcome/goodbye) CV2 builder
+function renderSystemComponents(listId, components) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  list.innerHTML = (components || []).map((c, i) => {
+    if (c.type === "text") return `
+      <div class="reorder-item system-component" data-type="text" data-index="${i}">
+        <header>Text <button type="button" class="remove-btn" onclick="removeSystemComponent('${listId}', ${i})">Remove</button></header>
+        <textarea class="system-comp-content" rows="3" data-payload-import="text">${escapeHtml(c.content || "")}</textarea>
+      </div>
+    `;
+    if (c.type === "image") return `
+      <div class="reorder-item system-component" data-type="image" data-index="${i}">
+        <header>Image <button type="button" class="remove-btn" onclick="removeSystemComponent('${listId}', ${i})">Remove</button></header>
+        <input type="text" class="system-comp-url" value="${escapeHtml(c.url || "")}" placeholder="https://..." />
+      </div>
+    `;
+    if (c.type === "media_gallery") return `
+      <div class="reorder-item system-component" data-type="media_gallery" data-index="${i}">
+        <header>Media Gallery <button type="button" class="remove-btn" onclick="removeSystemComponent('${listId}', ${i})">Remove</button></header>
+        <textarea class="system-comp-urls" rows="3" placeholder="One image URL per line">${escapeHtml((c.urls || []).join("\n"))}</textarea>
+      </div>
+    `;
+    if (c.type === "separator") return `
+      <div class="reorder-item system-component" data-type="separator" data-index="${i}">
+        <header>Separator <button type="button" class="remove-btn" onclick="removeSystemComponent('${listId}', ${i})">Remove</button></header>
+      </div>
+    `;
+    return "";
+  }).join("");
+  initPayloadImportButtons();
+}
+
+function getSystemComponents(listId) {
+  return Array.from(document.querySelectorAll(`#${listId} .system-component`)).map((el) => {
+    const type = el.dataset.type;
+    if (type === "text") return { type, content: el.querySelector(".system-comp-content").value };
+    if (type === "image") return { type, url: el.querySelector(".system-comp-url").value.trim() };
+    if (type === "media_gallery") return { type, urls: el.querySelector(".system-comp-urls").value.split(/\n+/).map((s) => s.trim()).filter(Boolean) };
+    if (type === "separator") return { type };
+    return null;
+  }).filter(Boolean);
+}
+
+function addSystemComponent(listId, type) {
+  const list = document.getElementById(listId);
+  const components = getSystemComponents(listId);
+  if (type === "text") components.push({ type, content: "" });
+  else if (type === "image") components.push({ type, url: "" });
+  else if (type === "media_gallery") components.push({ type, urls: [] });
+  else if (type === "separator") components.push({ type });
+  renderSystemComponents(listId, components);
+}
+
+function importSystemPayload(listId, inputId, colorId, dominantId) {
+  try {
+    const raw = document.getElementById(inputId).value;
+    const { components, color } = parsePayloadToComponents(raw);
+    if (!components.length) {
+      showToast("No supported components found in the payload.", "error");
+      return;
+    }
+    renderSystemComponents(listId, components);
+    if (color != null) {
+      document.getElementById(colorId).value = intToHex(color);
+      document.getElementById(dominantId).checked = false;
+    }
+    showToast(`Imported ${components.length} component(s)`, "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+window.removeSystemComponent = (listId, i) => {
+  const components = getSystemComponents(listId);
+  components.splice(i, 1);
+  renderSystemComponents(listId, components);
+};
+
+function renderWelcomeComponents(components) {
+  renderSystemComponents("welcome-components-list", components);
+}
+
+function renderGoodbyeComponents(components) {
+  renderSystemComponents("goodbye-components-list", components);
+}
+
 function getWelcomeGoodbyeBody() {
   return {
     welcomeEnabled: document.getElementById("welcome-enabled").checked,
     welcomeChannelId: document.getElementById("welcome-channel").value || null,
-    welcomeTitle: document.getElementById("welcome-title").value.trim() || null,
-    welcomeDescription: document.getElementById("welcome-desc").value.trim() || null,
     welcomeColor: hexToInt(document.getElementById("welcome-color").value),
     welcomeUseDominantColor: document.getElementById("welcome-dominant").checked,
+    welcomeComponents: getSystemComponents("welcome-components-list"),
     goodbyeEnabled: document.getElementById("goodbye-enabled").checked,
     goodbyeChannelId: document.getElementById("goodbye-channel").value || null,
-    goodbyeTitle: document.getElementById("goodbye-title").value.trim() || null,
-    goodbyeDescription: document.getElementById("goodbye-desc").value.trim() || null,
     goodbyeColor: hexToInt(document.getElementById("goodbye-color").value),
     goodbyeUseDominantColor: document.getElementById("goodbye-dominant").checked,
+    goodbyeComponents: getSystemComponents("goodbye-components-list"),
   };
 }
 
@@ -1999,6 +2088,19 @@ document.getElementById("goodbye-form").addEventListener("submit", async (e) => 
   if (!currentGuild) return;
   await json(`/api/welcome/${currentGuild}`, { method: "POST", body: JSON.stringify(getWelcomeGoodbyeBody()) });
   showToast("Goodbye settings saved", "success");
+});
+
+["welcome", "goodbye"].forEach((kind) => {
+  document.getElementById(`${kind}-add-text`).addEventListener("click", () => addSystemComponent(`${kind}-components-list`, "text"));
+  document.getElementById(`${kind}-add-image`).addEventListener("click", () => addSystemComponent(`${kind}-components-list`, "image"));
+  document.getElementById(`${kind}-add-gallery`).addEventListener("click", () => addSystemComponent(`${kind}-components-list`, "media_gallery"));
+  document.getElementById(`${kind}-add-separator`).addEventListener("click", () => addSystemComponent(`${kind}-components-list`, "separator"));
+  document.getElementById(`${kind}-import-toggle`).addEventListener("click", () => {
+    document.getElementById(`${kind}-import-panel`).hidden = !document.getElementById(`${kind}-import-panel`).hidden;
+  });
+  document.getElementById(`${kind}-import-btn`).addEventListener("click", () => {
+    importSystemPayload(`${kind}-components-list`, `${kind}-payload-input`, `${kind}-color`, `${kind}-dominant`);
+  });
 });
 
 function getUserFormPermissions() {

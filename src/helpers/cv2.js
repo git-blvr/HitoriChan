@@ -204,6 +204,37 @@ export function cv2({
   };
 }
 
+export function buildCV2Components(components) {
+  if (!Array.isArray(components)) return [];
+  const out = [];
+  for (const c of components) {
+    if (!c?.type) continue;
+    try {
+      if (c.type === "text" && c.content != null) out.push(buildTextDisplay(String(c.content)));
+      if (c.type === "image" && c.url) out.push(mediaGallery(c.url));
+      if (c.type === "media_gallery" && (c.urls?.length || c.url)) {
+        const urls = Array.isArray(c.urls) ? c.urls : [c.url].filter(Boolean);
+        out.push(mediaGallery(urls));
+      }
+      if (c.type === "separator") out.push(separator());
+    } catch (err) {
+      console.warn("Failed to build CV2 component:", err);
+    }
+  }
+  return out;
+}
+
+export function findFirstCV2ImageUrl(components) {
+  for (const c of components || []) {
+    if (c.type === "image" && c.url) return c.url;
+    if (c.type === "media_gallery") {
+      const urls = Array.isArray(c.urls) ? c.urls : [c.url].filter(Boolean);
+      if (urls[0]) return urls[0];
+    }
+  }
+  return null;
+}
+
 export function isCV2Payload(payload) {
   return payload?.flags === MessageFlags.IsComponentsV2 && Array.isArray(payload?.components);
 }
