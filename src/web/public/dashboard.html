@@ -22,6 +22,7 @@
       <a href="#shop" data-section="shop">Shop</a>
       <a href="#boost" data-section="boost">Boost</a>
       <a href="#triggers" data-section="triggers">Triggers</a>
+      <a href="#welcome" data-section="welcome">Welcome</a>
       <a href="#logs" data-section="logs">Logs</a>
       <a href="#quests" data-section="quests">Quests</a>
       <a href="#users" data-section="users">Users</a>
@@ -546,6 +547,51 @@
           <thead><tr><th>Keyword</th><th>Command</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
+    </section>
+
+    <section id="welcome" class="content-section">
+      <div class="panel">
+        <h2>Welcome &amp; Goodbye</h2>
+        <p class="hint">Send CV2 messages when users join or leave. Variables: <code>{user}</code>, <code>{username}</code>, <code>{displayName}</code>, <code>{guild}</code>.</p>
+
+        <div class="panel sub-panel">
+          <h3>Welcome</h3>
+          <form id="welcome-form" class="config-form">
+            <label><input type="checkbox" id="welcome-enabled" /> Enabled</label>
+            <label>Channel
+              <select id="welcome-channel" data-searchable="true">
+                <option value="">-- System channel --</option>
+              </select>
+            </label>
+            <label>Title <input type="text" id="welcome-title" data-payload-import="text" placeholder="Welcome!" /></label>
+            <label>Description <textarea id="welcome-desc" rows="2" data-payload-import="text" placeholder="Welcome to the server, {user}!"></textarea></label>
+            <div class="inline-fields">
+              <label class="grow">Color <input type="color" id="welcome-color" value="#8b5cf6" /></label>
+              <label class="grow" style="display:flex;align-items:center;gap:8px;margin-top:22px"><input type="checkbox" id="welcome-dominant" /> Use avatar dominant color</label>
+            </div>
+            <button type="submit" class="save-btn">Save Welcome</button>
+          </form>
+        </div>
+
+        <div class="panel sub-panel">
+          <h3>Goodbye</h3>
+          <form id="goodbye-form" class="config-form">
+            <label><input type="checkbox" id="goodbye-enabled" /> Enabled</label>
+            <label>Channel
+              <select id="goodbye-channel" data-searchable="true">
+                <option value="">-- System channel --</option>
+              </select>
+            </label>
+            <label>Title <input type="text" id="goodbye-title" data-payload-import="text" placeholder="Goodbye!" /></label>
+            <label>Description <textarea id="goodbye-desc" rows="2" data-payload-import="text" placeholder="Goodbye, {user}. We will miss you."></textarea></label>
+            <div class="inline-fields">
+              <label class="grow">Color <input type="color" id="goodbye-color" value="#8b5cf6" /></label>
+              <label class="grow" style="display:flex;align-items:center;gap:8px;margin-top:22px"><input type="checkbox" id="goodbye-dominant" /> Use avatar dominant color</label>
+            </div>
+            <button type="submit" class="save-btn">Save Goodbye</button>
+          </form>
+        </div>
       </div>
     </section>
 

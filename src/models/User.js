@@ -60,6 +60,7 @@ export const ALL_PERMISSIONS = [
   "shop",
   "boost",
   "triggers",
+  "welcome",
   "logs",
   "quests",
   "users",

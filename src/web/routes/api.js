@@ -679,6 +679,44 @@ router.post("/shop/settings/:guildId", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Welcome / Goodbye settings
+router.get("/welcome/:guildId", requireAuth, async (req, res) => {
+  const settings = await GuildSettings.getOrCreate(req.params.guildId);
+  res.json({
+    welcomeEnabled: settings.welcomeEnabled,
+    welcomeChannelId: settings.welcomeChannelId,
+    welcomeTitle: settings.welcomeTitle,
+    welcomeDescription: settings.welcomeDescription,
+    welcomeColor: settings.welcomeColor,
+    welcomeUseDominantColor: settings.welcomeUseDominantColor,
+    goodbyeEnabled: settings.goodbyeEnabled,
+    goodbyeChannelId: settings.goodbyeChannelId,
+    goodbyeTitle: settings.goodbyeTitle,
+    goodbyeDescription: settings.goodbyeDescription,
+    goodbyeColor: settings.goodbyeColor,
+    goodbyeUseDominantColor: settings.goodbyeUseDominantColor,
+  });
+});
+
+router.post("/welcome/:guildId", requireAuth, async (req, res) => {
+  const values = req.body || {};
+  await GuildSettings.save(req.params.guildId, {
+    welcomeEnabled: values.welcomeEnabled !== undefined ? Boolean(values.welcomeEnabled) : undefined,
+    welcomeChannelId: values.welcomeChannelId !== undefined ? (values.welcomeChannelId?.trim() || null) : undefined,
+    welcomeTitle: values.welcomeTitle !== undefined ? (values.welcomeTitle?.trim() || null) : undefined,
+    welcomeDescription: values.welcomeDescription !== undefined ? (values.welcomeDescription?.trim() || null) : undefined,
+    welcomeColor: values.welcomeColor !== undefined && values.welcomeColor !== "" ? Number(values.welcomeColor) : undefined,
+    welcomeUseDominantColor: values.welcomeUseDominantColor !== undefined ? Boolean(values.welcomeUseDominantColor) : undefined,
+    goodbyeEnabled: values.goodbyeEnabled !== undefined ? Boolean(values.goodbyeEnabled) : undefined,
+    goodbyeChannelId: values.goodbyeChannelId !== undefined ? (values.goodbyeChannelId?.trim() || null) : undefined,
+    goodbyeTitle: values.goodbyeTitle !== undefined ? (values.goodbyeTitle?.trim() || null) : undefined,
+    goodbyeDescription: values.goodbyeDescription !== undefined ? (values.goodbyeDescription?.trim() || null) : undefined,
+    goodbyeColor: values.goodbyeColor !== undefined && values.goodbyeColor !== "" ? Number(values.goodbyeColor) : undefined,
+    goodbyeUseDominantColor: values.goodbyeUseDominantColor !== undefined ? Boolean(values.goodbyeUseDominantColor) : undefined,
+  });
+  res.json({ ok: true });
+});
+
 // Users
 router.get("/users", requireAuth, requirePermission("users"), async (req, res) => {
   const users = await User.getAll();

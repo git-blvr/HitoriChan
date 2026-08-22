@@ -390,6 +390,23 @@ const MIGRATIONS = [
       ALTER TABLE quests ADD COLUMN completion_message TEXT DEFAULT '{}';
     `,
   },
+  {
+    version: 18,
+    sql: `
+      ALTER TABLE guild_settings ADD COLUMN welcome_enabled INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE guild_settings ADD COLUMN welcome_channel_id TEXT;
+      ALTER TABLE guild_settings ADD COLUMN welcome_title TEXT DEFAULT 'Welcome!';
+      ALTER TABLE guild_settings ADD COLUMN welcome_description TEXT DEFAULT 'Welcome to the server, {user}!';
+      ALTER TABLE guild_settings ADD COLUMN welcome_color INTEGER DEFAULT 9125967;
+      ALTER TABLE guild_settings ADD COLUMN welcome_use_dominant_color INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE guild_settings ADD COLUMN goodbye_enabled INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE guild_settings ADD COLUMN goodbye_channel_id TEXT;
+      ALTER TABLE guild_settings ADD COLUMN goodbye_title TEXT DEFAULT 'Goodbye!';
+      ALTER TABLE guild_settings ADD COLUMN goodbye_description TEXT DEFAULT 'Goodbye, {user}. We will miss you.';
+      ALTER TABLE guild_settings ADD COLUMN goodbye_color INTEGER DEFAULT 9125967;
+      ALTER TABLE guild_settings ADD COLUMN goodbye_use_dominant_color INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];
 
 export function migrate() {

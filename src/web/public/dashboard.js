@@ -637,6 +637,26 @@ const sections = {
     `).join("") || '<tr><td colspan="3">No triggers</td></tr>';
   },
 
+  welcome: async () => {
+    if (!currentGuild) return;
+    await loadGuildData(currentGuild);
+    const settings = await json(`/api/welcome/${currentGuild}`);
+
+    document.getElementById("welcome-enabled").checked = settings.welcomeEnabled;
+    populateChannels("welcome-channel", settings.welcomeChannelId || "", "-- System channel --");
+    document.getElementById("welcome-title").value = settings.welcomeTitle || "";
+    document.getElementById("welcome-desc").value = settings.welcomeDescription || "";
+    document.getElementById("welcome-color").value = intToHex(settings.welcomeColor);
+    document.getElementById("welcome-dominant").checked = settings.welcomeUseDominantColor;
+
+    document.getElementById("goodbye-enabled").checked = settings.goodbyeEnabled;
+    populateChannels("goodbye-channel", settings.goodbyeChannelId || "", "-- System channel --");
+    document.getElementById("goodbye-title").value = settings.goodbyeTitle || "";
+    document.getElementById("goodbye-desc").value = settings.goodbyeDescription || "";
+    document.getElementById("goodbye-color").value = intToHex(settings.goodbyeColor);
+    document.getElementById("goodbye-dominant").checked = settings.goodbyeUseDominantColor;
+  },
+
   logs: async () => {
     if (!currentGuild) return;
     await loadGuildData(currentGuild);
@@ -1948,6 +1968,37 @@ document.getElementById("boost-form").addEventListener("submit", async (e) => {
     }),
   });
   showToast("Boost settings saved", "success");
+});
+
+function getWelcomeGoodbyeBody() {
+  return {
+    welcomeEnabled: document.getElementById("welcome-enabled").checked,
+    welcomeChannelId: document.getElementById("welcome-channel").value || null,
+    welcomeTitle: document.getElementById("welcome-title").value.trim() || null,
+    welcomeDescription: document.getElementById("welcome-desc").value.trim() || null,
+    welcomeColor: hexToInt(document.getElementById("welcome-color").value),
+    welcomeUseDominantColor: document.getElementById("welcome-dominant").checked,
+    goodbyeEnabled: document.getElementById("goodbye-enabled").checked,
+    goodbyeChannelId: document.getElementById("goodbye-channel").value || null,
+    goodbyeTitle: document.getElementById("goodbye-title").value.trim() || null,
+    goodbyeDescription: document.getElementById("goodbye-desc").value.trim() || null,
+    goodbyeColor: hexToInt(document.getElementById("goodbye-color").value),
+    goodbyeUseDominantColor: document.getElementById("goodbye-dominant").checked,
+  };
+}
+
+document.getElementById("welcome-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+  await json(`/api/welcome/${currentGuild}`, { method: "POST", body: JSON.stringify(getWelcomeGoodbyeBody()) });
+  showToast("Welcome settings saved", "success");
+});
+
+document.getElementById("goodbye-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+  await json(`/api/welcome/${currentGuild}`, { method: "POST", body: JSON.stringify(getWelcomeGoodbyeBody()) });
+  showToast("Goodbye settings saved", "success");
 });
 
 function getUserFormPermissions() {
