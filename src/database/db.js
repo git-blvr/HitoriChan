@@ -384,6 +384,12 @@ const MIGRATIONS = [
       ALTER TABLE quests ADD COLUMN condition TEXT DEFAULT '[]';
     `,
   },
+  {
+    version: 17,
+    sql: `
+      ALTER TABLE quests ADD COLUMN completion_message TEXT DEFAULT '{}';
+    `,
+  },
 ];
 
 export function migrate() {

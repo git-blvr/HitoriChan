@@ -684,6 +684,21 @@ body {
   min-width: 80px;
 }
 
+#quest-completion-panel label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+#quest-completion-panel label:has(input[type="text"]),
+#quest-completion-panel label:has(textarea),
+#quest-completion-panel label:has(select),
+#quest-completion-panel label:has(input[type="color"]) {
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .quest-task-payload { margin-top: 10px; }
 
 .quest-variable-row {

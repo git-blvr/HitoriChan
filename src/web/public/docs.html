@@ -425,6 +425,17 @@
           <tr><td><code>give_currency</code></td><td>primary/secondary, amount</td></tr>
         </table>
 
+        <h3>Completion Message</h3>
+        <p>Sent automatically when someone completes the quest. It is a CV2 message with the user's avatar as thumbnail and an optional dominant color sampled from the avatar.</p>
+        <ul>
+          <li><strong>Enabled</strong> — turn the completion message on/off.</li>
+          <li><strong>Send as DM</strong> — send directly to the user instead of a channel.</li>
+          <li><strong>Channel</strong> — channel to send to. Leave empty to post in the channel that triggered the quest.</li>
+          <li><strong>Title / Description</strong> — the text. <code>{user}</code> is replaced with a mention.</li>
+          <li><strong>Color</strong> — hex fallback color.</li>
+          <li><strong>Use dominant color</strong> — override the color with the user's avatar dominant color.</li>
+        </ul>
+
         <h3>Reward</h3>
         <p>Besides tasks, a quest can have a direct reward. Choose <strong>Currency</strong> (value = <code>primary</code> or <code>secondary</code>) or <strong>Role</strong> (value = role ID), and an amount.</p>
       </section>

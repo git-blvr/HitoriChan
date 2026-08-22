@@ -637,6 +637,22 @@
             <button type="button" id="quest-add-task" class="save-btn" style="margin-top:10px">+ Task</button>
           </div>
 
+          <div class="panel sub-panel" id="quest-completion-panel">
+            <h3>Completion Message</h3>
+            <p class="hint">Sent when someone completes the quest. Supports {user} placeholder.</p>
+            <label><input type="checkbox" id="quest-completion-enabled" /> Enabled</label>
+            <label><input type="checkbox" id="quest-completion-dm" /> Send as DM</label>
+            <label>Channel
+              <select id="quest-completion-channel" data-searchable="true">
+                <option value="">-- Current channel --</option>
+              </select>
+            </label>
+            <label>Title <input type="text" id="quest-completion-title" placeholder="Quest Completed!" data-payload-import="text" /></label>
+            <label>Description <textarea id="quest-completion-desc" rows="2" placeholder="Congratulations {user}, you completed the quest!" data-payload-import="text"></textarea></label>
+            <label>Color <input type="color" id="quest-completion-color" value="#8b5cf6" /></label>
+            <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="quest-completion-dominant" /> Use user's avatar dominant color</label>
+          </div>
+
           <div class="inline-fields">
             <label class="grow">Reward Type
               <select id="quest-reward-type">
@@ -656,7 +672,7 @@
         </form>
 
         <table class="data-table" id="quests-table">
-          <thead><tr><th>Name</th><th>Schedule</th><th>Enabled</th><th>DSL</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>Schedule</th><th>Enabled</th><th>Condition</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>

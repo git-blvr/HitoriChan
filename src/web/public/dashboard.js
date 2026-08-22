@@ -2439,6 +2439,30 @@ function getQuestTasks() {
   return tasks;
 }
 
+function buildQuestCompletionMessage(cm = {}) {
+  const channelSelect = document.getElementById("quest-completion-channel");
+  document.getElementById("quest-completion-enabled").checked = cm.enabled || false;
+  document.getElementById("quest-completion-dm").checked = cm.dm || false;
+  document.getElementById("quest-completion-title").value = cm.title || "";
+  document.getElementById("quest-completion-desc").value = cm.description || "";
+  document.getElementById("quest-completion-color").value = cm.color || "#8b5cf6";
+  document.getElementById("quest-completion-dominant").checked = cm.useDominantColor || false;
+  makeSelectSearchableIfNeeded(channelSelect);
+  populateChannelsForEl(channelSelect, cm.channelId || "");
+}
+
+function getQuestCompletionMessage() {
+  return {
+    enabled: document.getElementById("quest-completion-enabled")?.checked || false,
+    dm: document.getElementById("quest-completion-dm")?.checked || false,
+    channelId: document.getElementById("quest-completion-channel")?.value || null,
+    title: document.getElementById("quest-completion-title")?.value.trim() || null,
+    description: document.getElementById("quest-completion-desc")?.value.trim() || null,
+    color: document.getElementById("quest-completion-color")?.value || null,
+    useDominantColor: document.getElementById("quest-completion-dominant")?.checked || false,
+  };
+}
+
 function resetQuestEditor() {
   document.getElementById("quest-form").reset();
   document.getElementById("quest-id").value = "";
@@ -2448,6 +2472,7 @@ function resetQuestEditor() {
   buildQuestConditions({ match: "all", blocks: [] });
   buildQuestVariables({});
   buildQuestTasks([]);
+  buildQuestCompletionMessage({});
 }
 
 window.editQuest = async (id) => {
@@ -2465,6 +2490,7 @@ window.editQuest = async (id) => {
   buildQuestConditions(q.condition || { match: "all", blocks: [] });
   buildQuestVariables(q.variables || {});
   buildQuestTasks(q.tasks || []);
+  buildQuestCompletionMessage(q.completionMessage || {});
 };
 
 window.deleteQuest = async (id) => {
@@ -2486,6 +2512,7 @@ document.getElementById("quest-form").addEventListener("submit", async (e) => {
   const condition = getQuestConditions();
   const variables = getQuestVariables();
   const tasks = getQuestTasks();
+  const completionMessage = getQuestCompletionMessage();
 
   const body = {
     name: document.getElementById("quest-name").value.trim(),
@@ -2495,6 +2522,7 @@ document.getElementById("quest-form").addEventListener("submit", async (e) => {
     condition,
     variables,
     tasks,
+    completionMessage,
     rewardType: document.getElementById("quest-reward-type").value || null,
     rewardValue: document.getElementById("quest-reward-value").value.trim() || null,
     rewardAmount: Number(document.getElementById("quest-reward-amount").value) || 0,

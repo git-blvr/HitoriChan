@@ -2,6 +2,8 @@ import * as Quest from "../models/Quest.js";
 import * as QuestProgress from "../models/QuestProgress.js";
 import * as EconomyAccount from "../models/EconomyAccount.js";
 import { getGuildEconomyConfig } from "./economyManager.js";
+import { cv2 } from "../helpers/cv2.js";
+import { get_dominant_color } from "./color_utils.js";
 
 // =========================================================
 // DSL tokenizer / parser
@@ -526,6 +528,13 @@ async function runQuest(quest, context, client) {
       console.error(`Quest ${quest.id} task error:`, err.message);
     }
   }
+
+  // Send completion embed
+  try {
+    await sendCompletionMessage(quest, context, client);
+  } catch (err) {
+    console.error(`Quest ${quest.id} completion message error:`, err.message);
+  }
 }
 
 async function applyReward(quest, context, client) {
@@ -587,6 +596,62 @@ function replaceVars(text, context) {
   return text
     .replace(/\{user\}/g, `<@${context.userId}>`)
     .replace(/\{guild\}/g, context.guildId ? `<@${context.guildId}>` : "");
+}
+
+async function sendCompletionMessage(quest, context, client) {
+  const cm = quest.completionMessage || {};
+  if (!cm.enabled) return;
+
+  const member = getMember(context.member);
+  const user = member?.user || context.user;
+  const avatar = user?.displayAvatarURL?.({ size: 128, forceStatic: true }) ?? null;
+
+  let color = cm.color ? parseInt(cm.color.replace("#", ""), 16) : null;
+  if (cm.useDominantColor && avatar) {
+    try {
+      color = await get_dominant_color(avatar);
+    } catch (err) {
+      console.error("Dominant color error:", err.message);
+    }
+  }
+  if (color == null || isNaN(color)) color = 0x2f3136;
+
+  const title = cm.title || `Quest Completed: ${quest.name}`;
+  const description = replaceVars(cm.description || `Congratulations <@${context.userId}>, you completed the quest **${quest.name}**!`, context);
+
+  const payload = cv2({
+    color,
+    title,
+    description,
+    thumbnail: avatar,
+  });
+
+  if (cm.dm) {
+    try {
+      const target = await client?.users?.fetch?.(context.userId);
+      if (target) await target.send(payload);
+    } catch {
+      // ignore DM failures
+    }
+  } else if (cm.channelId) {
+    const channel = client?.channels?.cache?.get(cm.channelId);
+    if (channel?.isTextBased()) {
+      try {
+        await channel.send(payload);
+      } catch (err) {
+        console.error("Completion channel send error:", err.message);
+      }
+    }
+  } else {
+    const channel = client?.channels?.cache?.get(context.channelId);
+    if (channel?.isTextBased()) {
+      try {
+        await channel.send(payload);
+      } catch (err) {
+        console.error("Completion channel send error:", err.message);
+      }
+    }
+  }
 }
 
 async function runAllForGuild(event, client, guildId, buildContext) {
