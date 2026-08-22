@@ -4,12 +4,12 @@ const listStmt = db.prepare("SELECT * FROM quests WHERE guild_id = ? ORDER BY na
 const getStmt = db.prepare("SELECT * FROM quests WHERE id = ?");
 const getByGuildStmt = db.prepare("SELECT * FROM quests WHERE guild_id = ? AND enabled = 1");
 const insertStmt = db.prepare(`
-  INSERT INTO quests (guild_id, name, description, schedule, dsl, variables, tasks, reward_type, reward_value, reward_amount, enabled, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO quests (guild_id, name, description, schedule, dsl, condition, variables, tasks, reward_type, reward_value, reward_amount, enabled, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const updateStmt = db.prepare(`
   UPDATE quests SET
-    name = ?, description = ?, schedule = ?, dsl = ?, variables = ?, tasks = ?,
+    name = ?, description = ?, schedule = ?, dsl = ?, condition = ?, variables = ?, tasks = ?,
     reward_type = ?, reward_value = ?, reward_amount = ?, enabled = ?, updated_at = ?
   WHERE id = ?
 `);
@@ -32,6 +32,7 @@ function fromRow(row) {
     description: row.description,
     schedule: row.schedule,
     dsl: row.dsl,
+    condition: parseJson(row.condition, []),
     variables: parseJson(row.variables, {}),
     tasks: parseJson(row.tasks, []),
     rewardType: row.reward_type,
@@ -63,6 +64,7 @@ export async function create(data) {
     data.description ?? null,
     data.schedule ?? "once",
     data.dsl ?? "",
+    JSON.stringify(data.condition ?? []),
     JSON.stringify(data.variables ?? {}),
     JSON.stringify(data.tasks ?? []),
     data.rewardType ?? null,
@@ -84,6 +86,7 @@ export async function update(id, data) {
     data.description ?? quest.description,
     data.schedule ?? quest.schedule,
     data.dsl ?? quest.dsl,
+    JSON.stringify(data.condition ?? quest.condition ?? []),
     JSON.stringify(data.variables ?? quest.variables),
     JSON.stringify(data.tasks ?? quest.tasks),
     data.rewardType ?? quest.rewardType,

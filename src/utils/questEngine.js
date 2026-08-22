@@ -428,8 +428,60 @@ async function ensureEconomy(context, client) {
   }
 }
 
+function buildConditionAst(condition, dsl) {
+  if (!condition || !condition.blocks || !condition.blocks.length) {
+    if (!dsl) return null;
+    try {
+      const tokens = tokenize(dsl);
+      const parser = new Parser(tokens);
+      const ast = parser.parseStatement();
+      if (ast.type === "if") return ast.condition;
+    } catch (err) {
+      console.error(`Quest DSL parse error:`, err.message);
+    }
+    return null;
+  }
+
+  function buildLeaf(block) {
+    if (!block || !block.entity || !block.field) return null;
+
+    let leaf;
+    const methodOps = new Set(["has_role", "has_any_role", "in_channel"]);
+
+    if (methodOps.has(block.op)) {
+      leaf = { type: "method", entity: block.entity, field: block.field, arg: toAstValue(block.value) };
+    } else if (block.field === "has_role" || block.field === "has_any_role" || block.field === "in_channel") {
+      leaf = { type: "method", entity: block.entity, field: block.field, arg: toAstValue(block.value) };
+    } else {
+      leaf = { type: "compare", entity: block.entity, field: block.field, op: block.op, value: toAstValue(block.value) };
+    }
+
+    if (block.not) return { type: "not", expr: leaf };
+    return leaf;
+  }
+
+  function toAstValue(value) {
+    if (typeof value === "boolean") return { type: "literal", value };
+    if (typeof value === "number") return { type: "literal", value };
+    if (typeof value === "string" && value.startsWith("$")) return { type: "variable", name: value.slice(1) };
+    return { type: "literal", value };
+  }
+
+  const blocks = condition.blocks.map(buildLeaf).filter(Boolean);
+  if (!blocks.length) return null;
+
+  if (blocks.length === 1) return blocks[0];
+
+  const combiner = condition.match === "any" ? "or" : "and";
+  let root = blocks[0];
+  for (let i = 1; i < blocks.length; i++) {
+    root = { type: combiner, left: root, right: blocks[i] };
+  }
+  return root;
+}
+
 async function runQuest(quest, context, client) {
-  if (!quest.enabled || !quest.dsl) return;
+  if (!quest.enabled || (!quest.dsl && !quest.condition?.blocks?.length)) return;
 
   const userId = context.userId;
   if (!userId) return;
@@ -442,19 +494,13 @@ async function runQuest(quest, context, client) {
   context.progress = progress;
   await ensureEconomy(context, client);
 
-  let ast;
-  try {
-    const tokens = tokenize(quest.dsl);
-    const parser = new Parser(tokens);
-    ast = parser.parseStatement();
-  } catch (err) {
-    console.error(`Quest ${quest.id} DSL parse error:`, err.message);
+  const conditionAst = buildConditionAst(quest.condition, quest.dsl);
+  if (!conditionAst) {
+    console.error(`Quest ${quest.id} has no valid condition`);
     return;
   }
 
-  if (ast.type !== "if") return;
-
-  const result = evaluateCondition(ast.condition, context, quest);
+  const result = evaluateCondition(conditionAst, context, quest);
   if (!result) return;
 
   // Mark completed
@@ -472,9 +518,13 @@ async function runQuest(quest, context, client) {
     }
   }
 
-  // Execute named task
-  if (ast.taskName) {
-    await executeTaskByName(ast.taskName, quest, context, client);
+  // Execute all tasks
+  for (const task of quest.tasks || []) {
+    try {
+      await executeTask(task, context, client);
+    } catch (err) {
+      console.error(`Quest ${quest.id} task error:`, err.message);
+    }
   }
 }
 

@@ -2011,48 +2011,245 @@ document.getElementById("user-form").addEventListener("submit", async (e) => {
 document.getElementById("user-cancel-btn").addEventListener("click", resetUserEditor);
 
 // Quests
-// DSL syntax highlighting
-const dslKeywords = new Set(["IF", "EXECUTE", "TASK", "AND", "OR", "NOT"]);
-const dslOperators = new Set([">=", "<=", "!=", "==", "=", "<", ">", "&", "|", "!", "INCLUDE", "STARTS_WITH", "ENDS_WITH"]);
+const QUEST_CONDITION_CONFIG = {
+  message: {
+    label: "Message",
+    fields: {
+      content: { label: "Content", type: "string", ops: ["INCLUDE", "STARTS_WITH", "ENDS_WITH", "=", "!="] },
+      channel: { label: "Channel", type: "channel", ops: ["=", "!="] },
+      author: { label: "Author", type: "user", ops: ["=", "!="] },
+      attachments: { label: "Attachment count", type: "number", ops: [">=", "<=", ">", "<", "=", "!="] },
+    },
+  },
+  messages: {
+    label: "Messages (tracked)",
+    fields: {
+      sent: { label: "Total sent", type: "number", ops: [">=", "<=", ">", "<", "=", "!="] },
+      in_channel: { label: "Sent in channel", type: "channel", ops: ["=", ">="] },
+      with_content: { label: "Containing text", type: "string", ops: ["INCLUDE", "STARTS_WITH", "ENDS_WITH"] },
+    },
+  },
+  user: {
+    label: "User",
+    fields: {
+      id: { label: "User ID", type: "user", ops: ["=", "!="] },
+      username: { label: "Username", type: "string", ops: ["INCLUDE", "STARTS_WITH", "ENDS_WITH", "=", "!="] },
+      display_name: { label: "Display name", type: "string", ops: ["INCLUDE", "=", "!="] },
+      is_bot: { label: "Is bot", type: "boolean", ops: ["="] },
+      boosted: { label: "Is boosting", type: "boolean", ops: ["="] },
+      has_role: { label: "Has role", type: "role", ops: ["="] },
+      has_any_role: { label: "Has any role", type: "role_list", ops: ["="] },
+      in_channel: { label: "In channel", type: "channel", ops: ["="] },
+    },
+  },
+  voice: {
+    label: "Voice",
+    fields: {
+      minutes: { label: "Minutes", type: "number", ops: [">=", "<=", ">", "<", "=", "!="] },
+      joined: { label: "Joins", type: "number", ops: [">=", "<=", ">", "<", "=", "!="] },
+    },
+  },
+  commands: {
+    label: "Commands",
+    fields: {
+      count: { label: "Total used", type: "number", ops: [">=", "<=", ">", "<", "=", "!="] },
+      used: { label: "Used command", type: "string", ops: ["=", "!=", "INCLUDE"] },
+    },
+  },
+  reactions: {
+    label: "Reactions",
+    fields: {
+      count: { label: "Total reactions", type: "number", ops: [">=", "<=", ">", "<", "=", "!="] },
+    },
+  },
+  invites: {
+    label: "Invites",
+    fields: {
+      count: { label: "Count", type: "number", ops: [">=", "<=", ">", "<", "=", "!="] },
+    },
+  },
+  economy: {
+    label: "Economy",
+    fields: {
+      primary: { label: "Primary balance", type: "number", ops: [">=", "<=", ">", "<", "=", "!="] },
+      secondary: { label: "Secondary balance", type: "number", ops: [">=", "<=", ">", "<", "=", "!="] },
+    },
+  },
+  channel: {
+    label: "Channel",
+    fields: {
+      message: { label: "Message content", type: "string", ops: ["INCLUDE", "STARTS_WITH", "ENDS_WITH", "=", "!="] },
+    },
+  },
+  guild: {
+    label: "Guild",
+    fields: {
+      id: { label: "Guild ID", type: "string", ops: ["=", "!="] },
+    },
+  },
+};
 
-function highlightDsl(text) {
-  const re = /("(?:\\"|[^"])*"|'(?:\\'|[^'])*'|>=|<=|!=|==|=|<|>|&|\||!|\.|\(|\)|,|\$[A-Za-z_][A-Za-z0-9_]*|[A-Za-z_][A-Za-z0-9_]*|\d+\.?\d*|\n|\s+|.)/g;
-  let html = "";
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    const token = m[1];
-    if (!token) break;
-    if (/^\s+$/.test(token) || token === "\n") {
-      html += token.replace(/\n/g, "<br>").replace(/ /g, " ");
-      continue;
-    }
-    let cls = "dsl-token-punct";
-    if (dslKeywords.has(token)) cls = "dsl-token-keyword";
-    else if (dslOperators.has(token)) cls = "dsl-token-operator";
-    else if (token.startsWith('"') || token.startsWith("'")) cls = "dsl-token-string";
-    else if (/^\d/.test(token)) cls = "dsl-token-number";
-    else if (token.startsWith("$")) cls = "dsl-token-variable";
-    else if (/^[A-Za-z_]/.test(token)) cls = "dsl-token-entity";
-    html += `<span class="${cls}">${escapeHtml(token)}</span>`;
+// Quest conditions UI
+function buildQuestConditions(condition = { match: "all", blocks: [] }) {
+  const list = document.getElementById("quest-conditions-list");
+  if (!list) return;
+  list.innerHTML = "";
+  document.getElementById("quest-match").value = condition.match || "all";
+  for (const block of condition.blocks || []) {
+    addQuestConditionBlock(block);
   }
-  return html;
 }
 
-function syncDslHighlighter() {
-  const textarea = document.getElementById("quest-dsl");
-  const highlighter = document.getElementById("dsl-highlighter");
-  if (!textarea || !highlighter) return;
-  highlighter.innerHTML = highlightDsl(textarea.value);
-  highlighter.scrollTop = textarea.scrollTop;
-  highlighter.scrollLeft = textarea.scrollLeft;
+function addQuestConditionBlock(block = {}) {
+  const list = document.getElementById("quest-conditions-list");
+  if (!list) return;
+
+  const card = document.createElement("div");
+  card.className = "quest-condition-card";
+  card.dataset.not = block.not ? "1" : "";
+
+  const entityOptions = Object.entries(QUEST_CONDITION_CONFIG).map(([k, v]) =>
+    `<option value="${k}" ${k === (block.entity || "message") ? "selected" : ""}>${v.label}</option>`
+  ).join("");
+
+  card.innerHTML = `
+    <div class="inline-fields" style="align-items:flex-end">
+      <label style="white-space:nowrap"><input type="checkbox" class="quest-condition-not" ${block.not ? "checked" : ""} /> NOT</label>
+      <label class="grow">Entity
+        <select class="quest-condition-entity">${entityOptions}</select>
+      </label>
+      <label class="grow">Field
+        <select class="quest-condition-field"></select>
+      </label>
+      <label class="grow">Operator
+        <select class="quest-condition-op"></select>
+      </label>
+      <button type="button" class="save-btn quest-remove-condition" style="background:var(--surface-2)">Remove</button>
+    </div>
+    <div class="quest-condition-value" style="margin-top:10px"></div>
+  `;
+
+  card.querySelector(".quest-remove-condition").addEventListener("click", () => card.remove());
+  card.querySelector(".quest-condition-entity").addEventListener("change", () => {
+    const entity = card.querySelector(".quest-condition-entity").value;
+    const firstField = Object.keys(QUEST_CONDITION_CONFIG[entity].fields)[0];
+    renderConditionField(card, entity, firstField);
+  });
+  card.querySelector(".quest-condition-field").addEventListener("change", () => {
+    const entity = card.querySelector(".quest-condition-entity").value;
+    const field = card.querySelector(".quest-condition-field").value;
+    renderConditionOpAndValue(card, entity, field);
+  });
+  card.querySelector(".quest-condition-op").addEventListener("change", () => {
+    const entity = card.querySelector(".quest-condition-entity").value;
+    const field = card.querySelector(".quest-condition-field").value;
+    renderConditionValue(card, entity, field);
+  });
+
+  renderConditionField(card, block.entity || "message", block.field);
+  setTimeout(() => {
+    const entity = card.querySelector(".quest-condition-entity").value;
+    const field = card.querySelector(".quest-condition-field").value;
+    const op = block.op || QUEST_CONDITION_CONFIG[entity].fields[field].ops[0];
+    const opSelect = card.querySelector(".quest-condition-op");
+    if (opSelect) opSelect.value = op;
+    renderConditionValue(card, entity, field, block.value);
+  }, 0);
+
+  list.appendChild(card);
 }
 
-function initDslHighlighter() {
-  const textarea = document.getElementById("quest-dsl");
-  if (!textarea) return;
-  textarea.addEventListener("input", syncDslHighlighter);
-  textarea.addEventListener("scroll", syncDslHighlighter);
-  syncDslHighlighter();
+function renderConditionField(card, entity, selectedField) {
+  const config = QUEST_CONDITION_CONFIG[entity];
+  const fieldSelect = card.querySelector(".quest-condition-field");
+  fieldSelect.innerHTML = Object.entries(config.fields).map(([k, v]) =>
+    `<option value="${k}" ${k === selectedField ? "selected" : ""}>${v.label}</option>`
+  ).join("");
+
+  const field = fieldSelect.value;
+  renderConditionOpAndValue(card, entity, field);
+}
+
+function renderConditionOpAndValue(card, entity, field) {
+  const config = QUEST_CONDITION_CONFIG[entity].fields[field];
+  const opSelect = card.querySelector(".quest-condition-op");
+  opSelect.innerHTML = (config.ops || ["="]).map((op) =>
+    `<option value="${op}">${op}</option>`
+  ).join("");
+  renderConditionValue(card, entity, field);
+}
+
+function renderConditionValue(card, entity, field, selectedValue = "") {
+  const config = QUEST_CONDITION_CONFIG[entity].fields[field];
+  const op = card.querySelector(".quest-condition-op")?.value || config.ops[0];
+  const container = card.querySelector(".quest-condition-value");
+  if (!container) return;
+
+  let html = "";
+  const value = selectedValue ?? "";
+
+  if (config.type === "string") {
+    html = `<input type="text" class="quest-condition-value-input" placeholder="value or $variable" value="${escapeHtml(String(value))}" />`;
+  } else if (config.type === "number") {
+    html = `<input type="number" class="quest-condition-value-input" value="${escapeHtml(String(value))}" />`;
+  } else if (config.type === "boolean") {
+    const checked = value === true || value === "true" ? "checked" : "";
+    html = `<label style="display:flex;align-items:center;gap:8px"><input type="checkbox" class="quest-condition-value-check" ${checked} /> Yes / True</label>`;
+  } else if (config.type === "channel") {
+    html = `<select class="quest-condition-value-select" data-searchable="true"><option value="">-- None --</option></select>`;
+  } else if (config.type === "role") {
+    html = `<select class="quest-condition-value-select" data-searchable="true"><option value="">-- None --</option></select>`;
+  } else if (config.type === "role_list") {
+    html = `<input type="text" class="quest-condition-value-input" placeholder="role-id-1, role-id-2" value="${escapeHtml(String(value))}" />`;
+  } else if (config.type === "user") {
+    html = `<select class="quest-condition-value-select" data-searchable="true"><option value="">-- None --</option></select>`;
+  }
+
+  container.innerHTML = html;
+
+  const select = container.querySelector(".quest-condition-value-select");
+  if (select) {
+    makeSelectSearchableIfNeeded(select);
+    if (config.type === "channel") populateChannelsForEl(select, value);
+    else if (config.type === "role" || config.type === "role_list") populateRolesForEl(select, value);
+    else if (config.type === "user") populateUsersForEl(select, value);
+  }
+}
+
+function populateUsersForEl(select, selectedId) {
+  select.innerHTML = '<option value="">-- None --</option>' +
+    (guildData.members || []).map((m) =>
+      `<option value="${m.id}" ${m.id === selectedId ? "selected" : ""}>${escapeHtml(m.displayName || m.username)}</option>`
+    ).join("");
+  refreshSelectFilter(select);
+}
+
+function getQuestConditions() {
+  const match = document.getElementById("quest-match").value || "all";
+  const blocks = [];
+  document.querySelectorAll(".quest-condition-card").forEach((card) => {
+    const not = card.querySelector(".quest-condition-not")?.checked || false;
+    const entity = card.querySelector(".quest-condition-entity")?.value;
+    const field = card.querySelector(".quest-condition-field")?.value;
+    const op = card.querySelector(".quest-condition-op")?.value;
+    if (!entity || !field) return;
+
+    const config = QUEST_CONDITION_CONFIG[entity].fields[field];
+    let value = "";
+
+    if (config.type === "boolean") {
+      value = card.querySelector(".quest-condition-value-check")?.checked || false;
+    } else if (config.type === "channel" || config.type === "role" || config.type === "user") {
+      value = card.querySelector(".quest-condition-value-select")?.value || "";
+    } else if (config.type === "number") {
+      value = Number(card.querySelector(".quest-condition-value-input")?.value) || 0;
+    } else {
+      value = card.querySelector(".quest-condition-value-input")?.value.trim() || "";
+    }
+
+    blocks.push({ not, entity, field, op, value });
+  });
+  return { match, blocks };
 }
 
 // Quest variables UI
@@ -2248,9 +2445,9 @@ function resetQuestEditor() {
   document.getElementById("quest-enabled").value = "1";
   document.getElementById("quest-reward-amount").value = "0";
   document.getElementById("quest-save-btn").textContent = "Create Quest";
+  buildQuestConditions({ match: "all", blocks: [] });
   buildQuestVariables({});
   buildQuestTasks([]);
-  syncDslHighlighter();
 }
 
 window.editQuest = async (id) => {
@@ -2260,15 +2457,14 @@ window.editQuest = async (id) => {
   document.getElementById("quest-desc").value = q.description || "";
   document.getElementById("quest-schedule").value = q.schedule;
   document.getElementById("quest-enabled").value = q.enabled ? "1" : "0";
-  document.getElementById("quest-dsl").value = q.dsl;
   document.getElementById("quest-reward-type").value = q.rewardType || "";
   document.getElementById("quest-reward-value").value = q.rewardValue || "";
   document.getElementById("quest-reward-amount").value = q.rewardAmount || 0;
   document.getElementById("quest-save-btn").textContent = "Update Quest";
 
+  buildQuestConditions(q.condition || { match: "all", blocks: [] });
   buildQuestVariables(q.variables || {});
   buildQuestTasks(q.tasks || []);
-  syncDslHighlighter();
 };
 
 window.deleteQuest = async (id) => {
@@ -2280,12 +2476,14 @@ window.deleteQuest = async (id) => {
 
 document.getElementById("quest-add-variable").addEventListener("click", () => addQuestVariableRow());
 document.getElementById("quest-add-task").addEventListener("click", () => addQuestTaskCard());
+document.getElementById("quest-add-condition").addEventListener("click", () => addQuestConditionBlock());
 
 document.getElementById("quest-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!currentGuild) return;
 
   const id = document.getElementById("quest-id").value;
+  const condition = getQuestConditions();
   const variables = getQuestVariables();
   const tasks = getQuestTasks();
 
@@ -2294,7 +2492,7 @@ document.getElementById("quest-form").addEventListener("submit", async (e) => {
     description: document.getElementById("quest-desc").value.trim(),
     schedule: document.getElementById("quest-schedule").value,
     enabled: document.getElementById("quest-enabled").value === "1",
-    dsl: document.getElementById("quest-dsl").value.trim(),
+    condition,
     variables,
     tasks,
     rewardType: document.getElementById("quest-reward-type").value || null,
@@ -2318,8 +2516,6 @@ document.getElementById("quest-form").addEventListener("submit", async (e) => {
 });
 
 document.getElementById("quest-cancel-btn").addEventListener("click", resetQuestEditor);
-
-initDslHighlighter();
 
 const payloadModal = document.getElementById("payload-import-modal");
 const payloadText = document.getElementById("payload-import-text");

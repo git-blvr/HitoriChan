@@ -659,6 +659,31 @@ body {
   color: var(--text);
 }
 
+.quest-condition-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.quest-condition-card .inline-fields {
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.quest-condition-card label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.quest-condition-card select,
+.quest-condition-card input[type="text"],
+.quest-condition-card input[type="number"] {
+  min-width: 80px;
+}
+
 .quest-task-payload { margin-top: 10px; }
 
 .quest-variable-row {

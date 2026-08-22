@@ -608,12 +608,20 @@
             </label>
           </div>
 
-          <label class="hint" style="margin-top:8px">DSL <span class="hint">Write: IF condition, EXECUTE TASK taskname. Operators: & (AND), | (OR), ! (NOT), INCLUDE, =, !=, >=, etc.</span>
-            <div class="dsl-editor">
-              <pre id="dsl-highlighter" class="dsl-highlighter" aria-hidden="true"></pre>
-              <textarea id="quest-dsl" rows="4" placeholder='IF message.content INCLUDE &quot;welcome&quot;, EXECUTE TASK welcome' required></textarea>
-            </div>
-          </label>
+          <div class="panel sub-panel" id="quest-condition-panel">
+            <h3>Condition</h3>
+            <p class="hint">Build when the quest should complete. Conditions are combined with the match mode below.</p>
+
+            <label>Match Mode
+              <select id="quest-match" required>
+                <option value="all">All conditions must match (AND)</option>
+                <option value="any">Any condition can match (OR)</option>
+              </select>
+            </label>
+
+            <div id="quest-conditions-list" class="quest-list"></div>
+            <button type="button" id="quest-add-condition" class="save-btn" style="margin-top:10px">+ Condition</button>
+          </div>
 
           <div class="panel sub-panel" id="quest-variables-panel">
             <h3>Variables</h3>

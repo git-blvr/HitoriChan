@@ -761,8 +761,8 @@ router.get("/quests/:guildId", requireAuth, async (req, res) => {
 });
 
 router.post("/quests/:guildId", requireAuth, requirePermission("quests"), async (req, res) => {
-  const { name, description, schedule, dsl, variables, tasks, rewardType, rewardValue, rewardAmount, enabled } = req.body || {};
-  if (!name || !schedule || !dsl) return res.status(400).json({ error: "Name, schedule and DSL are required" });
+  const { name, description, schedule, dsl, condition, variables, tasks, rewardType, rewardValue, rewardAmount, enabled } = req.body || {};
+  if (!name || !schedule) return res.status(400).json({ error: "Name and schedule are required" });
   try {
     const quest = await Quest.create({
       guildId: req.params.guildId,
@@ -770,6 +770,7 @@ router.post("/quests/:guildId", requireAuth, requirePermission("quests"), async 
       description,
       schedule,
       dsl,
+      condition,
       variables,
       tasks,
       rewardType,

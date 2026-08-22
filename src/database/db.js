@@ -378,6 +378,12 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_quest_progress_user ON quest_progress(user_id);
     `,
   },
+  {
+    version: 16,
+    sql: `
+      ALTER TABLE quests ADD COLUMN condition TEXT DEFAULT '[]';
+    `,
+  },
 ];
 
 export function migrate() {
