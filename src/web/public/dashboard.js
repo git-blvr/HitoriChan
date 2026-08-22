@@ -645,6 +645,27 @@ const sections = {
     await Promise.all([loadCommandLogs(), loadMessageLogs()]);
   },
 
+  quests: async () => {
+    if (!currentGuild) return;
+    const quests = await json(`/api/quests/${currentGuild}`);
+    const tbody = document.querySelector("#quests-table tbody");
+    tbody.innerHTML = quests.map((q) => `
+      <tr>
+        <td>${escapeHtml(q.name)}</td>
+        <td>${escapeHtml(q.schedule)}</td>
+        <td>${q.enabled ? "Yes" : "No"}</td>
+        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(q.dsl)}">${escapeHtml(q.dsl)}</td>
+        <td>
+          <button onclick="editQuest(${q.id})">Edit</button>
+          <button onclick="deleteQuest(${q.id})">Delete</button>
+        </td>
+      </tr>
+    `).join("") || '<tr><td colspan="5">No quests</td></tr>';
+
+    resetQuestEditor();
+    document.getElementById("quest-help-panel").hidden = false;
+  },
+
   users: async () => {
     const [users, perms] = await Promise.all([json("/api/users"), json("/api/users/permissions")]);
     allPermissions = perms.permissions || [];
@@ -1986,6 +2007,92 @@ document.getElementById("user-form").addEventListener("submit", async (e) => {
 });
 
 document.getElementById("user-cancel-btn").addEventListener("click", resetUserEditor);
+
+// Quests
+function resetQuestEditor() {
+  document.getElementById("quest-form").reset();
+  document.getElementById("quest-id").value = "";
+  document.getElementById("quest-enabled").value = "1";
+  document.getElementById("quest-reward-amount").value = "0";
+  document.getElementById("quest-save-btn").textContent = "Create Quest";
+}
+
+function parseJsonField(id) {
+  const raw = document.getElementById(id).value.trim();
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`${id}: ${err.message}`);
+  }
+}
+
+window.editQuest = async (id) => {
+  const q = await json(`/api/quests/${currentGuild}/${id}`);
+  document.getElementById("quest-id").value = q.id;
+  document.getElementById("quest-name").value = q.name;
+  document.getElementById("quest-desc").value = q.description || "";
+  document.getElementById("quest-schedule").value = q.schedule;
+  document.getElementById("quest-enabled").value = q.enabled ? "1" : "0";
+  document.getElementById("quest-dsl").value = q.dsl;
+  document.getElementById("quest-variables").value = JSON.stringify(q.variables || {}, null, 2);
+  document.getElementById("quest-tasks").value = JSON.stringify(q.tasks || [], null, 2);
+  document.getElementById("quest-reward-type").value = q.rewardType || "";
+  document.getElementById("quest-reward-value").value = q.rewardValue || "";
+  document.getElementById("quest-reward-amount").value = q.rewardAmount || 0;
+  document.getElementById("quest-save-btn").textContent = "Update Quest";
+};
+
+window.deleteQuest = async (id) => {
+  if (!confirm("Delete this quest?")) return;
+  await json(`/api/quests/${currentGuild}/${id}`, { method: "DELETE" });
+  refreshSection();
+  showToast("Quest deleted", "success");
+};
+
+document.getElementById("quest-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+
+  const id = document.getElementById("quest-id").value;
+  let variables, tasks;
+  try {
+    variables = parseJsonField("quest-variables");
+    tasks = parseJsonField("quest-tasks");
+  } catch (err) {
+    showToast(err.message, "error");
+    return;
+  }
+
+  const body = {
+    name: document.getElementById("quest-name").value.trim(),
+    description: document.getElementById("quest-desc").value.trim(),
+    schedule: document.getElementById("quest-schedule").value,
+    enabled: document.getElementById("quest-enabled").value === "1",
+    dsl: document.getElementById("quest-dsl").value.trim(),
+    variables,
+    tasks,
+    rewardType: document.getElementById("quest-reward-type").value || null,
+    rewardValue: document.getElementById("quest-reward-value").value.trim() || null,
+    rewardAmount: Number(document.getElementById("quest-reward-amount").value) || 0,
+  };
+
+  try {
+    if (id) {
+      await json(`/api/quests/${currentGuild}/${id}`, { method: "POST", body: JSON.stringify(body) });
+      showToast("Quest updated", "success");
+    } else {
+      await json(`/api/quests/${currentGuild}`, { method: "POST", body: JSON.stringify(body) });
+      showToast("Quest created", "success");
+    }
+    resetQuestEditor();
+    refreshSection();
+  } catch (err) {
+    showToast(err.message || "Failed to save quest", "error");
+  }
+});
+
+document.getElementById("quest-cancel-btn").addEventListener("click", resetQuestEditor);
 
 const payloadModal = document.getElementById("payload-import-modal");
 const payloadText = document.getElementById("payload-import-text");

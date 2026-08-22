@@ -15,6 +15,7 @@ const PATH_PERMISSIONS = [
   { pattern: /^\/ai/, permission: "ai" },
   { pattern: /^\/streak/, permission: "streak" },
   { pattern: /^\/logs/, permission: "logs" },
+  { pattern: /^\/quests/, permission: "quests" },
   { pattern: /^\/emojis/, permission: "economy" },
   { pattern: /^\/(overview|stats|guilds)/, permission: "overview" },
 ];

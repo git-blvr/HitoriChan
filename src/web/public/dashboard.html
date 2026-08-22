@@ -23,6 +23,7 @@
       <a href="#boost" data-section="boost">Boost</a>
       <a href="#triggers" data-section="triggers">Triggers</a>
       <a href="#logs" data-section="logs">Logs</a>
+      <a href="#quests" data-section="quests">Quests</a>
       <a href="#users" data-section="users">Users</a>
     </nav>
     <div class="nav-footer">
@@ -580,6 +581,74 @@
           <thead><tr><th>Time</th><th>User</th><th>Channel</th><th>Content</th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
+    </section>
+
+    <section id="quests" class="content-section">
+      <div class="panel">
+        <h2>Quests</h2>
+        <form id="quest-form" class="config-form" style="margin-bottom:16px">
+          <input type="hidden" id="quest-id" />
+          <label>Name <input type="text" id="quest-name" required /></label>
+          <label>Description <input type="text" id="quest-desc" /></label>
+          <div class="inline-fields">
+            <label class="grow">Schedule
+              <select id="quest-schedule" required>
+                <option value="once">Once</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </label>
+            <label class="grow">Enabled
+              <select id="quest-enabled">
+                <option value="1">Yes</option>
+                <option value="0">No</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="hint" style="margin-top:8px">DSL <span class="hint">Write: IF condition, EXECUTE TASK taskname. Operators: & (AND), | (OR), ! (NOT), INCLUDE, =, !=, >=, etc.</span>
+            <textarea id="quest-dsl" rows="4" placeholder='IF message.content INCLUDE &quot;welcome&quot;, EXECUTE TASK welcome' required></textarea>
+          </label>
+
+          <label>Variables (JSON)
+            <textarea id="quest-variables" rows="3" placeholder='{ &quot;welcomeWord&quot;: &quot;welcome&quot; }'></textarea>
+          </label>
+
+          <label>Tasks (JSON)
+            <textarea id="quest-tasks" rows="4" placeholder='[{ &quot;name&quot;: &quot;welcome&quot;, &quot;type&quot;: &quot;send_message&quot;, &quot;payload&quot;: { &quot;channelId&quot;: &quot;...&quot;, &quot;content&quot;: &quot;Hello {user}!&quot; } }]'></textarea>
+          </label>
+
+          <div class="inline-fields">
+            <label class="grow">Reward Type
+              <select id="quest-reward-type">
+                <option value="">None</option>
+                <option value="currency">Currency</option>
+                <option value="role">Role</option>
+              </select>
+            </label>
+            <label class="grow">Reward Value <input type="text" id="quest-reward-value" placeholder="primary or role ID" /></label>
+            <label class="grow">Reward Amount <input type="number" id="quest-reward-amount" min="0" value="0" /></label>
+          </div>
+
+          <div class="inline-form" style="margin-top:12px">
+            <button type="submit" class="save-btn" id="quest-save-btn">Create Quest</button>
+            <button type="button" id="quest-cancel-btn" class="save-btn">Cancel</button>
+          </div>
+        </form>
+
+        <table class="data-table" id="quests-table">
+          <thead><tr><th>Name</th><th>Schedule</th><th>Enabled</th><th>DSL</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="panel sub-panel" id="quest-help-panel" hidden>
+        <h3>DSL Examples</h3>
+        <pre class="code-block">IF message.content INCLUDE &quot;welcome&quot;, EXECUTE TASK welcome
+IF messages.sent &gt;= 10 & user.has_role &quot;123456&quot;, EXECUTE TASK reward
+IF voice.minutes &gt;= 5 | reactions.count &gt;= 5, EXECUTE TASK chatter
+IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
       </div>
     </section>
 

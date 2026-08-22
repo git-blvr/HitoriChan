@@ -1,9 +1,10 @@
 import * as VoiceSession from "../models/VoiceSession.js";
+import * as questEngine from "../utils/questEngine.js";
 
 export default {
   name: "voiceStateUpdate",
   once: false,
-  execute(oldState, newState) {
+  execute(oldState, newState, client) {
     const userId = oldState.id || newState.id;
     const oldChannel = oldState.channel;
     const newChannel = newState.channel;
@@ -16,5 +17,7 @@ export default {
       VoiceSession.end(oldChannel.guild.id, userId);
       VoiceSession.start(newChannel.guild.id, userId, newChannel.id);
     }
+
+    questEngine.onVoiceStateUpdate(client, oldState, newState).catch(() => {});
   },
 };

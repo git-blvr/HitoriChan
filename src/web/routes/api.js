@@ -20,6 +20,8 @@ import * as BoostSettings from "../../models/BoostSettings.js";
 import { buildTicketPanelPayload } from "../../helpers/ticketPanels.js";
 import { get_dominant_color } from "../../utils/color_utils.js";
 import * as User from "../../models/User.js";
+import * as Quest from "../../models/Quest.js";
+import * as QuestProgress from "../../models/QuestProgress.js";
 import { requirePermission } from "../middleware/auth.js";
 
 const router = Router();
@@ -750,6 +752,67 @@ router.post("/boost/:guildId", requireAuth, async (req, res) => {
   });
 
   res.json({ ok: true });
+});
+
+// Quests
+router.get("/quests/:guildId", requireAuth, async (req, res) => {
+  const quests = await Quest.getAllForGuild(req.params.guildId);
+  res.json(quests);
+});
+
+router.post("/quests/:guildId", requireAuth, requirePermission("quests"), async (req, res) => {
+  const { name, description, schedule, dsl, variables, tasks, rewardType, rewardValue, rewardAmount, enabled } = req.body || {};
+  if (!name || !schedule || !dsl) return res.status(400).json({ error: "Name, schedule and DSL are required" });
+  try {
+    const quest = await Quest.create({
+      guildId: req.params.guildId,
+      name,
+      description,
+      schedule,
+      dsl,
+      variables,
+      tasks,
+      rewardType,
+      rewardValue,
+      rewardAmount,
+      enabled,
+    });
+    res.json(quest);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.get("/quests/:guildId/:id", requireAuth, async (req, res) => {
+  const quest = await Quest.get(Number(req.params.id));
+  if (!quest || quest.guildId !== req.params.guildId) return res.status(404).json({ error: "Quest not found" });
+  res.json(quest);
+});
+
+router.post("/quests/:guildId/:id", requireAuth, requirePermission("quests"), async (req, res) => {
+  const quest = await Quest.get(Number(req.params.id));
+  if (!quest || quest.guildId !== req.params.guildId) return res.status(404).json({ error: "Quest not found" });
+  try {
+    const updated = await Quest.update(quest.id, req.body);
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete("/quests/:guildId/:id", requireAuth, requirePermission("quests"), async (req, res) => {
+  const quest = await Quest.get(Number(req.params.id));
+  if (!quest || quest.guildId !== req.params.guildId) return res.status(404).json({ error: "Quest not found" });
+  await Quest.remove(quest.id);
+  await QuestProgress.deleteForQuest(quest.id);
+  res.json({ ok: true });
+});
+
+router.get("/quests/:guildId/:id/progress", requireAuth, requirePermission("quests"), async (req, res) => {
+  const quest = await Quest.get(Number(req.params.id));
+  if (!quest || quest.guildId !== req.params.guildId) return res.status(404).json({ error: "Quest not found" });
+  const progress = await QuestProgress.getAllForQuest(quest.id);
+  res.json(progress);
 });
 
 export default router;

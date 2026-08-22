@@ -61,6 +61,7 @@ export const ALL_PERMISSIONS = [
   "boost",
   "triggers",
   "logs",
+  "quests",
   "users",
 ];
 

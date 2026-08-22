@@ -341,6 +341,43 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
     `,
   },
+  {
+    version: 15,
+    sql: `
+      CREATE TABLE IF NOT EXISTS quests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        schedule TEXT NOT NULL DEFAULT 'once',
+        dsl TEXT NOT NULL DEFAULT '',
+        variables TEXT NOT NULL DEFAULT '{}',
+        tasks TEXT NOT NULL DEFAULT '[]',
+        reward_type TEXT,
+        reward_value TEXT,
+        reward_amount INTEGER,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+      CREATE INDEX IF NOT EXISTS idx_quests_guild ON quests(guild_id);
+      CREATE TABLE IF NOT EXISTS quest_progress (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        quest_id INTEGER NOT NULL,
+        user_id TEXT NOT NULL,
+        counters TEXT NOT NULL DEFAULT '{}',
+        status TEXT NOT NULL DEFAULT 'in_progress',
+        completed_at INTEGER,
+        claimed_at INTEGER,
+        last_reset_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        FOREIGN KEY (quest_id) REFERENCES quests(id) ON DELETE CASCADE,
+        UNIQUE(quest_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_quest_progress_quest ON quest_progress(quest_id);
+      CREATE INDEX IF NOT EXISTS idx_quest_progress_user ON quest_progress(user_id);
+    `,
+  },
 ];
 
 export function migrate() {

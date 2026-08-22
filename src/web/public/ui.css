@@ -613,6 +613,18 @@ body {
 
 .payload-modal-card h3 { margin: 0 0 8px; }
 
+.code-block {
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.85rem;
+  color: var(--text);
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
 .payload-import-btn {
   margin-left: 8px;
   padding: 6px 12px;

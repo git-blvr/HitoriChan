@@ -12,6 +12,7 @@ import { handleChat } from "./chatHandler.js";
 import { handleTrigger } from "./triggerHandler.js";
 import * as CommandLog from "../models/CommandLog.js";
 import * as MessageLog from "../models/MessageLog.js";
+import * as questEngine from "../utils/questEngine.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -49,6 +50,8 @@ export function registerCommandListeners(client) {
 
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
+
+    await questEngine.onInteraction(client, interaction);
 
     const ctx = createCtx(interaction);
 
@@ -99,6 +102,8 @@ export function registerCommandListeners(client) {
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) return;
 
+    await questEngine.onMessage(client, message);
+
     await logMessage(message);
     await handleStreak(message);
     await handleChat(message);
@@ -113,6 +118,8 @@ export function registerCommandListeners(client) {
 
     const command = client.prefixCommands.get(commandName);
     if (!command) return;
+
+    await questEngine.onCommand(client, message, commandName);
 
     const ctx = createCtx(message, args);
 
