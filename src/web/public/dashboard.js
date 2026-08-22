@@ -766,6 +766,7 @@ function showSection(name) {
 
 navLinks.forEach((link) => {
   link.addEventListener("click", (e) => {
+    if (!link.dataset.section) return;
     e.preventDefault();
     showSection(link.dataset.section);
   });
