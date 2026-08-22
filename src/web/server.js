@@ -59,6 +59,10 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
     res.sendFile(join(PUBLIC_DIR, "docs.html"));
   });
 
+  app.get("/doc", (req, res) => {
+    res.sendFile(join(PUBLIC_DIR, "docs.html"));
+  });
+
   app.get("/", (req, res) => {
     res.sendFile(join(PUBLIC_DIR, "index.html"));
   });
