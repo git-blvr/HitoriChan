@@ -903,6 +903,15 @@ document.getElementById("economy-form").addEventListener("submit", async (e) => 
   refreshSection();
 });
 
+function parseDurationInput(str) {
+  if (!str || !str.trim()) return null;
+  const units = { s: 1000, m: 60000, h: 3600000, d: 86400000, w: 604800000 };
+  let total = 0;
+  const matches = str.matchAll(/(\d+)([smhdw])/gi);
+  for (const match of matches) total += parseInt(match[1]) * (units[match[2].toLowerCase()] || 0);
+  return total || null;
+}
+
 function formatDuration(seconds) {
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
@@ -1712,6 +1721,7 @@ function getShopItemPayload() {
     requiresRoleId: document.getElementById("shop-item-requires-role").value || null,
     stock: document.getElementById("shop-item-stock").value === "" ? null : Math.max(0, Number(document.getElementById("shop-item-stock").value)),
     maxPurchases: document.getElementById("shop-item-max").value === "" ? null : Math.max(0, Number(document.getElementById("shop-item-max").value)),
+    expiryDuration: parseDurationInput(document.getElementById("shop-item-expiry").value),
     specialCommands: document.getElementById("shop-item-commands").value.split(/\n+/).map((s) => s.trim()).filter(Boolean),
     sortOrder: Number(document.getElementById("shop-item-sort").value) || 0,
   };
@@ -1750,6 +1760,7 @@ window.editShopItem = async (categoryId, itemId) => {
   populateRoles("shop-item-requires-role", item.requiresRoleId || "");
   document.getElementById("shop-item-stock").value = item.stock ?? "";
   document.getElementById("shop-item-max").value = item.maxPurchases ?? "";
+  document.getElementById("shop-item-expiry").value = item.expiryDuration ? formatDuration(Math.floor(item.expiryDuration / 1000)) : "";
   document.getElementById("shop-item-commands").value = (item.specialCommands || []).join("\n");
   document.getElementById("shop-item-btn").textContent = "Update Item";
 };

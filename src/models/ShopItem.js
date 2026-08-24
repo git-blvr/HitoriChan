@@ -7,15 +7,15 @@ const insertStmt = db.prepare(`
   INSERT INTO shop_items (
     guild_id, category_id, name, description, price, price_secondary, role_id,
     multiplier_type, multiplier_value, special_commands, stock, max_purchases,
-    requires_role_id, sort_order, created_at
+    requires_role_id, sort_order, expiry_duration, created_at
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const updateStmt = db.prepare(`
   UPDATE shop_items
   SET name = ?, description = ?, price = ?, price_secondary = ?, role_id = ?,
       multiplier_type = ?, multiplier_value = ?, special_commands = ?,
-      stock = ?, max_purchases = ?, requires_role_id = ?, sort_order = ?
+      stock = ?, max_purchases = ?, requires_role_id = ?, sort_order = ?, expiry_duration = ?
   WHERE id = ?
 `);
 const deleteStmt = db.prepare("DELETE FROM shop_items WHERE id = ?");
@@ -47,16 +47,17 @@ function fromRow(row) {
     maxPurchases: row.max_purchases,
     requiresRoleId: row.requires_role_id,
     sortOrder: row.sort_order,
+    expiryDuration: row.expiry_duration,
     createdAt: new Date(row.created_at),
   };
 }
 
-export async function create({ guildId, categoryId, name, description = "", price = 0, priceSecondary = null, roleId = null, multiplierType = null, multiplierValue = null, specialCommands = [], stock = null, maxPurchases = null, requiresRoleId = null, sortOrder = 0 }) {
+export async function create({ guildId, categoryId, name, description = "", price = 0, priceSecondary = null, roleId = null, multiplierType = null, multiplierValue = null, specialCommands = [], stock = null, maxPurchases = null, requiresRoleId = null, sortOrder = 0, expiryDuration = null }) {
   const now = Date.now();
   const result = insertStmt.run(
     guildId, categoryId, name, description, price, priceSecondary, roleId,
     multiplierType, multiplierValue, JSON.stringify(specialCommands), stock,
-    maxPurchases, requiresRoleId, sortOrder, now
+    maxPurchases, requiresRoleId, sortOrder, expiryDuration, now
   );
   return fromRow(getByIdStmt.get(result.lastInsertRowid));
 }
@@ -93,6 +94,7 @@ export async function update(id, values) {
     pick(values.maxPurchases, item.maxPurchases),
     pick(values.requiresRoleId, item.requiresRoleId),
     pick(values.sortOrder, item.sortOrder),
+    pick(values.expiryDuration, item.expiryDuration),
     id
   );
   return getById(id);

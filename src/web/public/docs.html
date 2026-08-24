@@ -335,7 +335,14 @@
         <p>Items are grouped into categories. Each category has a name, description and sort order.</p>
 
         <h3>Items</h3>
-        <p>Items can have a price, optional role reward, earnings/level multiplier, required role, limited stock and a max per user. You can also list commands the item unlocks.</p>
+        <p>Items can have a price, optional role reward, earnings/level multiplier, required role, limited stock, a max per user and an <strong>expiry duration</strong>. Set expiry with values like <code>1d</code>, <code>7d</code>, <code>30d</code>, <code>1h</code>, <code>30m</code>. Expired items are no longer counted in <code>/inventory</code> and no longer unlock commands.</p>
+
+        <h3>Commands</h3>
+        <ul>
+          <li><code>/shop</code> — open the shop interface.</li>
+          <li><code>/buy &lt;item&gt;</code> — buy an item from a category.</li>
+          <li><code>/inventory [@user]</code> — view your own or another member's active items and their remaining expiry time.</li>
+        </ul>
       </section>
 
       <section class="panel" id="boost">

@@ -200,14 +200,14 @@ export async function buildItemPreview(guildId, itemId, ephemeral = true) {
 }
 
 export async function hasShopItem(guildId, userId, itemId) {
-  return (await ShopPurchase.getUserItemCount(guildId, userId, itemId)) > 0;
+  const active = await ShopPurchase.getActiveByUser(guildId, userId);
+  return active.some((p) => p.itemId === itemId);
 }
 
 export async function hasShopCommand(guildId, userId, commandName) {
-  const account = await EconomyAccount.getOrCreate(guildId, userId);
-  if (!account?.shopItemIds?.length) return false;
-  for (const id of account.shopItemIds) {
-    const item = await ShopItem.getById(id);
+  const active = await ShopPurchase.getActiveByUser(guildId, userId);
+  for (const p of active) {
+    const item = await ShopItem.getById(p.itemId);
     if (item?.specialCommands?.some((c) => c.toLowerCase() === commandName.toLowerCase())) {
       return true;
     }
@@ -274,7 +274,8 @@ export async function purchaseItem(guildId, userId, itemId, member) {
   }
 
   await EconomyAccount.save(account);
-  await ShopPurchase.create({ guildId, userId, itemId: item.id, quantity: 1 });
+  const expiresAt = item.expiryDuration ? Date.now() + item.expiryDuration : null;
+  await ShopPurchase.create({ guildId, userId, itemId: item.id, quantity: 1, expiresAt });
 
   return { account, item };
 }

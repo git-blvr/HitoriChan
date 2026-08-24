@@ -414,6 +414,13 @@ const MIGRATIONS = [
       ALTER TABLE guild_settings ADD COLUMN goodbye_components TEXT DEFAULT '[]';
     `,
   },
+  {
+    version: 20,
+    sql: `
+      ALTER TABLE shop_items ADD COLUMN expiry_duration INTEGER;
+      ALTER TABLE shop_purchases ADD COLUMN expires_at INTEGER;
+    `,
+  },
 ];
 
 export function migrate() {

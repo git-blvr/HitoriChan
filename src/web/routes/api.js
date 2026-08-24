@@ -592,7 +592,7 @@ router.post("/shop/items/:guildId/:categoryId", requireAuth, async (req, res) =>
 
   const {
     name, description, price, priceSecondary, roleId,
-    multiplierType, multiplierValue, specialCommands, stock, maxPurchases, requiresRoleId, sortOrder,
+    multiplierType, multiplierValue, specialCommands, stock, maxPurchases, requiresRoleId, sortOrder, expiryDuration,
   } = req.body;
 
   if (!name?.trim()) return res.status(400).json({ error: "Item name is required" });
@@ -614,6 +614,7 @@ router.post("/shop/items/:guildId/:categoryId", requireAuth, async (req, res) =>
     maxPurchases: asNumberOrNull(maxPurchases),
     requiresRoleId: requiresRoleId?.trim() || null,
     sortOrder: Number(sortOrder) || 0,
+    expiryDuration: asNumberOrNull(expiryDuration),
   });
   res.json(item);
 });
@@ -624,7 +625,7 @@ router.put("/shop/items/:guildId/:itemId", requireAuth, async (req, res) => {
 
   const {
     name, description, price, priceSecondary, roleId,
-    multiplierType, multiplierValue, specialCommands, stock, maxPurchases, requiresRoleId, sortOrder,
+    multiplierType, multiplierValue, specialCommands, stock, maxPurchases, requiresRoleId, sortOrder, expiryDuration,
   } = req.body;
 
   const asNumberOrNull = (v) => (v === undefined || v === null || v === "" ? null : Math.max(0, Number(v)));
@@ -642,6 +643,7 @@ router.put("/shop/items/:guildId/:itemId", requireAuth, async (req, res) => {
   if (maxPurchases !== undefined) values.maxPurchases = asNumberOrNull(maxPurchases);
   if (requiresRoleId !== undefined) values.requiresRoleId = requiresRoleId?.trim() || null;
   if (sortOrder !== undefined) values.sortOrder = Number(sortOrder) || 0;
+  if (expiryDuration !== undefined) values.expiryDuration = asNumberOrNull(expiryDuration);
 
   const updated = await ShopItem.update(item.id, values);
   res.json(updated);
