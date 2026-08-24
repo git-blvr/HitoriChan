@@ -133,11 +133,7 @@ export async function buildShopInterface(guildId, selectedCategoryId = null) {
       .setDisabled(categoryOptions.length === 0)
   );
 
-  const headerText = "**Shop**\nPick a category to see the available items.";
-  const cv2Components = [
-    text(headerText),
-    ...buildInterfaceComponents(guildSettings.shopInterfaceComponents),
-  ];
+  const cv2Components = buildInterfaceComponents(guildSettings.shopInterfaceComponents);
 
   return cv2({
     color,
