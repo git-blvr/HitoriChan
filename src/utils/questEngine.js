@@ -2,7 +2,7 @@ import * as Quest from "../models/Quest.js";
 import * as QuestProgress from "../models/QuestProgress.js";
 import * as EconomyAccount from "../models/EconomyAccount.js";
 import { getGuildEconomyConfig } from "./economyManager.js";
-import { cv2 } from "../helpers/cv2.js";
+import { cv2, text, mediaGallery, separator } from "../helpers/cv2.js";
 import { get_dominant_color } from "./color_utils.js";
 import { replacePlaceholders } from "../helpers/placeholders.js";
 
@@ -605,7 +605,8 @@ async function sendCompletionMessage(quest, context, client) {
   const avatar = user?.displayAvatarURL?.({ size: 128, forceStatic: true }) ?? null;
   const guild = client?.guilds?.cache?.get(context.guildId);
   const channel = client?.channels?.cache?.get(context.channelId);
-  const ctx = { member, user, guild, channel };
+  const account = await EconomyAccount.getOrCreate(context.guildId, context.userId).catch(() => null);
+  const ctx = { member, user, guild, channel, level: account?.level ?? null, xp: account?.xp ?? null, quest: quest.name };
 
   let color = cm.color ? parseInt(cm.color.replace("#", ""), 16) : null;
   if (cm.useDominantColor && avatar) {
@@ -617,14 +618,17 @@ async function sendCompletionMessage(quest, context, client) {
   }
   if (color == null || isNaN(color)) color = 0x2f3136;
 
-  const title = replacePlaceholders(cm.title || `Quest Completed: ${quest.name}`, ctx);
-  const description = replacePlaceholders(cm.description || `Congratulations <@${context.userId}>, you completed the quest **${quest.name}**!`, ctx);
+  const title = replacePlaceholders(cm.title || "# Quest Complete!", ctx).trim() || "# Quest Complete!";
+  const description = replacePlaceholders(cm.description || `> You have completed the **{quest}**!`, ctx).trim() || `> You have completed the **${quest.name}**!`;
+
+  const components = [text(title)];
+  if (avatar) components.push(mediaGallery(avatar));
+  if (description) components.push(text(description));
+  components.push(separator(false, false));
 
   const payload = cv2({
     color,
-    title,
-    description,
-    thumbnail: avatar,
+    cv2Components: components,
   });
 
   if (cm.dm) {

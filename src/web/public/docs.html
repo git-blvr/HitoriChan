@@ -449,12 +449,13 @@
         </table>
 
         <h3>Completion Message</h3>
-        <p>Sent automatically when someone completes the quest. It is a CV2 message with the user's avatar as thumbnail and an optional dominant color sampled from the avatar.</p>
+        <p>Sent automatically when someone completes the quest. It is a CV2 message with a title, the user's avatar as an image, a description, and a small separator. The title and description are fully configurable and support Markdown.</p>
         <ul>
           <li><strong>Enabled</strong> — turn the completion message on/off.</li>
           <li><strong>Send as DM</strong> — send directly to the user instead of a channel.</li>
           <li><strong>Channel</strong> — channel to send to. Leave empty to post in the channel that triggered the quest.</li>
-          <li><strong>Title / Description</strong> — the text. Variables: <code>{user}</code>, <code>{username}</code>, <code>{displayName}</code>, <code>{user.id}</code>, <code>{guild}</code>, <code>{memberCount}</code>, <code>{boostCount}</code>, <code>{channel}</code>, <code>{date}</code>, <code>{time}</code>.</li>
+          <li><strong>Title</strong> — default is <code># Quest Complete!</code>. Use <code>#</code> for a heading.</li>
+          <li><strong>Description</strong> — default is <code>&gt; You have completed the **{quest}**!</code>. Variables include <code>{user}</code>, <code>{username}</code>, <code>{displayName}</code>, <code>{user.id}</code>, <code>{guild}</code>, <code>{memberCount}</code>, <code>{boostCount}</code>, <code>{channel}</code>, <code>{date}</code>, <code>{time}</code>, <code>{quest}</code>, <code>{level}</code>, <code>{xp}</code>.</li>
           <li><strong>Color</strong> — hex fallback color.</li>
           <li><strong>Use dominant color</strong> — override the color with the user's avatar dominant color.</li>
         </ul>
