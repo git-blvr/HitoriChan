@@ -482,20 +482,18 @@ body {
   transform: translateY(-1px);
 }
 
-.searchable-select .select-filter,
-.searchable-select select {
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  transform: none;
+.combobox-input {
+  color: var(--text);
 }
 
-.searchable-select .select-filter:focus,
-.searchable-select select:focus {
-  border: none;
-  box-shadow: none;
-  transform: none;
+.combobox-list {
+  background: var(--surface-2);
+}
+
+.combobox-option:hover,
+.combobox-option.active,
+.combobox-option.selected {
+  background: rgba(139, 92, 246, 0.22);
 }
 
 .save-btn,

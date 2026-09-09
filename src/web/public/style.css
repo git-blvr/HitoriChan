@@ -508,51 +508,79 @@ body {
   border-color: var(--accent);
 }
 
-.searchable-select {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 0;
+.combobox {
+  position: relative;
   flex: 1;
   min-width: 160px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--input);
-  overflow: hidden;
-  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.searchable-select:focus-within {
+.combobox-input {
+  width: 100%;
+  padding: 11px 14px;
+  padding-right: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--input);
+  color: var(--text);
+  font-size: 0.95rem;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  cursor: pointer;
+}
+
+.combobox-input:focus {
+  outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.16);
+  transform: translateY(-1px);
 }
 
-.select-filter {
-  flex: 1 1 100px;
-  min-width: 80px;
-  padding: 10px 12px;
-  border: none;
-  border-right: 1px solid var(--border);
-  border-radius: 0;
-  background: transparent;
+.combobox::after {
+  content: "▼";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 0.65rem;
+  pointer-events: none;
+}
+
+.combobox-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
   color: var(--text);
-  font-size: 0.9rem;
+  box-shadow: var(--shadow);
+  list-style: none;
 }
 
-.select-filter:focus {
-  outline: none;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.searchable-select select {
-  flex: 1 1 140px;
-  min-width: 100px;
-  min-height: auto;
-  padding: 10px 12px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
+.combobox-option {
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.92rem;
   color: var(--text);
+  transition: background 0.12s, color 0.12s;
+}
+
+.combobox-option:hover,
+.combobox-option.active {
+  background: rgba(139, 92, 246, 0.18);
+  color: #fff;
+}
+
+.combobox-option.selected {
+  background: rgba(139, 92, 246, 0.28);
+  color: #fff;
 }
 
 .checkbox-group {

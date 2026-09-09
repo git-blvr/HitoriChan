@@ -261,53 +261,157 @@ function escapeHtml(str) {
 }
 
 function makeSelectSearchable(select) {
-  if (select._searchFilter) return;
+  if (select._combobox) return;
+
+  const originalDisplay = select.style.display;
+  select.style.display = "none";
 
   const wrapper = document.createElement("div");
-  wrapper.className = "searchable-select";
+  wrapper.className = "combobox";
   select.parentNode.insertBefore(wrapper, select);
   wrapper.appendChild(select);
 
-  const filter = document.createElement("input");
-  filter.type = "text";
-  filter.className = "select-filter";
-  filter.placeholder = "Filter...";
-  wrapper.insertBefore(filter, select);
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "combobox-input";
+  input.placeholder = "Type to filter...";
+  input.autocomplete = "off";
+  input.setAttribute("role", "combobox");
+  input.setAttribute("aria-expanded", "false");
+  input.setAttribute("aria-autocomplete", "list");
+  wrapper.appendChild(input);
+
+  const list = document.createElement("ul");
+  list.className = "combobox-list";
+  list.setAttribute("role", "listbox");
+  list.hidden = true;
+  wrapper.appendChild(list);
+
+  let activeIndex = -1;
+  let allOptions = [];
 
   const saveOptions = () => {
-    select._allOptions = Array.from(select.options).map((o) => ({
+    allOptions = Array.from(select.options).map((o) => ({
       value: o.value,
       text: o.textContent,
       disabled: o.disabled,
     }));
   };
 
-  const renderOptions = () => {
-    const q = filter.value.trim().toLowerCase();
-    const options = select._allOptions || [];
-    const placeholder = options[0];
-    const matches = options.filter((o, i) => i === 0 || o.text.toLowerCase().includes(q) || o.value.toLowerCase().includes(q));
-    const selected = select.value;
-    select.innerHTML = matches.map((o) => `
-      <option value="${escapeHtml(o.value)}" ${o.value === selected || (o.value === "" && !selected) ? "selected" : ""} ${o.disabled ? "disabled" : ""}>
+  const getSelectedText = () => {
+    const selected = allOptions.find((o) => o.value === select.value);
+    return selected ? selected.text : "";
+  };
+
+  const renderList = (filter = "") => {
+    const q = filter.trim().toLowerCase();
+    const matches = allOptions.filter((o, i) =>
+      i === 0 || o.text.toLowerCase().includes(q) || o.value.toLowerCase().includes(q)
+    );
+
+    list.innerHTML = matches.map((o, i) => `
+      <li class="combobox-option ${o.value === select.value ? "selected" : ""}"
+          role="option"
+          data-value="${escapeHtml(o.value)}"
+          data-index="${i}"
+          ${o.disabled ? "aria-disabled=\"true\"" : ""}>
         ${escapeHtml(o.text)}
-      </option>
+      </li>
     `).join("");
+
+    activeIndex = matches.findIndex((o) => o.value === select.value);
+    if (activeIndex < 0) activeIndex = 0;
+    updateActive();
+    return matches;
   };
 
-  filter.addEventListener("input", renderOptions);
-
-  select._searchFilter = filter;
-  select._refreshFilter = () => {
-    saveOptions();
-    renderOptions();
+  const updateActive = () => {
+    list.querySelectorAll(".combobox-option").forEach((opt, i) => {
+      opt.classList.toggle("active", i === activeIndex);
+      opt.setAttribute("aria-selected", i === activeIndex ? "true" : "false");
+    });
   };
+
+  const open = () => {
+    list.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    input.value = "";
+    renderList("");
+  };
+
+  const close = () => {
+    list.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+    input.value = getSelectedText();
+  };
+
+  const setValue = (value, text) => {
+    select.value = value;
+    input.value = text;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    close();
+  };
+
+  input.addEventListener("focus", () => {
+    input.value = "";
+    open();
+  });
+
+  input.addEventListener("input", () => {
+    if (list.hidden) open();
+    renderList(input.value);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (list.hidden) return;
+    const options = list.querySelectorAll(".combobox-option");
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeIndex = Math.min(activeIndex + 1, options.length - 1);
+      updateActive();
+      options[activeIndex]?.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIndex = Math.max(activeIndex - 1, 0);
+      updateActive();
+      options[activeIndex]?.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const opt = options[activeIndex];
+      if (opt) {
+        setValue(opt.dataset.value, opt.textContent.trim());
+      } else {
+        close();
+      }
+    } else if (e.key === "Escape") {
+      close();
+      input.blur();
+    }
+  });
+
+  input.addEventListener("blur", () => {
+    // Delay so clicks on options register first
+    setTimeout(() => {
+      if (document.activeElement !== input) close();
+    }, 150);
+  });
+
+  list.addEventListener("mousedown", (e) => {
+    const opt = e.target.closest(".combobox-option");
+    if (!opt) return;
+    e.preventDefault();
+    setValue(opt.dataset.value, opt.textContent.trim());
+  });
+
+  select._combobox = { input, list, refresh: () => { saveOptions(); close(); } };
+  select._refreshFilter = () => select._combobox.refresh();
   select._setFilter = (value) => {
-    filter.value = value;
-    renderOptions();
+    select.value = value;
+    close();
   };
 
   saveOptions();
+  close();
 }
 
 function refreshSelectFilter(select) {
