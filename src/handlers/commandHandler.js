@@ -7,6 +7,7 @@ import { getPrefix } from "../utils/prefixManager.js";
 import { hasShopCommand } from "../utils/shopManager.js";
 import { hasUnlockedCommand } from "../utils/boostManager.js";
 import { embErr } from "../helpers/embeds.js";
+import { safeMessagePayload } from "../helpers/discord.js";
 import { handleStreak } from "./streakHandler.js";
 import { handleChat } from "./chatHandler.js";
 import { handleTrigger } from "./triggerHandler.js";
@@ -90,7 +91,7 @@ export function registerCommandListeners(client) {
         success: false,
         errorMessage: error.message,
       });
-      const payload = { content: "Something went wrong running that command.", flags: MessageFlags.Ephemeral };
+      const payload = { ...safeMessagePayload("Something went wrong running that command."), flags: MessageFlags.Ephemeral };
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp(payload);
       } else {
@@ -158,7 +159,7 @@ export function registerCommandListeners(client) {
         success: false,
         errorMessage: error.message,
       });
-      await message.reply("Something went wrong running that command.");
+      await message.reply(safeMessagePayload("Something went wrong running that command."));
     }
   });
 }

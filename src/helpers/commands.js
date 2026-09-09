@@ -9,6 +9,39 @@ const commandsPath = join(__dirname, "..", "commands");
 const IS_GUILD = !!process.env.GUILD_ID;
 const SKIP_DEPLOY = ["1", "true", "yes"].includes(process.env.SKIP_AUTO_DEPLOY?.toLowerCase?.());
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getRestRetryAfter(err) {
+  if (err.retryAfter) return Math.min(err.retryAfter, 30_000);
+  const seconds = err.rawError?.retry_after;
+  if (typeof seconds === "number" && Number.isFinite(seconds)) {
+    return Math.min(seconds * 1000, 30_000);
+  }
+  return 1000;
+}
+
+async function withRestRetry(fn, { label = "rest", retries = 3 } = {}) {
+  let lastErr;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const status = err.status ?? err.httpStatus;
+      if (status === 429 || status >= 500 || err.name === "AbortError" || err.code === "ECONNRESET" || err.code === "ETIMEDOUT") {
+        const delay = getRestRetryAfter(err) * (i + 1);
+        console.warn(`[${label}] REST attempt ${i + 1}/${retries + 1} failed (status ${status ?? "network"}), retrying in ${delay}ms...`);
+        await sleep(Math.min(delay, 30_000));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
+}
+
 export function normalizeCommand(cmd) {
   const options = (cmd.options ?? []).map((o) => normalizeOption(o));
   return JSON.stringify({
@@ -82,7 +115,7 @@ export async function syncApplicationCommands(applicationId, token, localMap) {
   const route = getDeployRoute(applicationId);
   const scope = IS_GUILD ? `guild ${process.env.GUILD_ID}` : "global";
 
-  const registered = await rest.get(route);
+  const registered = await withRestRetry(() => rest.get(route), { label: "rest.get" });
   const remoteMap = new Map(registered.map((c) => [c.name, c]));
 
   if (!commandsAreDifferent(localMap, remoteMap)) {
@@ -91,7 +124,7 @@ export async function syncApplicationCommands(applicationId, token, localMap) {
   }
 
   const body = [...localMap.values()];
-  await rest.put(route, { body });
+  await withRestRetry(() => rest.put(route, { body }), { label: "rest.put" });
 
   const created = [...localMap.keys()].filter((n) => !remoteMap.has(n));
   const deleted = [...remoteMap.keys()].filter((n) => !localMap.has(n));

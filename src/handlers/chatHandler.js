@@ -4,6 +4,7 @@ import { getImageURLs, buildContextMessages, trimHistory } from "../helpers/ai.j
 import { truncate } from "../helpers/format.js";
 import { cv2 } from "../helpers/cv2.js";
 import { AIGroqError } from "../helpers/aiErrors.js";
+import { safeReply as safeMessageReply } from "../helpers/discord.js";
 import * as MessageHistory from "../models/MessageHistory.js";
 import * as AISettings from "../models/AISettings.js";
 
@@ -92,11 +93,11 @@ export async function handleChat(message) {
     historyDoc.messages = trimHistory(historyDoc.messages, MAX_HISTORY);
     await MessageHistory.save(historyDoc);
 
-    const safeReply = reply.length > MAX_DISCORD_LENGTH
+    const finalReply = reply.length > MAX_DISCORD_LENGTH
       ? reply.slice(0, MAX_DISCORD_LENGTH) + "...\n-# *(truncated)*"
       : reply;
 
-    await message.reply(safeReply);
+    await safeMessageReply(message, finalReply);
   } catch (err) {
     console.error("Chat handler error:", err);
 

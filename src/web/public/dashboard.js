@@ -481,6 +481,8 @@ const sections = {
 
     document.getElementById("sys-bot").textContent = overview.bot.tag;
     document.getElementById("sys-status").textContent = overview.bot.status;
+    document.getElementById("sys-api").textContent = overview.bot.apiStatus;
+    document.getElementById("sys-ping").textContent = overview.bot.ping >= 0 ? `${overview.bot.ping}ms` : "-";
     document.getElementById("sys-node").textContent = overview.system.node;
     document.getElementById("sys-platform").textContent = overview.system.platform;
     document.getElementById("sys-cpus").textContent = overview.system.cpuCount;

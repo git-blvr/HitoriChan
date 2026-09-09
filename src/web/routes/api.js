@@ -331,6 +331,8 @@ router.get("/overview", requireAuth, async (req, res) => {
       guilds: client.guilds.cache.size,
       users: Array.from(client.guilds.cache.values()).reduce((acc, g) => acc + (g.memberCount || 0), 0),
       uptime: Math.floor(process.uptime()),
+      ping: client.ws.ping ?? -1,
+      apiStatus: client.ws.ping >= 0 ? "ok" : "degraded",
     },
     system: {
       platform: process.platform,

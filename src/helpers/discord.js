@@ -139,12 +139,14 @@ export function chunkMessage(content, maxLength = MAX_MESSAGE_LENGTH) {
   return chunks;
 }
 
+const DEFAULT_ALLOWED_MENTIONS = Object.freeze({ parse: ["users"], repliedUser: false });
+
 export function safeMessagePayload(payload, { maxLength = MAX_MESSAGE_LENGTH, suppressMassMentions = true } = {}) {
   if (typeof payload === "string") {
     const content = sanitizeMentions(payload).slice(0, maxLength);
     return {
       content,
-      allowedMentions: suppressMassMentions ? { parse: ["users"] } : undefined,
+      allowedMentions: suppressMassMentions ? DEFAULT_ALLOWED_MENTIONS : undefined,
     };
   }
 
@@ -156,13 +158,16 @@ export function safeMessagePayload(payload, { maxLength = MAX_MESSAGE_LENGTH, su
     data.content = content;
   }
   if (suppressMassMentions && !data.allowedMentions) {
-    data.allowedMentions = { parse: ["users"] };
+    data.allowedMentions = DEFAULT_ALLOWED_MENTIONS;
   }
   return data;
 }
 
 export async function safeSend(target, payload) {
   const safe = safeMessagePayload(payload);
+  if (typeof safe.content !== "string") {
+    return target.send(safe);
+  }
   const chunks = chunkMessage(safe.content, MAX_MESSAGE_LENGTH);
   const results = [];
   for (let i = 0; i < chunks.length; i++) {
@@ -174,6 +179,9 @@ export async function safeSend(target, payload) {
 
 export async function safeReply(message, payload) {
   const safe = safeMessagePayload(payload);
+  if (typeof safe.content !== "string") {
+    return message.reply(safe);
+  }
   const chunks = chunkMessage(safe.content, MAX_MESSAGE_LENGTH);
   const results = [];
   for (let i = 0; i < chunks.length; i++) {
