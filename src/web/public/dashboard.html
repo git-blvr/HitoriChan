@@ -96,8 +96,8 @@
         <form id="economy-form" class="config-form">
           <h3>Primary Currency</h3>
           <div class="inline-fields">
-            <label class="grow">Name <input type="text" id="econ-primary-name" /></label>
-            <label class="grow">Symbol <input type="text" id="econ-primary-symbol" /></label>
+            <label class="grow">Name <input type="text" id="econ-primary-name" placeholder="e.g. Credits" /></label>
+            <label class="grow">Symbol <input type="text" id="econ-primary-symbol" placeholder="e.g. §" /></label>
           </div>
           <label class="emoji-label">Emoji
             <input type="text" id="econ-primary-emoji" class="emoji-input" placeholder="Pick or type an emoji" readonly />
@@ -105,8 +105,8 @@
 
           <h3>Secondary Currency</h3>
           <div class="inline-fields">
-            <label class="grow">Name <input type="text" id="econ-secondary-name" /></label>
-            <label class="grow">Symbol <input type="text" id="econ-secondary-symbol" /></label>
+            <label class="grow">Name <input type="text" id="econ-secondary-name" placeholder="e.g. Tokens" /></label>
+            <label class="grow">Symbol <input type="text" id="econ-secondary-symbol" placeholder="e.g. £T" /></label>
           </div>
           <label class="emoji-label">Emoji
             <input type="text" id="econ-secondary-emoji" class="emoji-input" placeholder="Pick or type an emoji" readonly />
@@ -114,8 +114,8 @@
 
           <h3>Daily Reward</h3>
           <div class="inline-fields">
-            <label class="grow">Min <input type="number" id="econ-daily-min" min="1" /></label>
-            <label class="grow">Max <input type="number" id="econ-daily-max" min="1" /></label>
+            <label class="grow">Min <input type="number" id="econ-daily-min" min="1" placeholder="100" /></label>
+            <label class="grow">Max <input type="number" id="econ-daily-max" min="1" placeholder="500" /></label>
           </div>
 
           <button type="submit" class="save-btn">Save Economy Settings</button>
@@ -204,7 +204,7 @@
       <div class="panel">
         <h2>Command Prefix</h2>
         <form id="prefix-form" class="config-form">
-          <label>Prefix <input type="text" id="prefix" maxlength="5" /></label>
+          <label>Prefix <input type="text" id="prefix" maxlength="5" placeholder="!" /></label>
           <button type="submit" class="save-btn">Save Prefix</button>
         </form>
       </div>
@@ -238,7 +238,7 @@
           <input type="hidden" id="ticket-id" />
 
           <div class="inline-fields">
-            <label class="grow">Name <input type="text" id="ticket-name" required /></label>
+            <label class="grow">Name <input type="text" id="ticket-name" required placeholder="e.g. support" /></label>
             <label class="grow">Type
               <select id="ticket-type">
                 <option value="embed">Embed</option>
@@ -248,7 +248,7 @@
           </div>
 
           <div class="inline-fields" style="align-items:flex-end">
-            <label class="grow">Button Label <input type="text" id="ticket-button-label" value="Create Ticket" /></label>
+            <label class="grow">Button Label <input type="text" id="ticket-button-label" value="Create Ticket" placeholder="Create Ticket" /></label>
             <label class="grow">Button Color
               <select id="ticket-button-color">
                 <option value="green">Green</option>
@@ -417,9 +417,9 @@
         <h2>Categories</h2>
         <form id="shop-category-form" class="config-form inline-form" style="margin-bottom: 14px">
           <input type="hidden" id="shop-category-id" />
-          <label class="grow">Name <input type="text" id="shop-category-name" required /></label>
-          <label class="grow">Description <input type="text" id="shop-category-desc" /></label>
-          <label>Sort <input type="number" id="shop-category-sort" value="0" /></label>
+          <label class="grow">Name <input type="text" id="shop-category-name" required placeholder="Category name" /></label>
+          <label class="grow">Description <input type="text" id="shop-category-desc" placeholder="Short description" /></label>
+          <label>Sort <input type="number" id="shop-category-sort" value="0" placeholder="0" /></label>
           <button type="submit" class="save-btn" id="shop-category-btn">Add Category</button>
           <button type="button" id="shop-category-cancel" class="save-btn">Cancel</button>
         </form>
@@ -444,15 +444,15 @@
           <input type="hidden" id="shop-item-category-id" />
 
           <div class="inline-fields">
-            <label class="grow">Name <input type="text" id="shop-item-name" data-payload-import="text" required /></label>
-            <label class="grow">Sort Order <input type="number" id="shop-item-sort" value="0" /></label>
+            <label class="grow">Name <input type="text" id="shop-item-name" data-payload-import="text" required placeholder="Item name" /></label>
+            <label class="grow">Sort Order <input type="number" id="shop-item-sort" value="0" placeholder="0" /></label>
           </div>
 
-          <label>Description <textarea id="shop-item-desc" rows="3" data-payload-import="text"></textarea></label>
+          <label>Description <textarea id="shop-item-desc" rows="3" data-payload-import="text" placeholder="Item description"></textarea></label>
 
           <div class="inline-fields">
-            <label class="grow">Primary Price <input type="number" id="shop-item-price" min="0" value="0" /></label>
-            <label class="grow">Secondary Price <input type="number" id="shop-item-price-sec" min="0" value="0" /></label>
+            <label class="grow">Primary Price <input type="number" id="shop-item-price" min="0" value="0" placeholder="0" /></label>
+            <label class="grow">Secondary Price <input type="number" id="shop-item-price-sec" min="0" value="0" placeholder="0" /></label>
           </div>
 
           <label>Role Reward
@@ -469,7 +469,7 @@
                 <option value="level">Level</option>
               </select>
             </label>
-            <label class="grow">Multiplier Value <input type="number" id="shop-item-multiplier-value" step="0.1" value="0" /></label>
+            <label class="grow">Multiplier Value <input type="number" id="shop-item-multiplier-value" step="0.1" value="0" placeholder="0" /></label>
           </div>
 
           <label>Required Role
@@ -507,8 +507,8 @@
           <label><input type="checkbox" id="boost-enabled" /> Enabled</label>
 
           <div class="inline-fields">
-            <label class="grow">Primary Reward <input type="number" id="boost-reward-primary" min="0" value="0" /></label>
-            <label class="grow">Secondary Reward <input type="number" id="boost-reward-secondary" min="0" value="0" /></label>
+            <label class="grow">Primary Reward <input type="number" id="boost-reward-primary" min="0" value="0" placeholder="0" /></label>
+            <label class="grow">Secondary Reward <input type="number" id="boost-reward-secondary" min="0" value="0" placeholder="0" /></label>
           </div>
 
           <label>Booster Role
@@ -518,8 +518,8 @@
           </label>
 
           <div class="inline-fields">
-            <label class="grow">Earnings Multiplier <input type="number" id="boost-earnings" step="0.1" value="0" /></label>
-            <label class="grow">Level Bonus <input type="number" id="boost-level" min="0" value="0" /></label>
+            <label class="grow">Earnings Multiplier <input type="number" id="boost-earnings" step="0.1" value="0" placeholder="0" /></label>
+            <label class="grow">Level Bonus <input type="number" id="boost-level" min="0" value="0" placeholder="0" /></label>
           </div>
 
           <label>Unlocks Commands
@@ -675,8 +675,8 @@
         <h2>Quests</h2>
         <form id="quest-form" class="config-form" style="margin-bottom:16px">
           <input type="hidden" id="quest-id" />
-          <label>Name <input type="text" id="quest-name" required /></label>
-          <label>Description <input type="text" id="quest-desc" /></label>
+          <label>Name <input type="text" id="quest-name" required placeholder="Quest name" /></label>
+          <label>Description <input type="text" id="quest-desc" placeholder="Short description" /></label>
           <div class="inline-fields">
             <label class="grow">Schedule
               <select id="quest-schedule" required>
@@ -747,7 +747,7 @@
               </select>
             </label>
             <label class="grow">Reward Value <input type="text" id="quest-reward-value" placeholder="primary or role ID" /></label>
-            <label class="grow">Reward Amount <input type="number" id="quest-reward-amount" min="0" value="0" /></label>
+            <label class="grow">Reward Amount <input type="number" id="quest-reward-amount" min="0" value="0" placeholder="0" /></label>
           </div>
 
           <div class="inline-form" style="margin-top:12px">
@@ -776,7 +776,7 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
         <h2>Dashboard Users</h2>
         <form id="user-form" class="config-form" style="margin-bottom:16px">
           <input type="hidden" id="user-id" />
-          <label>Username <input type="text" id="user-username" required autocomplete="off" /></label>
+          <label>Username <input type="text" id="user-username" required autocomplete="off" placeholder="Username" /></label>
           <label>Password <input type="text" id="user-password" placeholder="Leave empty when editing to keep current" /></label>
           <p class="hint">Pick which dashboard sections this user can access.</p>
           <div id="user-permissions" class="checkbox-group"></div>

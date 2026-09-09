@@ -1384,10 +1384,10 @@ function renderTicketFields(fields) {
     <div class="reorder-item ticket-field" data-index="${i}">
       <header>Field ${i + 1} <button type="button" class="remove-btn" onclick="removeTicketField(${i})">Remove</button></header>
       <div class="inline-fields">
-        <label class="grow">Name <input type="text" class="field-name" value="${escapeHtml(f.name)}" /></label>
+        <label class="grow">Name <input type="text" class="field-name" value="${escapeHtml(f.name)}" placeholder="Field name" /></label>
         <label class="grow"><input type="checkbox" class="field-inline" ${f.inline ? "checked" : ""} /> Inline</label>
       </div>
-      <label>Value <input type="text" class="field-value" value="${escapeHtml(f.value)}" /></label>
+      <label>Value <input type="text" class="field-value" value="${escapeHtml(f.value)}" placeholder="Field value" /></label>
     </div>
   `).join("");
 }
@@ -1398,7 +1398,7 @@ function renderTicketComponents(components) {
     if (c.type === "text") return `
       <div class="reorder-item ticket-component" data-type="text" data-index="${i}">
         <header>Text <button type="button" class="remove-btn" onclick="removeTicketComponent(${i})">Remove</button></header>
-        <textarea class="comp-content" rows="3">${escapeHtml(c.content || "")}</textarea>
+        <textarea class="comp-content" rows="3" placeholder="Text content">${escapeHtml(c.content || "")}</textarea>
       </div>
     `;
     if (c.type === "image") return `
@@ -1418,7 +1418,7 @@ function renderTicketComponents(components) {
       <div class="reorder-item ticket-component" data-type="ticket" data-index="${i}">
         <header>Ticket Button <button type="button" class="remove-btn" onclick="removeTicketComponent(${i})">Remove</button></header>
         <div class="inline-fields">
-          <label class="grow">Label <input type="text" class="comp-label" value="${escapeHtml(c.label || "Create Ticket")}" /></label>
+          <label class="grow">Label <input type="text" class="comp-label" value="${escapeHtml(c.label || "Create Ticket")}" placeholder="Button label" /></label>
           <label class="grow">Color
             <select class="comp-color">
               <option value="green" ${c.color === "green" ? "selected" : ""}>Green</option>
@@ -1823,7 +1823,7 @@ function renderShopInterfaceComponents(components) {
     if (c.type === "text") return `
       <div class="reorder-item shop-interface-component" data-type="text" data-index="${i}">
         <header>Text <button type="button" class="remove-btn" onclick="removeShopInterfaceComponent(${i})">Remove</button></header>
-        <textarea class="shop-comp-content" rows="3">${escapeHtml(c.content || "")}</textarea>
+        <textarea class="shop-comp-content" rows="3" placeholder="Text content">${escapeHtml(c.content || "")}</textarea>
       </div>
     `;
     if (c.type === "image") return `
@@ -2001,7 +2001,7 @@ function renderSystemComponents(listId, components) {
     if (c.type === "text") return `
       <div class="reorder-item system-component" data-type="text" data-index="${i}">
         <header>Text <button type="button" class="remove-btn" onclick="removeSystemComponent('${listId}', ${i})">Remove</button></header>
-        <textarea class="system-comp-content" rows="3" data-payload-import="text">${escapeHtml(c.content || "")}</textarea>
+        <textarea class="system-comp-content" rows="3" data-payload-import="text" placeholder="Text content">${escapeHtml(c.content || "")}</textarea>
       </div>
     `;
     if (c.type === "image") return `
@@ -2363,7 +2363,7 @@ function renderConditionValue(card, entity, field, selectedValue = "") {
   if (config.type === "string") {
     html = `<input type="text" class="quest-condition-value-input" placeholder="value or $variable" value="${escapeHtml(String(value))}" />`;
   } else if (config.type === "number") {
-    html = `<input type="number" class="quest-condition-value-input" value="${escapeHtml(String(value))}" />`;
+    html = `<input type="number" class="quest-condition-value-input" value="${escapeHtml(String(value))}" placeholder="0" />`;
   } else if (config.type === "boolean") {
     const checked = value === true || value === "true" ? "checked" : "";
     html = `<label style="display:flex;align-items:center;gap:8px"><input type="checkbox" class="quest-condition-value-check" ${checked} /> Yes / True</label>`;
@@ -2500,7 +2500,7 @@ function addQuestTaskCard(task = { name: "", type: "send_message", payload: {} }
 
   card.innerHTML = `
     <div class="inline-fields">
-      <label class="grow">Task Name <input type="text" class="quest-task-name" value="${escapeHtml(task.name)}" required /></label>
+      <label class="grow">Task Name <input type="text" class="quest-task-name" value="${escapeHtml(task.name)}" required placeholder="Task name" /></label>
       <label class="grow">Type
         <select class="quest-task-type">${typeOptions}</select>
       </label>
@@ -2548,7 +2548,7 @@ function renderTaskPayload(card, payload = {}) {
             <option value="secondary" ${currency === "secondary" ? "selected" : ""}>Secondary</option>
           </select>
         </label>
-        <label class="grow">Amount <input type="number" class="quest-task-amount" min="0" value="${amount}" /></label>
+        <label class="grow">Amount <input type="number" class="quest-task-amount" min="0" value="${amount}" placeholder="0" /></label>
       </div>
     `;
   }
