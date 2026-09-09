@@ -825,6 +825,62 @@ const sectionDisplayNames = {
   leveling: "Leveling",
 };
 
+const sectionActiveTabs = new Map();
+
+function getPanelLabel(panel) {
+  const heading = panel.querySelector("h2, h3");
+  if (heading) return heading.textContent.trim();
+  const id = panel.id || panel.dataset.id;
+  if (id) return id.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return "Panel";
+}
+
+function updateSectionTabs(section) {
+  const tabBar = section.querySelector(":scope > .section-tabs");
+  if (!tabBar) return;
+  const panels = Array.from(section.querySelectorAll(":scope > .section-tab-content"));
+  const activeIndex = sectionActiveTabs.get(section.id) ?? 0;
+  const buttons = tabBar.querySelectorAll(".section-tab");
+  buttons.forEach((btn, i) => btn.classList.toggle("active", i === activeIndex));
+  panels.forEach((panel, i) => panel.classList.toggle("active", i === activeIndex));
+}
+
+function applySectionTabs(name) {
+  const section = document.getElementById(name);
+  if (!section || section.dataset.noAutoTabs) return;
+  const panels = Array.from(section.children).filter((el) =>
+    el.classList.contains("panel") || el.classList.contains("chart-panel")
+  );
+  if (panels.length <= 1) return;
+
+  if (section.querySelector(":scope > .section-tabs")) {
+    updateSectionTabs(section);
+    return;
+  }
+
+  const tabBar = document.createElement("div");
+  tabBar.className = "section-tabs";
+  tabBar.setAttribute("role", "tablist");
+  tabBar.style.marginTop = "0";
+  section.insertBefore(tabBar, panels[0]);
+
+  panels.forEach((panel, i) => {
+    panel.classList.add("section-tab-content");
+    const label = getPanelLabel(panel);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "section-tab";
+    btn.textContent = label;
+    btn.addEventListener("click", () => {
+      sectionActiveTabs.set(section.id, i);
+      updateSectionTabs(section);
+    });
+    tabBar.appendChild(btn);
+  });
+
+  updateSectionTabs(section);
+}
+
 function showSection(name) {
   if (!canAccessSection(name)) {
     showToast("You don't have permission to access this section.", "error");
@@ -842,6 +898,7 @@ function showSection(name) {
     activeLink.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
+  applySectionTabs(name);
   refreshSection();
 }
 
