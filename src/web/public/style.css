@@ -510,28 +510,49 @@ body {
 
 .searchable-select {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
   flex: 1;
   min-width: 160px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--input);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.searchable-select:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.16);
 }
 
 .select-filter {
-  padding: 8px 10px;
-  border: 1px solid #252532;
-  border-radius: 8px;
-  background: var(--input);
+  flex: 1 1 100px;
+  min-width: 80px;
+  padding: 10px 12px;
+  border: none;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
   color: var(--text);
   font-size: 0.9rem;
 }
 
 .select-filter:focus {
   outline: none;
-  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .searchable-select select {
-  min-height: 40px;
+  flex: 1 1 140px;
+  min-width: 100px;
+  min-height: auto;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
 }
 
 .checkbox-group {
