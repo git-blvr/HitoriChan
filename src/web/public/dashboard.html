@@ -676,79 +676,105 @@
         <h2>Quests</h2>
         <form id="quest-form" class="config-form" style="margin-bottom:16px">
           <input type="hidden" id="quest-id" />
-          <label>Name <input type="text" id="quest-name" required placeholder="Quest name" /></label>
-          <label>Description <input type="text" id="quest-desc" placeholder="Short description" /></label>
-          <div class="inline-fields">
-            <label class="grow">Schedule
-              <select id="quest-schedule" required>
-                <option value="once">Once</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-              </select>
-            </label>
-            <label class="grow">Enabled
-              <select id="quest-enabled">
-                <option value="1">Yes</option>
-                <option value="0">No</option>
-              </select>
-            </label>
+
+          <div class="quest-tabs" role="tablist">
+            <button type="button" class="quest-tab active" data-quest-tab="details">Details</button>
+            <button type="button" class="quest-tab" data-quest-tab="condition">Condition</button>
+            <button type="button" class="quest-tab" data-quest-tab="variables">Variables</button>
+            <button type="button" class="quest-tab" data-quest-tab="tasks">Tasks</button>
+            <button type="button" class="quest-tab" data-quest-tab="completion">Completion</button>
+            <button type="button" class="quest-tab" data-quest-tab="reward">Reward</button>
           </div>
 
-          <div class="panel sub-panel" id="quest-condition-panel">
-            <h3>Condition</h3>
-            <p class="hint">Build when the quest should complete. Conditions are combined with the match mode below.</p>
-
-            <label>Match Mode
-              <select id="quest-match" required>
-                <option value="all">All conditions must match (AND)</option>
-                <option value="any">Any condition can match (OR)</option>
-              </select>
-            </label>
-
-            <div id="quest-conditions-list" class="quest-list"></div>
-            <button type="button" id="quest-add-condition" class="save-btn" style="margin-top:10px">+ Condition</button>
+          <div class="quest-tab-content active" data-quest-tab="details">
+            <label>Name <input type="text" id="quest-name" required placeholder="Quest name" /></label>
+            <label>Description <input type="text" id="quest-desc" placeholder="Short description" /></label>
+            <div class="inline-fields">
+              <label class="grow">Schedule
+                <select id="quest-schedule" required>
+                  <option value="once">Once</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </label>
+              <label class="grow">Enabled
+                <select id="quest-enabled">
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
+              </label>
+            </div>
           </div>
 
-          <div class="panel sub-panel" id="quest-variables-panel">
-            <h3>Variables</h3>
-            <p class="hint">Reference them in the DSL with <code>$name</code>.</p>
-            <div id="quest-variables-list" class="quest-list"></div>
-            <button type="button" id="quest-add-variable" class="save-btn" style="margin-top:10px">+ Variable</button>
+          <div class="quest-tab-content" data-quest-tab="condition">
+            <div class="panel sub-panel" id="quest-condition-panel">
+              <h3>Condition</h3>
+              <p class="hint">Build when the quest should complete. Conditions are combined with the match mode below.</p>
+
+              <label>Match Mode
+                <select id="quest-match" required>
+                  <option value="all">All conditions must match (AND)</option>
+                  <option value="any">Any condition can match (OR)</option>
+                </select>
+              </label>
+
+              <div id="quest-conditions-list" class="quest-list"></div>
+              <button type="button" id="quest-add-condition" class="save-btn" style="margin-top:10px">+ Condition</button>
+            </div>
           </div>
 
-          <div class="panel sub-panel" id="quest-tasks-panel">
-            <h3>Tasks</h3>
-            <p class="hint">Actions the quest runs when the condition is true.</p>
-            <div id="quest-tasks-list" class="quest-list"></div>
-            <button type="button" id="quest-add-task" class="save-btn" style="margin-top:10px">+ Task</button>
+          <div class="quest-tab-content" data-quest-tab="variables">
+            <div class="panel sub-panel" id="quest-variables-panel">
+              <h3>Variables</h3>
+              <p class="hint">Reference them in the DSL with <code>$name</code>.</p>
+              <div id="quest-variables-list" class="quest-list"></div>
+              <button type="button" id="quest-add-variable" class="save-btn" style="margin-top:10px">+ Variable</button>
+            </div>
           </div>
 
-          <div class="panel sub-panel" id="quest-completion-panel">
-            <h3>Completion Message</h3>
-            <p class="hint">Sent when someone completes the quest. Variables: {user}, {username}, {displayName}, {user.id}, {guild}, {memberCount}, {boostCount}, {channel}, {date}, {time}, {quest}, {level}, {xp}. Supports Markdown: use <code>#</code> for a heading and <code>&gt;</code> for a quote block.</p>
-            <label><input type="checkbox" id="quest-completion-enabled" /> Enabled</label>
-            <label><input type="checkbox" id="quest-completion-dm" /> Send as DM</label>
-            <label>Channel
-              <select id="quest-completion-channel" data-searchable="true">
-                <option value="">-- Current channel --</option>
-              </select>
-            </label>
-            <label>Title <input type="text" id="quest-completion-title" placeholder="# Quest Complete!" data-payload-import="text" /></label>
-            <label>Description <textarea id="quest-completion-desc" rows="2" placeholder="> You have completed the **{quest}**!" data-payload-import="text"></textarea></label>
-            <label>Color <input type="color" id="quest-completion-color" value="#8b5cf6" /></label>
-            <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="quest-completion-dominant" /> Use user's avatar dominant color</label>
+          <div class="quest-tab-content" data-quest-tab="tasks">
+            <div class="panel sub-panel" id="quest-tasks-panel">
+              <h3>Tasks</h3>
+              <p class="hint">Actions the quest runs when the condition is true.</p>
+              <div id="quest-tasks-list" class="quest-list"></div>
+              <button type="button" id="quest-add-task" class="save-btn" style="margin-top:10px">+ Task</button>
+            </div>
           </div>
 
-          <div class="inline-fields">
-            <label class="grow">Reward Type
-              <select id="quest-reward-type">
-                <option value="">None</option>
-                <option value="currency">Currency</option>
-                <option value="role">Role</option>
-              </select>
-            </label>
-            <label class="grow">Reward Value <input type="text" id="quest-reward-value" placeholder="primary or role ID" /></label>
-            <label class="grow">Reward Amount <input type="number" id="quest-reward-amount" min="0" value="0" placeholder="0" /></label>
+          <div class="quest-tab-content" data-quest-tab="completion">
+            <div class="panel sub-panel" id="quest-completion-panel">
+              <h3>Completion Message</h3>
+              <p class="hint">Sent when someone completes the quest. Variables: {user}, {username}, {displayName}, {user.id}, {guild}, {memberCount}, {boostCount}, {channel}, {date}, {time}, {quest}, {level}, {xp}. Supports Markdown: use <code>#</code> for a heading and <code>&gt;</code> for a quote block.</p>
+              <label><input type="checkbox" id="quest-completion-enabled" /> Enabled</label>
+              <label><input type="checkbox" id="quest-completion-dm" /> Send as DM</label>
+              <label>Channel
+                <select id="quest-completion-channel" data-searchable="true">
+                  <option value="">-- Current channel --</option>
+                </select>
+              </label>
+              <label>Title <input type="text" id="quest-completion-title" placeholder="# Quest Complete!" data-payload-import="text" /></label>
+              <label>Description <textarea id="quest-completion-desc" rows="2" placeholder="> You have completed the **{quest}**!" data-payload-import="text"></textarea></label>
+              <label>Color <input type="color" id="quest-completion-color" value="#8b5cf6" /></label>
+              <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="quest-completion-dominant" /> Use user's avatar dominant color</label>
+            </div>
+          </div>
+
+          <div class="quest-tab-content" data-quest-tab="reward">
+            <div class="panel sub-panel">
+              <h3>Reward</h3>
+              <p class="hint">Optional reward given when the quest completes.</p>
+              <div class="inline-fields">
+                <label class="grow">Reward Type
+                  <select id="quest-reward-type">
+                    <option value="">None</option>
+                    <option value="currency">Currency</option>
+                    <option value="role">Role</option>
+                  </select>
+                </label>
+                <label class="grow">Reward Value <input type="text" id="quest-reward-value" placeholder="primary or role ID" /></label>
+                <label class="grow">Reward Amount <input type="number" id="quest-reward-amount" min="0" value="0" placeholder="0" /></label>
+              </div>
+            </div>
           </div>
 
           <div class="inline-form" style="margin-top:12px">

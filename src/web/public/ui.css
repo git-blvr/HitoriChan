@@ -823,6 +823,53 @@ body {
 }
 
 /* =========================================================
+   Quest editor tabs
+   ========================================================= */
+
+.quest-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 22px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.quest-tab {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.quest-tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.quest-tab.active {
+  color: #fff;
+  background: rgba(139, 92, 246, 0.18);
+  border-color: rgba(139, 92, 246, 0.35);
+}
+
+.quest-tab-content {
+  display: none;
+  animation: section-in 0.25s ease both;
+}
+
+.quest-tab-content.active {
+  display: block;
+}
+
+/* =========================================================
    Mobile
    ========================================================= */
 

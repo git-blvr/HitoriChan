@@ -2723,6 +2723,11 @@ function getQuestCompletionMessage() {
   };
 }
 
+function setQuestTab(name) {
+  document.querySelectorAll(".quest-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.questTab === name));
+  document.querySelectorAll(".quest-tab-content").forEach((content) => content.classList.toggle("active", content.dataset.questTab === name));
+}
+
 function resetQuestEditor() {
   document.getElementById("quest-form").reset();
   document.getElementById("quest-id").value = "";
@@ -2733,6 +2738,7 @@ function resetQuestEditor() {
   buildQuestVariables({});
   buildQuestTasks([]);
   buildQuestCompletionMessage({});
+  setQuestTab("details");
 }
 
 window.editQuest = async (id) => {
@@ -2751,6 +2757,7 @@ window.editQuest = async (id) => {
   buildQuestVariables(q.variables || {});
   buildQuestTasks(q.tasks || []);
   buildQuestCompletionMessage(q.completionMessage || {});
+  setQuestTab("details");
 };
 
 window.deleteQuest = async (id) => {
@@ -2804,6 +2811,10 @@ document.getElementById("quest-form").addEventListener("submit", async (e) => {
 });
 
 document.getElementById("quest-cancel-btn").addEventListener("click", resetQuestEditor);
+
+document.querySelectorAll(".quest-tab").forEach((btn) => {
+  btn.addEventListener("click", () => setQuestTab(btn.dataset.questTab));
+});
 
 document.getElementById("quest-board-save").addEventListener("click", async () => {
   if (!currentGuild) return;
