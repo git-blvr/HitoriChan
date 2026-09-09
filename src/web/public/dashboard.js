@@ -787,6 +787,12 @@ function showSection(name) {
   document.querySelectorAll(".content-section").forEach((el) => el.classList.remove("active"));
   document.getElementById(name).classList.add("active");
   navLinks.forEach((l) => l.classList.toggle("active", l.dataset.section === name));
+
+  const activeLink = document.querySelector(`.nav-links a[data-section="${name}"]`);
+  if (activeLink) {
+    activeLink.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
   refreshSection();
 }
 
