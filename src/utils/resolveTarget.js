@@ -1,3 +1,5 @@
+import { withDiscord } from "../helpers/discord.js";
+
 function extractId(raw) {
   const mention = String(raw).match(/^<@!?(\d+)>$/);
   return mention ? mention[1] : String(raw);
@@ -9,16 +11,12 @@ function isSnowflake(id) {
 
 async function resolveById(ctx, id, allowUserFallback) {
   if (ctx.guild) {
-    const member = await ctx.guild.members.fetch(id).catch(() => null);
+    const member = await withDiscord(() => ctx.guild.members.fetch(id), { label: "resolveMember" });
     if (member) return member;
   }
 
   if (allowUserFallback) {
-    try {
-      return await ctx.client.users.fetch(id);
-    } catch {
-      return null;
-    }
+    return withDiscord(() => ctx.client.users.fetch(id), { label: "resolveUser" });
   }
 
   return null;
@@ -63,11 +61,7 @@ export async function resolveTarget(ctx, options = {}) {
     }
 
     if (!target && allowReference && ctx.reference?.messageId) {
-      try {
-        refMessage = await ctx.channel.messages.fetch(ctx.reference.messageId);
-      } catch {
-        refMessage = null;
-      }
+      refMessage = await withDiscord(() => ctx.channel.messages.fetch(ctx.reference.messageId), { label: "resolveReference" });
 
       if (refMessage) {
         target = await resolveById(ctx, refMessage.author.id, allowUserFallback);

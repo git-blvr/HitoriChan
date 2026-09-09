@@ -9,6 +9,7 @@ import * as ModerationSettings from "../../models/ModerationSettings.js";
 import * as GuildSettings from "../../models/GuildSettings.js";
 import * as CommandLog from "../../models/CommandLog.js";
 import * as MessageLog from "../../models/MessageLog.js";
+import { fetchGuildMembers } from "../../utils/discordCache.js";
 import * as VoiceSession from "../../models/VoiceSession.js";
 import * as Trigger from "../../models/Trigger.js";
 import * as ModerationCase from "../../models/ModerationCase.js";
@@ -72,20 +73,7 @@ router.get("/guilds/:guildId/members", requireAuth, async (req, res) => {
 
   const query = req.query.q?.trim();
   const limit = Math.min(Number(req.query.limit) || 100, 1000);
-  let members;
-
-  try {
-    if (query) {
-      members = await guild.members.fetch({ query, limit: Math.min(limit, 100) });
-    } else if (guild.memberCount <= limit) {
-      members = await guild.members.fetch({ limit });
-    } else {
-      members = guild.members.cache;
-    }
-  } catch (err) {
-    console.error("Guild members fetch failed:", err.message);
-    members = guild.members.cache;
-  }
+  const members = await fetchGuildMembers(guild, { query, limit });
 
   const result = Array.from(members.values())
     .filter((m) => !m.user.bot)

@@ -2,6 +2,8 @@ import { queryGroq } from "../ai/groq.js";
 import { checkCooldown } from "../utils/cooldowns.js";
 import { getImageURLs, buildContextMessages, trimHistory } from "../helpers/ai.js";
 import { truncate } from "../helpers/format.js";
+import { cv2 } from "../helpers/cv2.js";
+import { AIGroqError } from "../helpers/aiErrors.js";
 import * as MessageHistory from "../models/MessageHistory.js";
 import * as AISettings from "../models/AISettings.js";
 
@@ -97,6 +99,16 @@ export async function handleChat(message) {
     await message.reply(safeReply);
   } catch (err) {
     console.error("Chat handler error:", err);
+
+    if (err instanceof AIGroqError) {
+      await message.reply(cv2({
+        color: 0xffa500,
+        title: "⚠️ AI is unavailable",
+        description: err.message,
+      }));
+      return;
+    }
+
     await message.reply("❌ Something went wrong. Please try again later.");
   } finally {
     clearInterval(typingInterval);

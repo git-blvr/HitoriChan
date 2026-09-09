@@ -2,8 +2,10 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { verifyCredentials, createSessionToken, generateInitialPassword, getLoginLockout, recordFailedLogin, resetLoginAttempts, hasPermission } from "./auth.js";
+import { verifyCredentials, createSessionToken, generateInitialPassword, getLoginLockout, recordFailedLogin, resetLoginAttempts } from "./auth.js";
 import { requireAuth, authPage } from "./middleware/auth.js";
+import { securityHeaders } from "./middleware/security.js";
+import { rateLimit } from "./middleware/rateLimit.js";
 import api from "./routes/api.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -16,11 +18,12 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
   app.set("client", client);
   app.set("trust proxy", 1);
 
+  app.use(securityHeaders);
   app.use(express.json());
   app.use(cookieParser());
   app.use(express.static(PUBLIC_DIR));
 
-  app.post("/api/login", async (req, res) => {
+  app.post("/api/login", rateLimit({ windowMs: 15 * 60_000, maxRequests: 10, suffix: "login" }), async (req, res) => {
     const { username, password } = req.body || {};
     const ip = req.ip || req.socket?.remoteAddress || "unknown";
 
@@ -49,6 +52,7 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
     res.json({ ok: true });
   });
 
+  app.use("/api", rateLimit({ windowMs: 60_000, maxRequests: 120, suffix: "api" }));
   app.use("/api", api);
 
   app.get("/dashboard", authPage, (req, res) => {
@@ -65,6 +69,12 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
 
   app.get("/", (req, res) => {
     res.sendFile(join(PUBLIC_DIR, "index.html"));
+  });
+
+  app.use((err, req, res, next) => {
+    console.error("[dashboard] Express error:", err);
+    if (res.headersSent) return next(err);
+    res.status(err.status || 500).json({ error: err.message || "Internal server error" });
   });
 
   const host = "0.0.0.0";

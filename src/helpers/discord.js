@@ -4,7 +4,7 @@ export async function resolveMember(ctx, argIndex = 0) {
   if (ctx.isInteraction) {
     const user = ctx.source?.options?.getUser?.("target") ?? ctx.source?.options?.getUser?.("user");
     if (!user) return null;
-    return ctx.guild.members.fetch(user.id).catch(() => null);
+    return withDiscord(() => ctx.guild.members.fetch(user.id), { label: "resolveMember" });
   }
 
   const raw = ctx.args?.[argIndex];
@@ -14,7 +14,7 @@ export async function resolveMember(ctx, argIndex = 0) {
   const id = mentionMatch?.[1] ?? raw;
   if (!/^\d{17,20}$/.test(id)) return null;
 
-  return ctx.guild.members.fetch(id).catch(() => null);
+  return withDiscord(() => ctx.guild.members.fetch(id), { label: "resolveMember" });
 }
 
 export function resolveChannelId(raw) {
@@ -73,4 +73,112 @@ export async function checkHierarchy(ctx, target) {
     return false;
   }
   return true;
+}
+
+const MAX_MESSAGE_LENGTH = 2000;
+const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getRetryAfter(err) {
+  const seconds = err.rawError?.retry_after ?? err.retryAfter;
+  if (typeof seconds === "number" && Number.isFinite(seconds)) {
+    return Math.min(seconds * 1000, 30_000);
+  }
+  return 1000;
+}
+
+export async function withDiscord(fn, { label = "discord", retries = 3 } = {}) {
+  let lastErr;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const status = err.status ?? err.httpStatus;
+      const code = err.code;
+
+      if (status === 403 || status === 404 || code === 10013 || code === 10007) {
+        return null;
+      }
+
+      if (RETRYABLE_STATUS.has(status) || err.name === "AbortError" || err.code === "ECONNRESET" || err.code === "ETIMEDOUT") {
+        const delay = getRetryAfter(err) * (i + 1);
+        console.warn(`[${label}] Discord API attempt ${i + 1}/${retries + 1} failed (status ${status ?? "network"}), retrying in ${delay}ms...`);
+        await sleep(delay);
+        continue;
+      }
+
+      console.error(`[${label}] Discord API error:`, err);
+      return null;
+    }
+  }
+  console.error(`[${label}] Discord API failed after ${retries + 1} attempts:`, lastErr);
+  return null;
+}
+
+export function sanitizeMentions(content) {
+  if (typeof content !== "string") return content;
+  return content.replace(/@everyone/g, "everyone").replace(/@here/g, "here");
+}
+
+export function chunkMessage(content, maxLength = MAX_MESSAGE_LENGTH) {
+  if (typeof content !== "string" || content.length <= maxLength) return [content];
+  const chunks = [];
+  let remaining = content;
+  while (remaining.length > maxLength) {
+    let splitAt = remaining.lastIndexOf("\n\n", maxLength);
+    if (splitAt === -1) splitAt = remaining.lastIndexOf("\n", maxLength);
+    if (splitAt <= 0) splitAt = maxLength;
+    chunks.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt).trimStart();
+  }
+  if (remaining) chunks.push(remaining);
+  return chunks;
+}
+
+export function safeMessagePayload(payload, { maxLength = MAX_MESSAGE_LENGTH, suppressMassMentions = true } = {}) {
+  if (typeof payload === "string") {
+    const content = sanitizeMentions(payload).slice(0, maxLength);
+    return {
+      content,
+      allowedMentions: suppressMassMentions ? { parse: ["users"] } : undefined,
+    };
+  }
+
+  const data = { ...payload };
+  if (data.content != null) {
+    let content = String(data.content);
+    if (suppressMassMentions) content = sanitizeMentions(content);
+    if (content.length > maxLength) content = content.slice(0, maxLength - 3) + "...";
+    data.content = content;
+  }
+  if (suppressMassMentions && !data.allowedMentions) {
+    data.allowedMentions = { parse: ["users"] };
+  }
+  return data;
+}
+
+export async function safeSend(target, payload) {
+  const safe = safeMessagePayload(payload);
+  const chunks = chunkMessage(safe.content, MAX_MESSAGE_LENGTH);
+  const results = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const part = i === chunks.length - 1 ? { ...safe, content: chunks[i] } : { content: chunks[i], allowedMentions: safe.allowedMentions };
+    results.push(await target.send(part));
+  }
+  return results.length === 1 ? results[0] : results;
+}
+
+export async function safeReply(message, payload) {
+  const safe = safeMessagePayload(payload);
+  const chunks = chunkMessage(safe.content, MAX_MESSAGE_LENGTH);
+  const results = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const part = i === chunks.length - 1 ? { ...safe, content: chunks[i] } : { content: chunks[i], allowedMentions: safe.allowedMentions };
+    results.push(await message.reply(part));
+  }
+  return results.length === 1 ? results[0] : results;
 }

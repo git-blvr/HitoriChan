@@ -1,8 +1,9 @@
 import { get as getAISettings } from "../models/AISettings.js";
+import { AIGroqError } from "../helpers/aiErrors.js";
 
 const GROQ_API_KEY = process.env.GROQ_API;
 const MODEL        = process.env.GROQ_MODEL || "qwen/qwen3.6-27b";
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_API_URL = process.env.GROQ_API_URL || "https://api.groq.com/openai/v1/chat/completions";
 
 const bocchi = {
   name: "Hitori Gotoh",
@@ -135,7 +136,7 @@ function stripThoughts(text) {
 export async function queryGroq({ messages, maxTokens = 1024, guildId = null, userName = "friend", temperature = 0.85 } = {}) {
   if (!GROQ_API_KEY) {
     console.error("Missing GROQ_API environment variable.");
-    return "⚠️ AI is not configured. Please set GROQ_API.";
+    throw new AIGroqError("AI is not configured.", { unavailable: true });
   }
 
   if (!Array.isArray(messages) || !messages.length) {
@@ -164,14 +165,21 @@ export async function queryGroq({ messages, maxTokens = 1024, guildId = null, us
     if (!res.ok) {
       const text = await res.text();
       console.error(`Groq API error ${res.status}:`, text);
-      return "⚠️ API error. Try again later.";
+
+      if (res.status === 429 || /rate limit|too many requests/i.test(text)) {
+        throw new AIGroqError("The bot's AI API is currently rate limited. Please try again in a moment.", { rateLimited: true });
+      }
+
+      throw new AIGroqError("The bot's AI API is not available right now. Try again later.", { unavailable: true });
     }
 
     const data = await res.json();
     const raw = data.choices?.[0]?.message?.content ?? "";
     return stripThoughts(raw) || "Sorry, I couldn't think of anything to say...";
   } catch (err) {
+    if (err instanceof AIGroqError) throw err;
+
     console.error("Groq query failed:", err);
-    return "⚠️ Something went wrong calling the AI.";
+    throw new AIGroqError("The bot's AI couldn't be reached. Try again later.", { unavailable: true });
   }
 }

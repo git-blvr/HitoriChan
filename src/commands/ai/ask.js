@@ -4,6 +4,7 @@ import { queryGroq } from "../../ai/groq.js";
 import { checkCooldown, clearCooldown } from "../../utils/cooldowns.js";
 import * as EconomyAccount from "../../models/EconomyAccount.js";
 import { embErr, embWrn } from "../../helpers/embeds.js";
+import { AIGroqError } from "../../helpers/aiErrors.js";
 
 const FOLT_COST   = 750;
 const COOLDOWN_MS = 5 * 60 * 1000;
@@ -73,6 +74,17 @@ export default {
     } catch (err) {
       console.error("Ask command error:", err);
       clearCooldown(ctx.user.id, "ask");
+
+      if (err instanceof AIGroqError) {
+        const warning = cv2({
+          color: 0xffa500,
+          title: "⚠️ AI is unavailable",
+          description: err.message,
+        });
+        await ctx.editReply(warning);
+        return;
+      }
+
       await ctx.editReply(embErr("❌ Something went wrong. You were not charged and your cooldown has been reset."));
     }
   },
