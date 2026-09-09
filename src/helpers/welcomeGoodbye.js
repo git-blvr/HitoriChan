@@ -1,22 +1,10 @@
 import { cv2, buildCV2Components, findFirstCV2ImageUrl } from "./cv2.js";
 import { get_dominant_color } from "../utils/color_utils.js";
-
-function replaceMemberVars(text, member) {
-  if (!text) return "";
-  return text
-    .replace(/\{user\}/g, `<@${member.id}>`)
-    .replace(/\{username\}/g, member.user?.username || "")
-    .replace(/\{displayName\}/g, member.displayName || member.user?.username || "")
-    .replace(/\{guild\}/g, member.guild?.name || "");
-}
+import { replacePlaceholders, replaceObjectPlaceholders } from "./placeholders.js";
 
 function replaceComponentVars(component, member) {
   if (!component) return component;
-  const out = { ...component };
-  if (out.content != null) out.content = replaceMemberVars(out.content, member);
-  if (out.url) out.url = replaceMemberVars(out.url, member);
-  if (Array.isArray(out.urls)) out.urls = out.urls.map((u) => replaceMemberVars(u, member));
-  return out;
+  return replaceObjectPlaceholders(component, { member });
 }
 
 export async function sendWelcomeOrGoodbye(client, member, type = "welcome") {

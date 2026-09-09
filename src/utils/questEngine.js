@@ -4,6 +4,7 @@ import * as EconomyAccount from "../models/EconomyAccount.js";
 import { getGuildEconomyConfig } from "./economyManager.js";
 import { cv2 } from "../helpers/cv2.js";
 import { get_dominant_color } from "./color_utils.js";
+import { replacePlaceholders } from "../helpers/placeholders.js";
 
 // =========================================================
 // DSL tokenizer / parser
@@ -562,17 +563,19 @@ async function executeTaskByName(name, quest, context, client) {
 async function executeTask(task, context, client) {
   const member = getMember(context.member);
   const guild = client?.guilds?.cache?.get(context.guildId);
+  const channel = client?.channels?.cache?.get(task.payload?.channelId || context.channelId);
+  const ctx = { member, user: member?.user, guild, channel };
 
   if (task.type === "send_message") {
-    const channel = client?.channels?.cache?.get(task.payload?.channelId);
     if (channel?.isTextBased()) {
-      const text = replaceVars(task.payload?.content, context);
-      await channel.send(text);
+      const text = replacePlaceholders(task.payload?.content, ctx);
+      if (text) await channel.send(text);
     }
   } else if (task.type === "send_dm") {
     try {
       const user = await client?.users?.fetch?.(context.userId);
-      if (user) await user.send(replaceVars(task.payload?.content, context));
+      const text = replacePlaceholders(task.payload?.content, { ...ctx, user, channel: null });
+      if (user && text) await user.send(text);
     } catch {
       // ignore DM failures
     }
@@ -591,12 +594,7 @@ async function executeTask(task, context, client) {
   }
 }
 
-function replaceVars(text, context) {
-  if (!text) return "";
-  return text
-    .replace(/\{user\}/g, `<@${context.userId}>`)
-    .replace(/\{guild\}/g, context.guildId ? `<@${context.guildId}>` : "");
-}
+
 
 async function sendCompletionMessage(quest, context, client) {
   const cm = quest.completionMessage || {};
@@ -605,6 +603,9 @@ async function sendCompletionMessage(quest, context, client) {
   const member = getMember(context.member);
   const user = member?.user || context.user;
   const avatar = user?.displayAvatarURL?.({ size: 128, forceStatic: true }) ?? null;
+  const guild = client?.guilds?.cache?.get(context.guildId);
+  const channel = client?.channels?.cache?.get(context.channelId);
+  const ctx = { member, user, guild, channel };
 
   let color = cm.color ? parseInt(cm.color.replace("#", ""), 16) : null;
   if (cm.useDominantColor && avatar) {
@@ -616,8 +617,8 @@ async function sendCompletionMessage(quest, context, client) {
   }
   if (color == null || isNaN(color)) color = 0x2f3136;
 
-  const title = cm.title || `Quest Completed: ${quest.name}`;
-  const description = replaceVars(cm.description || `Congratulations <@${context.userId}>, you completed the quest **${quest.name}**!`, context);
+  const title = replacePlaceholders(cm.title || `Quest Completed: ${quest.name}`, ctx);
+  const description = replacePlaceholders(cm.description || `Congratulations <@${context.userId}>, you completed the quest **${quest.name}**!`, ctx);
 
   const payload = cv2({
     color,

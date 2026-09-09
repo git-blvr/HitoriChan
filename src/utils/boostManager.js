@@ -2,6 +2,7 @@ import * as BoostSettings from "../models/BoostSettings.js";
 import * as EconomyAccount from "../models/EconomyAccount.js";
 import { getGuildEconomyConfig } from "./economyManager.js";
 import { cv2 } from "../helpers/cv2.js";
+import { replacePlaceholders } from "../helpers/placeholders.js";
 
 function parseJson(json) {
   if (!json) return [];
@@ -62,7 +63,7 @@ export async function applyBoostPerks(guildId, userId, member, client) {
   if (settings.messageChannelId && client) {
     const channel = client.channels.cache.get(settings.messageChannelId);
     if (channel?.isTextBased()) {
-      const message = settings.thankMessage?.replace(/\{user\}/g, `<@${userId}>`) || `Thanks <@${userId}> for boosting the server!`;
+      const message = replacePlaceholders(settings.thankMessage, { member, user: member?.user, guild: member?.guild }) || `Thanks <@${userId}> for boosting the server!`;
       const currency = await getGuildEconomyConfig(guildId);
       const perks = [];
       if (settings.rewardPrimary) perks.push(`${settings.rewardPrimary.toLocaleString()} ${currency.primary.name}`);

@@ -560,7 +560,7 @@
     <section id="welcome" class="content-section">
       <div class="panel">
         <h2>System Messages</h2>
-        <p class="hint">Send CV2 messages when users join or leave. Variables: <code>{user}</code>, <code>{username}</code>, <code>{displayName}</code>, <code>{guild}</code>.</p>
+        <p class="hint">Send CV2 messages when users join or leave. Variables: <code>{user}</code>, <code>{username}</code>, <code>{displayName}</code>, <code>{user.id}</code>, <code>{guild}</code>, <code>{guild.id}</code>, <code>{memberCount}</code>, <code>{boostCount}</code>, <code>{channel}</code>, <code>{date}</code>, <code>{time}</code>.</p>
 
         <div class="panel sub-panel">
           <h3>Welcome</h3>
@@ -724,7 +724,7 @@
 
           <div class="panel sub-panel" id="quest-completion-panel">
             <h3>Completion Message</h3>
-            <p class="hint">Sent when someone completes the quest. Supports {user} placeholder.</p>
+            <p class="hint">Sent when someone completes the quest. Variables: {user}, {username}, {displayName}, {user.id}, {guild}, {memberCount}, {boostCount}, {channel}, {date}, {time}.</p>
             <label><input type="checkbox" id="quest-completion-enabled" /> Enabled</label>
             <label><input type="checkbox" id="quest-completion-dm" /> Send as DM</label>
             <label>Channel

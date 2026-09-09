@@ -312,7 +312,7 @@
           <li><strong>Ticket Category</strong> — channel category new ticket channels are created under.</li>
           <li><strong>Staff Role</strong> — role that can claim/close tickets.</li>
           <li><strong>Transcript Channel</strong> — where a close summary is posted.</li>
-          <li><strong>Welcome Message</strong> — message sent inside the new ticket channel. <code>{user}</code> pings the author.</li>
+          <li><strong>Welcome Message</strong> — message sent inside the new ticket channel. Variables: <code>{user}</code>, <code>{username}</code>, <code>{displayName}</code>, <code>{guild}</code>, <code>{memberCount}</code>, <code>{boostCount}</code>, <code>{date}</code>, <code>{time}</code>.</li>
           <li><strong>Send Panel To</strong> — channel to post the finished panel in.</li>
         </ul>
       </section>
@@ -355,7 +355,7 @@
           <li><strong>Booster Role</strong> — role assigned to boosters (also removed when boost ends).</li>
           <li><strong>Earnings Multiplier / Level Bonus</strong> — passive boost to the user's economy multiplier and level.</li>
           <li><strong>Unlocks Commands</strong> — one command name per line that boosters can use.</li>
-          <li><strong>Thank-you Channel / Message</strong> — channel and message sent when someone boosts. <code>{user}</code> pings the booster.</li>
+          <li><strong>Thank-you Channel / Message</strong> — channel and message sent when someone boosts. Variables: <code>{user}</code>, <code>{username}</code>, <code>{displayName}</code>, <code>{guild}</code>, <code>{memberCount}</code>, <code>{boostCount}</code>, <code>{date}</code>, <code>{time}</code>.</li>
         </ul>
       </section>
 
@@ -368,7 +368,7 @@
           <li><strong>Channel</strong> — where to send the message. Leave empty to use the server's system channel.</li>
           <li><strong>Color</strong> — hex fallback accent color.</li>
           <li><strong>Use dominant color</strong> — sample the color from the user's avatar or first image and override the fallback.</li>
-          <li><strong>CV2 Builder</strong> — add Text, Image, Media Gallery and Separator components. Use <code>{user}</code>, <code>{username}</code>, <code>{displayName}</code> and <code>{guild}</code> as placeholders inside any text or URL.</li>
+          <li><strong>CV2 Builder</strong> — add Text, Image, Media Gallery and Separator components. Variables: <code>{user}</code>, <code>{username}</code>, <code>{displayName}</code>, <code>{user.id}</code>, <code>{guild}</code>, <code>{guild.id}</code>, <code>{memberCount}</code>, <code>{boostCount}</code>, <code>{channel}</code>, <code>{date}</code>, <code>{time}</code>.</li>
           <li><strong>Import from Payload</strong> — paste a Discord message or CV2 payload JSON and it will be converted into components.</li>
         </ul>
       </section>
@@ -453,7 +453,7 @@
           <li><strong>Enabled</strong> — turn the completion message on/off.</li>
           <li><strong>Send as DM</strong> — send directly to the user instead of a channel.</li>
           <li><strong>Channel</strong> — channel to send to. Leave empty to post in the channel that triggered the quest.</li>
-          <li><strong>Title / Description</strong> — the text. <code>{user}</code> is replaced with a mention.</li>
+          <li><strong>Title / Description</strong> — the text. Variables: <code>{user}</code>, <code>{username}</code>, <code>{displayName}</code>, <code>{user.id}</code>, <code>{guild}</code>, <code>{memberCount}</code>, <code>{boostCount}</code>, <code>{channel}</code>, <code>{date}</code>, <code>{time}</code>.</li>
           <li><strong>Color</strong> — hex fallback color.</li>
           <li><strong>Use dominant color</strong> — override the color with the user's avatar dominant color.</li>
         </ul>
