@@ -64,6 +64,7 @@ export const ALL_PERMISSIONS = [
   "logs",
   "quests",
   "leveling",
+  "interactions",
   "users",
 ];
 

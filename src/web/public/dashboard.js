@@ -1054,6 +1054,29 @@ const sections = {
     }).join("") || '<tr><td colspan="4">No XP yet</td></tr>';
   },
 
+  interactions: async () => {
+    if (!currentGuild) return;
+    const data = await json(`/api/interactions/${currentGuild}`);
+    const list = document.getElementById("interactions-list");
+    const defaults = data.defaults || {};
+    const saved = data.interactions || {};
+
+    list.innerHTML = Object.entries(defaults).map(([type, def]) => {
+      const config = saved[type] || {};
+      return `
+        <div class="interaction-card" data-type="${escapeHtml(type)}">
+          <h3>${escapeHtml(type[0].toUpperCase() + type.slice(1))}</h3>
+          <label>Message
+            <input type="text" class="interaction-message" data-type="${escapeHtml(type)}" value="${escapeHtml(config.message ?? def.message)}" placeholder="{user} ${type}s {target}" />
+          </label>
+          <label>Image URL
+            <input type="url" class="interaction-image" data-type="${escapeHtml(type)}" value="${escapeHtml(config.image ?? "")}" placeholder="https://..." />
+          </label>
+        </div>
+      `;
+    }).join("");
+  },
+
   users: async () => {
     const [users, perms] = await Promise.all([json("/api/users"), json("/api/users/permissions")]);
     allPermissions = perms.permissions || [];
@@ -2643,6 +2666,26 @@ document.getElementById("leveling-form").addEventListener("submit", async (e) =>
     showToast("Leveling settings saved", "success");
   } catch (err) {
     showToast(err.message || "Failed to save leveling settings", "error");
+  }
+});
+
+document.getElementById("interactions-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+
+  const interactions = {};
+  document.querySelectorAll(".interaction-card").forEach((card) => {
+    const type = card.dataset.type;
+    const message = card.querySelector(".interaction-message").value.trim();
+    const image = card.querySelector(".interaction-image").value.trim();
+    interactions[type] = { message, image };
+  });
+
+  try {
+    await json(`/api/interactions/${currentGuild}`, { method: "POST", body: JSON.stringify({ interactions }) });
+    showToast("Interactions saved", "success");
+  } catch (err) {
+    showToast(err.message || "Failed to save interactions", "error");
   }
 });
 

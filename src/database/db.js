@@ -470,6 +470,44 @@ const MIGRATIONS = [
       ALTER TABLE leveling_settings ADD COLUMN voice_video_multiplier REAL NOT NULL DEFAULT 2.0;
     `,
   },
+  {
+    version: 24,
+    sql: `
+      CREATE TABLE IF NOT EXISTS marriage_settings (
+        guild_id TEXT PRIMARY KEY,
+        enabled INTEGER NOT NULL DEFAULT 0,
+        ring_item_id TEXT,
+        contract_item_id TEXT,
+        proposal_message TEXT NOT NULL DEFAULT '{user} is proposing to {target}!',
+        accept_message TEXT NOT NULL DEFAULT '{target} accepted {user}''s proposal!',
+        married_message TEXT NOT NULL DEFAULT '💍 {user} and {target} are now married!',
+        divorce_message TEXT NOT NULL DEFAULT '{user} and {target} are no longer married.',
+        married_role_id TEXT,
+        log_channel_id TEXT,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+
+      CREATE TABLE IF NOT EXISTS marriages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        user_id_1 TEXT NOT NULL,
+        user_id_2 TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+    `,
+  },
+  {
+    version: 25,
+    sql: `
+      CREATE TABLE IF NOT EXISTS interaction_settings (
+        guild_id TEXT PRIMARY KEY,
+        interactions TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+    `,
+  },
 ];
 
 export function migrate() {

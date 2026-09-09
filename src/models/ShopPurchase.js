@@ -10,6 +10,7 @@ const insertStmt = db.prepare(`
 `);
 const deleteByIdStmt = db.prepare("DELETE FROM shop_purchases WHERE id = ?");
 const deleteByUserItemStmt = db.prepare("DELETE FROM shop_purchases WHERE guild_id = ? AND user_id = ? AND item_id = ?");
+const updateQuantityStmt = db.prepare("UPDATE shop_purchases SET quantity = ? WHERE id = ?");
 
 function fromRow(row) {
   if (!row) return null;
@@ -58,4 +59,9 @@ export async function removeAllByItem(guildId, userId, itemId) {
   deleteByUserItemStmt.run(guildId, userId, itemId);
 }
 
-export default { create, getByUser, getActiveByUser, isExpired, getUserItemCount, getItemTotalCount, remove, removeAllByItem };
+export async function updateQuantity(id, quantity) {
+  if (quantity <= 0) return remove(id);
+  updateQuantityStmt.run(quantity, id);
+}
+
+export default { create, getByUser, getActiveByUser, isExpired, getUserItemCount, getItemTotalCount, remove, removeAllByItem, updateQuantity };

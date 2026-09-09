@@ -26,6 +26,7 @@
       <a href="#logs" data-section="logs" data-icon="L">Logs</a>
       <a href="#quests" data-section="quests" data-icon="Q">Quests</a>
       <a href="#leveling" data-section="leveling" data-icon="Lv">Leveling</a>
+      <a href="#interactions" data-section="interactions" data-icon="In">Interactions</a>
       <a href="#users" data-section="users" data-icon="U">Users</a>
       <a href="/docs" target="_blank" class="docs-link" data-icon="D">Docs</a>
     </nav>
@@ -895,6 +896,17 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
           <thead><tr><th>Username</th><th>Permissions</th><th>Created</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
+    </section>
+
+    <section id="interactions" class="content-section">
+      <div class="panel">
+        <h2>Interactions</h2>
+        <p class="hint">Configure messages and images for social slash commands like /kiss, /hug, /slap, etc. Use {user} and {target} in messages.</p>
+        <form id="interactions-form" class="config-form" style="margin-bottom:16px">
+          <div id="interactions-list" class="config-list"></div>
+          <button type="submit" class="save-btn" style="margin-top:14px">Save Interactions</button>
+        </form>
       </div>
     </section>
   </main>

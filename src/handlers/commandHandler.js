@@ -27,20 +27,26 @@ export async function loadCommands(client) {
 
   for (const file of files) {
     const imported = await import(`file://${file}`);
-    const command = imported.default;
-    if (!command?.data?.name) continue;
+    const root = imported.default;
+    if (!root) continue;
 
     const segments = relative(commandsPath, file).split(sep);
-    command.category = segments.length > 1 ? segments[0] : "misc";
+    const category = segments.length > 1 ? segments[0] : "misc";
 
-    client.commands.set(command.data.name, command);
+    const commands = root.commands || (root.data?.name ? [root] : []);
+    for (const command of commands) {
+      if (!command?.data?.name) continue;
 
-    const prefixName = command.prefixName ?? command.data.name;
-    client.prefixCommands.set(prefixName, command);
+      command.category = category;
+      client.commands.set(command.data.name, command);
 
-    if (Array.isArray(command.aliases)) {
-      for (const alias of command.aliases) {
-        client.prefixCommands.set(alias, command);
+      const prefixName = command.prefixName ?? command.data.name;
+      client.prefixCommands.set(prefixName, command);
+
+      if (Array.isArray(command.aliases)) {
+        for (const alias of command.aliases) {
+          client.prefixCommands.set(alias, command);
+        }
       }
     }
   }

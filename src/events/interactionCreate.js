@@ -398,6 +398,10 @@ export default {
       if (interaction.customId.startsWith("shop_")) {
         return handleShopInteraction(interaction);
       }
+      if (interaction.customId.startsWith("marriage:")) {
+        const { handleButton } = await import("../utils/marriage.js");
+        return handleButton(interaction, client);
+      }
       return handleTicketButton(interaction, client);
     }
   },

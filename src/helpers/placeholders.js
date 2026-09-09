@@ -1,7 +1,8 @@
-export function replacePlaceholders(text, { member, user, guild, channel, client, level, xp, quest } = {}) {
+export function replacePlaceholders(text, { member, user, target, guild, channel, client, level, xp, quest } = {}) {
   if (!text) return "";
 
   const resolvedUser = member?.user || user;
+  const resolvedTarget = target;
   const resolvedGuild = member?.guild || guild;
   const resolvedChannel = channel;
 
@@ -12,6 +13,13 @@ export function replacePlaceholders(text, { member, user, guild, channel, client
     "user.id": resolvedUser?.id || "",
     "user.avatar": resolvedUser?.displayAvatarURL?.({ size: 128, forceStatic: true }) || "",
     "user.tag": resolvedUser?.tag || resolvedUser?.username || "",
+    target: resolvedTarget ? `<@${resolvedTarget.id}>` : "",
+    "target.username": resolvedTarget?.username || "",
+    "target.displayname": resolvedTarget?.displayName || resolvedTarget?.username || "",
+    "target.displayName": resolvedTarget?.displayName || resolvedTarget?.username || "",
+    "target.id": resolvedTarget?.id || "",
+    "target.avatar": resolvedTarget?.displayAvatarURL?.({ size: 128, forceStatic: true }) || "",
+    "target.tag": resolvedTarget?.tag || resolvedTarget?.username || "",
     guild: resolvedGuild?.name || "",
     "guild.id": resolvedGuild?.id || "",
     "guild.icon": resolvedGuild?.iconURL?.({ size: 128 }) || "",

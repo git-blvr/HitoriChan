@@ -26,6 +26,9 @@ import * as QuestProgress from "../../models/QuestProgress.js";
 import * as QuestBoard from "../../models/QuestBoard.js";
 import { updateQuestBoard } from "../../utils/questBoard.js";
 import * as LevelingSettings from "../../models/LevelingSettings.js";
+import * as MarriageSettings from "../../models/MarriageSettings.js";
+import * as InteractionSettings from "../../models/InteractionSettings.js";
+import { DEFAULT_INTERACTIONS } from "../../utils/interactions.js";
 import { requirePermission } from "../middleware/auth.js";
 
 const router = Router();
@@ -888,6 +891,33 @@ router.get("/leveling/:guildId/leaderboard", requireAuth, requirePermission("lev
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
   const leaderboard = await EconomyAccount.getLevelLeaderboard(req.params.guildId, limit);
   res.json(leaderboard);
+});
+
+// Marriage settings
+router.get("/marriage/:guildId", requireAuth, async (req, res) => {
+  const settings = await MarriageSettings.getOrCreate(req.params.guildId);
+  res.json(settings);
+});
+
+router.post("/marriage/:guildId", requireAuth, requirePermission("leveling"), async (req, res) => {
+  const values = req.body || {};
+  const settings = await MarriageSettings.save(req.params.guildId, values);
+  res.json({ ok: true, settings });
+});
+
+// Interactions
+router.get("/interactions/:guildId", requireAuth, async (req, res) => {
+  const settings = await InteractionSettings.getOrCreate(req.params.guildId);
+  res.json({ defaults: DEFAULT_INTERACTIONS, interactions: settings.interactions });
+});
+
+router.post("/interactions/:guildId", requireAuth, requirePermission("interactions"), async (req, res) => {
+  const { interactions } = req.body || {};
+  if (!interactions || typeof interactions !== "object") {
+    return res.status(400).json({ error: "Invalid interactions" });
+  }
+  const settings = await InteractionSettings.save(req.params.guildId, interactions);
+  res.json({ ok: true, interactions: settings.interactions });
 });
 
 export default router;
