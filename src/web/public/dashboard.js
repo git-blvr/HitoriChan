@@ -713,6 +713,12 @@ const sections = {
     document.getElementById("leveling-notify-enabled").checked = settings.notifyEnabled;
     populateChannels("leveling-notify-channel", settings.notifyChannelId || "", "-- Same channel --");
     document.getElementById("leveling-notify-message").value = settings.notifyMessage;
+    document.getElementById("leveling-voice-enabled").checked = settings.voiceEnabled;
+    document.getElementById("leveling-voice-xp").value = settings.voiceXp;
+    document.getElementById("leveling-voice-mute-skip").checked = settings.voiceMuteSkip;
+    document.getElementById("leveling-voice-afk-skip").checked = settings.voiceAfkSkip;
+    document.getElementById("leveling-voice-streaming").value = settings.voiceStreamingMultiplier;
+    document.getElementById("leveling-voice-video").value = settings.voiceVideoMultiplier;
 
     const tbody = document.querySelector("#leveling-leaderboard-table tbody");
     tbody.innerHTML = leaderboard.map((row, i) => {
@@ -2248,6 +2254,12 @@ document.getElementById("leveling-form").addEventListener("submit", async (e) =>
     notifyEnabled: document.getElementById("leveling-notify-enabled").checked,
     notifyChannelId: document.getElementById("leveling-notify-channel").value || null,
     notifyMessage: document.getElementById("leveling-notify-message").value.trim() || null,
+    voiceEnabled: document.getElementById("leveling-voice-enabled").checked,
+    voiceXp: Number(document.getElementById("leveling-voice-xp").value) || 0,
+    voiceMuteSkip: document.getElementById("leveling-voice-mute-skip").checked,
+    voiceAfkSkip: document.getElementById("leveling-voice-afk-skip").checked,
+    voiceStreamingMultiplier: Number(document.getElementById("leveling-voice-streaming").value) || 1,
+    voiceVideoMultiplier: Number(document.getElementById("leveling-voice-video").value) || 1,
   };
 
   try {

@@ -459,6 +459,17 @@ const MIGRATIONS = [
       );
     `,
   },
+  {
+    version: 23,
+    sql: `
+      ALTER TABLE leveling_settings ADD COLUMN voice_enabled INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE leveling_settings ADD COLUMN voice_xp INTEGER NOT NULL DEFAULT 5;
+      ALTER TABLE leveling_settings ADD COLUMN voice_mute_skip INTEGER NOT NULL DEFAULT 1;
+      ALTER TABLE leveling_settings ADD COLUMN voice_afk_skip INTEGER NOT NULL DEFAULT 1;
+      ALTER TABLE leveling_settings ADD COLUMN voice_streaming_multiplier REAL NOT NULL DEFAULT 1.5;
+      ALTER TABLE leveling_settings ADD COLUMN voice_video_multiplier REAL NOT NULL DEFAULT 2.0;
+    `,
+  },
 ];
 
 export function migrate() {

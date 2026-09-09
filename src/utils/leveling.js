@@ -76,6 +76,33 @@ function cleanupCooldowns() {
 
 setInterval(cleanupCooldowns, 60 * 1000).unref?.();
 
+async function sendLevelUpNotification(client, settings, result, context) {
+  if (!result.leveledUp || !settings.notifyEnabled) return;
+
+  const text = replacePlaceholders(settings.notifyMessage || "GG {user}, you leveled up to level {level}!", {
+    member: context.member,
+    user: context.user,
+    guild: context.guild,
+    channel: context.channel,
+    level: result.account.level,
+    xp: result.account.xp,
+  });
+
+  try {
+    let channel = settings.notifyChannelId
+      ? client?.channels?.cache?.get(settings.notifyChannelId)
+      : context.channel;
+    if (!channel?.isTextBased()) {
+      channel = context.guild?.systemChannel;
+    }
+    if (channel?.isTextBased()) {
+      await channel.send({ content: text, flags: MessageFlags.SuppressEmbeds });
+    }
+  } catch (err) {
+    console.error("[leveling] Level-up notification error:", err.message);
+  }
+}
+
 export async function handleLeveling(client, message) {
   if (message.author.bot || !message.guild) return false;
   if (!message.content?.trim()) return false;
@@ -91,29 +118,85 @@ export async function handleLeveling(client, message) {
 
   setCooldown(message.guild.id, message.author.id);
 
-  if (result.leveledUp && settings.notifyEnabled) {
-    const text = replacePlaceholders(settings.notifyMessage || "GG {user}, you leveled up to level {level}!", {
-      member: message.member,
-      user: message.author,
-      guild: message.guild,
-      channel: message.channel,
-      level: result.account.level,
-      xp: result.account.xp,
-    });
-
-    try {
-      const channel = settings.notifyChannelId
-        ? client?.channels?.cache?.get(settings.notifyChannelId)
-        : message.channel;
-      if (channel?.isTextBased()) {
-        await channel.send({ content: text, flags: MessageFlags.SuppressEmbeds });
-      }
-    } catch (err) {
-      console.error("[leveling] Level-up notification error:", err.message);
-    }
-  }
+  await sendLevelUpNotification(client, settings, result, {
+    member: message.member,
+    user: message.author,
+    guild: message.guild,
+    channel: message.channel,
+  });
 
   return true;
+}
+
+function isVoiceMemberBlacklisted(settings, channelId, member) {
+  if (settings.channels?.length && settings.channels.includes(channelId)) return true;
+  if (settings.roles?.length) {
+    const memberRoleIds = member.roles?.cache?.map((r) => r.id) || [];
+    if (memberRoleIds.some((id) => settings.roles.includes(id))) return true;
+  }
+  return false;
+}
+
+function isVoiceMemberMuted(voiceState) {
+  return voiceState.mute || voiceState.selfMute || voiceState.serverMute || voiceState.deaf || voiceState.selfDeaf || voiceState.serverDeaf;
+}
+
+function getVoiceMultiplier(voiceState, settings) {
+  let multiplier = 1;
+  if (voiceState.selfVideo) {
+    multiplier = Math.max(multiplier, settings.voiceVideoMultiplier || 2.0);
+  }
+  if (voiceState.selfStream) {
+    multiplier = Math.max(multiplier, settings.voiceStreamingMultiplier || 1.5);
+  }
+  return multiplier;
+}
+
+export async function processVoiceMember(client, settings, guild, channel, member) {
+  if (member.user.bot) return false;
+  if (isVoiceMemberBlacklisted(settings, channel.id, member)) return false;
+
+  const voiceState = member.voice;
+  if (settings.voiceAfkSkip && channel.id === guild.afkChannelId) return false;
+  if (settings.voiceMuteSkip && isVoiceMemberMuted(voiceState)) return false;
+
+  const base = Math.max(0, settings.voiceXp || 0);
+  if (base <= 0) return false;
+
+  const multiplier = getVoiceMultiplier(voiceState, settings);
+  const amount = Math.floor(base * multiplier);
+
+  const result = await addXP(guild.id, member.id, amount, settings.baseXp, settings.multiplier);
+
+  await sendLevelUpNotification(client, settings, result, {
+    member,
+    user: member.user,
+    guild,
+    channel,
+  });
+
+  return true;
+}
+
+export function startVoiceXpLoop(client) {
+  setInterval(async () => {
+    for (const guild of client.guilds.cache.values()) {
+      const settings = await LevelingSettings.get(guild.id);
+      if (!settings?.enabled || !settings?.voiceEnabled) continue;
+
+      for (const channel of guild.channels.cache.values()) {
+        if (!channel.isVoiceBased() || !channel.members?.size) continue;
+
+        for (const member of channel.members.values()) {
+          try {
+            await processVoiceMember(client, settings, guild, channel, member);
+          } catch (err) {
+            console.error("[leveling] Voice XP error:", err.message);
+          }
+        }
+      }
+    }
+  }, 10_000);
 }
 
 export function renderProgressBar(percent, length = 10) {

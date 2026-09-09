@@ -4,9 +4,12 @@ const getStmt = db.prepare("SELECT * FROM leveling_settings WHERE guild_id = ?")
 const upsertStmt = db.prepare(`
   INSERT INTO leveling_settings (
     guild_id, enabled, base_xp, multiplier, min_xp, max_xp, cooldown_seconds,
-    channels, roles, notify_enabled, notify_channel_id, notify_message, created_at, updated_at
+    channels, roles, notify_enabled, notify_channel_id, notify_message,
+    voice_enabled, voice_xp, voice_mute_skip, voice_afk_skip,
+    voice_streaming_multiplier, voice_video_multiplier,
+    created_at, updated_at
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(guild_id) DO UPDATE SET
     enabled = excluded.enabled,
     base_xp = excluded.base_xp,
@@ -19,6 +22,12 @@ const upsertStmt = db.prepare(`
     notify_enabled = excluded.notify_enabled,
     notify_channel_id = excluded.notify_channel_id,
     notify_message = excluded.notify_message,
+    voice_enabled = excluded.voice_enabled,
+    voice_xp = excluded.voice_xp,
+    voice_mute_skip = excluded.voice_mute_skip,
+    voice_afk_skip = excluded.voice_afk_skip,
+    voice_streaming_multiplier = excluded.voice_streaming_multiplier,
+    voice_video_multiplier = excluded.voice_video_multiplier,
     updated_at = excluded.updated_at
 `);
 const deleteStmt = db.prepare("DELETE FROM leveling_settings WHERE guild_id = ?");
@@ -46,6 +55,12 @@ function fromRow(row) {
     notifyEnabled: row.notify_enabled === 1,
     notifyChannelId: row.notify_channel_id ?? null,
     notifyMessage: row.notify_message,
+    voiceEnabled: row.voice_enabled === 1,
+    voiceXp: row.voice_xp,
+    voiceMuteSkip: row.voice_mute_skip === 1,
+    voiceAfkSkip: row.voice_afk_skip === 1,
+    voiceStreamingMultiplier: row.voice_streaming_multiplier,
+    voiceVideoMultiplier: row.voice_video_multiplier,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -64,6 +79,7 @@ export async function getOrCreate(guildId) {
     guildId,
     0, 100, 1.5, 15, 25, 60,
     "[]", "[]", 1, null, "GG {user}, you leveled up to level {level}!",
+    0, 5, 1, 1, 1.5, 2.0,
     now, now
   );
   return fromRow(getStmt.get(guildId));
@@ -91,6 +107,12 @@ export async function save(guildId, values) {
     toBool(values.notifyEnabled, current.notifyEnabled),
     values.notifyChannelId !== undefined ? (values.notifyChannelId || null) : current.notifyChannelId,
     toStr(values.notifyMessage, current.notifyMessage),
+    toBool(values.voiceEnabled, current.voiceEnabled),
+    toNum(values.voiceXp, current.voiceXp),
+    toBool(values.voiceMuteSkip, current.voiceMuteSkip),
+    toBool(values.voiceAfkSkip, current.voiceAfkSkip),
+    toNum(values.voiceStreamingMultiplier, current.voiceStreamingMultiplier),
+    toNum(values.voiceVideoMultiplier, current.voiceVideoMultiplier),
     current.createdAt ?? now,
     now
   );

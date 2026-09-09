@@ -825,6 +825,18 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
           </label>
           <label>Message <input type="text" id="leveling-notify-message" placeholder="GG {user}, you leveled up to level {level}!" /></label>
 
+          <h4 style="margin:18px 0 10px;font-size:0.95rem">Voice XP</h4>
+          <label><input type="checkbox" id="leveling-voice-enabled" /> Enable voice XP</label>
+          <label class="grow">XP per 10 seconds <input type="number" id="leveling-voice-xp" min="0" value="5" placeholder="5" /></label>
+          <div class="inline-fields">
+            <label style="display:flex;align-items:center;gap:8px;margin-top:22px"><input type="checkbox" id="leveling-voice-mute-skip" /> Skip muted users</label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:22px"><input type="checkbox" id="leveling-voice-afk-skip" /> Skip AFK channel</label>
+          </div>
+          <div class="inline-fields">
+            <label class="grow">Streaming multiplier <input type="number" id="leveling-voice-streaming" step="0.1" min="1" value="1.5" placeholder="1.5" /></label>
+            <label class="grow">Camera multiplier <input type="number" id="leveling-voice-video" step="0.1" min="1" value="2.0" placeholder="2.0" /></label>
+          </div>
+
           <button type="submit" class="save-btn" style="margin-top:14px">Save Leveling Settings</button>
         </form>
 
