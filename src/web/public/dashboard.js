@@ -668,7 +668,10 @@ const sections = {
   quests: async () => {
     if (!currentGuild) return;
     await loadGuildData(currentGuild);
-    const quests = await json(`/api/quests/${currentGuild}`);
+    const [quests, board] = await Promise.all([
+      json(`/api/quests/${currentGuild}`),
+      json(`/api/quests/${currentGuild}/board`),
+    ]);
     const tbody = document.querySelector("#quests-table tbody");
     tbody.innerHTML = quests.map((q) => `
       <tr>
@@ -684,6 +687,8 @@ const sections = {
     `).join("") || '<tr><td colspan="5">No quests</td></tr>';
 
     resetQuestEditor();
+    populateChannels("quest-board-channel", board?.channelId || "", "-- Disabled --");
+    document.getElementById("quest-board-enabled").checked = board?.enabled ?? true;
     document.getElementById("quest-help-panel").hidden = false;
   },
 
@@ -2716,6 +2721,26 @@ document.getElementById("quest-form").addEventListener("submit", async (e) => {
 });
 
 document.getElementById("quest-cancel-btn").addEventListener("click", resetQuestEditor);
+
+document.getElementById("quest-board-save").addEventListener("click", async () => {
+  if (!currentGuild) return;
+  const body = {
+    channelId: document.getElementById("quest-board-channel").value || null,
+    enabled: document.getElementById("quest-board-enabled").checked,
+  };
+  try {
+    const res = await json(`/api/quests/${currentGuild}/board`, { method: "POST", body: JSON.stringify(body) });
+    if (res.messageId) {
+      showToast("Quest board posted/updated", "success");
+    } else if (body.channelId) {
+      showToast("Quest board saved", "success");
+    } else {
+      showToast("Quest board disabled", "success");
+    }
+  } catch (err) {
+    showToast(err.message || "Failed to save quest board", "error");
+  }
+});
 
 const payloadModal = document.getElementById("payload-import-modal");
 const payloadText = document.getElementById("payload-import-text");

@@ -421,6 +421,20 @@ const MIGRATIONS = [
       ALTER TABLE shop_purchases ADD COLUMN expires_at INTEGER;
     `,
   },
+  {
+    version: 21,
+    sql: `
+      CREATE TABLE IF NOT EXISTS quest_boards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL UNIQUE,
+        channel_id TEXT,
+        message_id TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+    `,
+  },
 ];
 
 export function migrate() {

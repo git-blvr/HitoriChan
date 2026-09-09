@@ -756,6 +756,22 @@
           </div>
         </form>
 
+        <div class="panel sub-panel" id="quest-board-panel">
+          <h3>Quest Board</h3>
+          <p class="hint">A sticky message in a channel listing active quests and their prizes. Updates automatically when quests change.</p>
+          <div class="inline-fields">
+            <label class="grow">Channel
+              <select id="quest-board-channel" data-searchable="true">
+                <option value="">-- Disabled --</option>
+              </select>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:22px"><input type="checkbox" id="quest-board-enabled" /> Enabled</label>
+          </div>
+          <div class="inline-form" style="margin-top:12px">
+            <button type="button" id="quest-board-save" class="save-btn">Post / Update Board</button>
+          </div>
+        </div>
+
         <table class="data-table" id="quests-table">
           <thead><tr><th>Name</th><th>Schedule</th><th>Enabled</th><th>Condition</th><th></th></tr></thead>
           <tbody></tbody>

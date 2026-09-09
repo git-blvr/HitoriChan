@@ -23,6 +23,8 @@ import { get_dominant_color } from "../../utils/color_utils.js";
 import * as User from "../../models/User.js";
 import * as Quest from "../../models/Quest.js";
 import * as QuestProgress from "../../models/QuestProgress.js";
+import * as QuestBoard from "../../models/QuestBoard.js";
+import { updateQuestBoard } from "../../utils/questBoard.js";
 import { requirePermission } from "../middleware/auth.js";
 
 const router = Router();
@@ -813,10 +815,30 @@ router.post("/quests/:guildId", requireAuth, requirePermission("quests"), async 
       completionMessage,
       enabled,
     });
+    await updateQuestBoard(req.app.get("client"), req.params.guildId);
     res.json(quest);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+router.get("/quests/:guildId/:id/progress", requireAuth, requirePermission("quests"), async (req, res) => {
+  const quest = await Quest.get(Number(req.params.id));
+  if (!quest || quest.guildId !== req.params.guildId) return res.status(404).json({ error: "Quest not found" });
+  const progress = await QuestProgress.getAllForQuest(quest.id);
+  res.json(progress);
+});
+
+router.get("/quests/:guildId/board", requireAuth, requirePermission("quests"), async (req, res) => {
+  const board = await QuestBoard.getOrCreate(req.params.guildId);
+  res.json(board);
+});
+
+router.post("/quests/:guildId/board", requireAuth, requirePermission("quests"), async (req, res) => {
+  const { channelId, enabled } = req.body || {};
+  await QuestBoard.save(req.params.guildId, { channelId, enabled });
+  const messageId = await updateQuestBoard(req.app.get("client"), req.params.guildId);
+  res.json({ ok: true, messageId });
 });
 
 router.get("/quests/:guildId/:id", requireAuth, async (req, res) => {
@@ -830,6 +852,7 @@ router.post("/quests/:guildId/:id", requireAuth, requirePermission("quests"), as
   if (!quest || quest.guildId !== req.params.guildId) return res.status(404).json({ error: "Quest not found" });
   try {
     const updated = await Quest.update(quest.id, req.body);
+    await updateQuestBoard(req.app.get("client"), req.params.guildId);
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -841,14 +864,8 @@ router.delete("/quests/:guildId/:id", requireAuth, requirePermission("quests"), 
   if (!quest || quest.guildId !== req.params.guildId) return res.status(404).json({ error: "Quest not found" });
   await Quest.remove(quest.id);
   await QuestProgress.deleteForQuest(quest.id);
+  await updateQuestBoard(req.app.get("client"), req.params.guildId);
   res.json({ ok: true });
-});
-
-router.get("/quests/:guildId/:id/progress", requireAuth, requirePermission("quests"), async (req, res) => {
-  const quest = await Quest.get(Number(req.params.id));
-  if (!quest || quest.guildId !== req.params.guildId) return res.status(404).json({ error: "Quest not found" });
-  const progress = await QuestProgress.getAllForQuest(quest.id);
-  res.json(progress);
 });
 
 export default router;
