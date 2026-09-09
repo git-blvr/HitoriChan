@@ -63,6 +63,7 @@ export const ALL_PERMISSIONS = [
   "welcome",
   "logs",
   "quests",
+  "leveling",
   "users",
 ];
 

@@ -194,6 +194,7 @@
           <li><a href="#welcome">System messages</a></li>
           <li><a href="#logs">Logs</a></li>
           <li><a href="#quests">Quests</a></li>
+          <li><a href="#leveling">Leveling</a></li>
           <li><a href="#users">Dashboard Users</a></li>
           <li><a href="#tips">Tips & Shortcuts</a></li>
         </ul>
@@ -479,6 +480,24 @@
         </ul>
 
         <p>All dashboard passwords are hashed with scrypt. Failed login attempts are limited to 3 per IP, with a 15 minute lockout.</p>
+      </section>
+
+      <section class="panel" id="leveling">
+        <h2>Leveling</h2>
+        <p>Users earn XP by sending messages. They level up when they reach the XP threshold for the next level.</p>
+        <ul>
+          <li><strong>Enabled</strong> — turn the system on/off.</li>
+          <li><strong>Min / Max XP</strong> — random range awarded per eligible message.</li>
+          <li><strong>Cooldown</strong> — seconds between XP gains per user.</li>
+          <li><strong>Base XP / Multiplier</strong> — level curve. XP needed for level <em>n</em> is <code>base * multiplier^(n-1)</code>.</li>
+          <li><strong>Blacklists</strong> — channel/role IDs where XP is not given.</li>
+          <li><strong>Level-up notification</strong> — message sent when someone levels up. Supports <code>{user}</code>, <code>{level}</code> and other placeholders.</li>
+        </ul>
+        <h3>Commands</h3>
+        <ul>
+          <li><code>/rank [@user]</code> — show your (or another user's) level, XP and progress.</li>
+          <li><code>/leaderboard [limit]</code> — top users by total XP.</li>
+        </ul>
       </section>
 
       <section class="panel" id="tips">

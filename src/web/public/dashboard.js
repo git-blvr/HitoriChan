@@ -692,6 +692,43 @@ const sections = {
     document.getElementById("quest-help-panel").hidden = false;
   },
 
+  leveling: async () => {
+    if (!currentGuild) return;
+    await loadGuildData(currentGuild);
+    const [settings, leaderboard] = await Promise.all([
+      json(`/api/leveling/${currentGuild}/settings`),
+      json(`/api/leveling/${currentGuild}/leaderboard?limit=10`),
+    ]);
+
+    await resolveEntityIds(currentGuild, leaderboard.map((row) => row.userId), [], []);
+
+    document.getElementById("leveling-enabled").checked = settings.enabled;
+    document.getElementById("leveling-min-xp").value = settings.minXp;
+    document.getElementById("leveling-max-xp").value = settings.maxXp;
+    document.getElementById("leveling-cooldown").value = settings.cooldownSeconds;
+    document.getElementById("leveling-base-xp").value = settings.baseXp;
+    document.getElementById("leveling-multiplier").value = settings.multiplier;
+    document.getElementById("leveling-channels").value = (settings.channels || []).join(", ");
+    document.getElementById("leveling-roles").value = (settings.roles || []).join(", ");
+    document.getElementById("leveling-notify-enabled").checked = settings.notifyEnabled;
+    populateChannels("leveling-notify-channel", settings.notifyChannelId || "", "-- Same channel --");
+    document.getElementById("leveling-notify-message").value = settings.notifyMessage;
+
+    const tbody = document.querySelector("#leveling-leaderboard-table tbody");
+    tbody.innerHTML = leaderboard.map((row, i) => {
+      const user = resolveUser(row.userId);
+      const name = user?.displayName || user?.username || row.userId;
+      return `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${escapeHtml(name)}</td>
+        <td>${row.level}</td>
+        <td>${row.totalXp.toLocaleString()}</td>
+      </tr>
+    `;
+    }).join("") || '<tr><td colspan="4">No XP yet</td></tr>';
+  },
+
   users: async () => {
     const [users, perms] = await Promise.all([json("/api/users"), json("/api/users/permissions")]);
     allPermissions = perms.permissions || [];
@@ -779,6 +816,7 @@ async function refreshSection() {
 const sectionDisplayNames = {
   ai: "AI Config",
   welcome: "System Messages",
+  leveling: "Leveling",
 };
 
 function showSection(name) {
@@ -2186,6 +2224,39 @@ document.getElementById("user-form").addEventListener("submit", async (e) => {
 });
 
 document.getElementById("user-cancel-btn").addEventListener("click", resetUserEditor);
+
+// Leveling
+document.getElementById("leveling-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+
+  const parseIdList = (value) =>
+    String(value || "")
+      .split(/[,\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+  const body = {
+    enabled: document.getElementById("leveling-enabled").checked,
+    minXp: Number(document.getElementById("leveling-min-xp").value) || 1,
+    maxXp: Number(document.getElementById("leveling-max-xp").value) || 1,
+    cooldownSeconds: Number(document.getElementById("leveling-cooldown").value) || 0,
+    baseXp: Number(document.getElementById("leveling-base-xp").value) || 100,
+    multiplier: Number(document.getElementById("leveling-multiplier").value) || 1,
+    channels: parseIdList(document.getElementById("leveling-channels").value),
+    roles: parseIdList(document.getElementById("leveling-roles").value),
+    notifyEnabled: document.getElementById("leveling-notify-enabled").checked,
+    notifyChannelId: document.getElementById("leveling-notify-channel").value || null,
+    notifyMessage: document.getElementById("leveling-notify-message").value.trim() || null,
+  };
+
+  try {
+    await json(`/api/leveling/${currentGuild}/settings`, { method: "POST", body: JSON.stringify(body) });
+    showToast("Leveling settings saved", "success");
+  } catch (err) {
+    showToast(err.message || "Failed to save leveling settings", "error");
+  }
+});
 
 // Quests
 const QUEST_CONDITION_CONFIG = {

@@ -10,25 +10,35 @@ const getStmt = db.prepare("SELECT * FROM economy_accounts WHERE guild_id = ? AN
 const upsertStmt = db.prepare(`
   INSERT INTO economy_accounts (
     guild_id, user_id, primary_balance, secondary_balance, last_daily,
-    earnings_multiplier, level, shop_item_ids, unlocked_commands, created_at, updated_at
+    earnings_multiplier, level, xp, total_xp, shop_item_ids, unlocked_commands, created_at, updated_at
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(guild_id, user_id) DO UPDATE SET
     primary_balance = excluded.primary_balance,
     secondary_balance = excluded.secondary_balance,
     last_daily = excluded.last_daily,
     earnings_multiplier = excluded.earnings_multiplier,
     level = excluded.level,
+    xp = excluded.xp,
+    total_xp = excluded.total_xp,
     shop_item_ids = excluded.shop_item_ids,
     unlocked_commands = excluded.unlocked_commands,
     updated_at = excluded.updated_at
 `);
 
 const leaderboardStmt = db.prepare(`
-  SELECT guild_id, user_id, primary_balance, secondary_balance
+  SELECT guild_id, user_id, primary_balance, secondary_balance, level, xp, total_xp
   FROM economy_accounts
   WHERE guild_id = ?
   ORDER BY primary_balance DESC
+  LIMIT ?
+`);
+
+const levelLeaderboardStmt = db.prepare(`
+  SELECT guild_id, user_id, primary_balance, secondary_balance, level, xp, total_xp
+  FROM economy_accounts
+  WHERE guild_id = ?
+  ORDER BY total_xp DESC
   LIMIT ?
 `);
 
@@ -60,6 +70,8 @@ function fromRow(row) {
     lastDaily: row.last_daily ? new Date(row.last_daily) : null,
     earningsMultiplier: row.earnings_multiplier ?? 1.0,
     level: row.level ?? 1,
+    xp: row.xp ?? 0,
+    totalXp: row.total_xp ?? 0,
     shopItemIds: parseJson(row.shop_item_ids),
     unlockedCommands: parseJson(row.unlocked_commands),
     createdAt: new Date(row.created_at),
@@ -76,7 +88,7 @@ export async function getOrCreate(guildId, userId) {
   if (existing) return fromRow(existing);
 
   const now = Date.now();
-  upsertStmt.run(guildId, userId, 0, 0, null, 1.0, 1, "[]", "[]", now, now);
+  upsertStmt.run(guildId, userId, 0, 0, null, 1.0, 1, 0, 0, "[]", "[]", now, now);
   return fromRow(getStmt.get(guildId, userId));
 }
 
@@ -91,6 +103,8 @@ export async function save(account) {
     lastDaily || null,
     account.earningsMultiplier ?? 1.0,
     account.level ?? 1,
+    account.xp ?? 0,
+    account.totalXp ?? 0,
     JSON.stringify(account.shopItemIds ?? []),
     JSON.stringify(account.unlockedCommands ?? []),
     account.createdAt?.getTime?.() ?? now,
@@ -153,6 +167,17 @@ export async function getGlobalLeaderboard(limit = 10) {
   }));
 }
 
+export async function getLevelLeaderboard(guildId, limit = 10) {
+  return levelLeaderboardStmt.all(guildId, limit).map(fromRow);
+}
+
+export async function addXp(guildId, userId, xp) {
+  const account = await getOrCreate(guildId, userId);
+  account.xp = (account.xp || 0) + xp;
+  account.totalXp = (account.totalXp || 0) + xp;
+  return save(account);
+}
+
 export default {
   get,
   getOrCreate,
@@ -163,4 +188,6 @@ export default {
   transfer,
   getLeaderboard,
   getGlobalLeaderboard,
+  getLevelLeaderboard,
+  addXp,
 };

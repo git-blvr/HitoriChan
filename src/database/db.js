@@ -435,6 +435,30 @@ const MIGRATIONS = [
       );
     `,
   },
+  {
+    version: 22,
+    sql: `
+      ALTER TABLE economy_accounts ADD COLUMN xp INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE economy_accounts ADD COLUMN total_xp INTEGER NOT NULL DEFAULT 0;
+
+      CREATE TABLE IF NOT EXISTS leveling_settings (
+        guild_id TEXT PRIMARY KEY,
+        enabled INTEGER NOT NULL DEFAULT 0,
+        base_xp INTEGER NOT NULL DEFAULT 100,
+        multiplier REAL NOT NULL DEFAULT 1.5,
+        min_xp INTEGER NOT NULL DEFAULT 15,
+        max_xp INTEGER NOT NULL DEFAULT 25,
+        cooldown_seconds INTEGER NOT NULL DEFAULT 60,
+        channels TEXT NOT NULL DEFAULT '[]',
+        roles TEXT NOT NULL DEFAULT '[]',
+        notify_enabled INTEGER NOT NULL DEFAULT 1,
+        notify_channel_id TEXT,
+        notify_message TEXT NOT NULL DEFAULT 'GG {user}, you leveled up to level {level}!',
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+    `,
+  },
 ];
 
 export function migrate() {

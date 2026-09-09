@@ -25,6 +25,7 @@
       <a href="#welcome" data-section="welcome" data-icon="Sm">System messages</a>
       <a href="#logs" data-section="logs" data-icon="L">Logs</a>
       <a href="#quests" data-section="quests" data-icon="Q">Quests</a>
+      <a href="#leveling" data-section="leveling" data-icon="Lv">Leveling</a>
       <a href="#users" data-section="users" data-icon="U">Users</a>
       <a href="/docs" target="_blank" class="docs-link" data-icon="D">Docs</a>
     </nav>
@@ -784,6 +785,56 @@
 IF messages.sent &gt;= 10 & user.has_role &quot;123456&quot;, EXECUTE TASK reward
 IF voice.minutes &gt;= 5 | reactions.count &gt;= 5, EXECUTE TASK chatter
 IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
+      </div>
+    </section>
+
+    <section id="leveling" class="content-section">
+      <div class="panel">
+        <h2>Leveling</h2>
+        <p class="hint">Configure XP gain from messages. Users level up when they reach the XP threshold for the next level.</p>
+        <form id="leveling-form" class="config-form" style="margin-bottom:16px">
+          <label><input type="checkbox" id="leveling-enabled" /> Enabled</label>
+
+          <h4 style="margin:18px 0 10px;font-size:0.95rem">XP Per Message</h4>
+          <div class="inline-fields">
+            <label class="grow">Min <input type="number" id="leveling-min-xp" min="1" value="15" placeholder="15" /></label>
+            <label class="grow">Max <input type="number" id="leveling-max-xp" min="1" value="25" placeholder="25" /></label>
+            <label class="grow">Cooldown (seconds) <input type="number" id="leveling-cooldown" min="0" value="60" placeholder="60" /></label>
+          </div>
+
+          <h4 style="margin:18px 0 10px;font-size:0.95rem">Level Curve</h4>
+          <div class="inline-fields">
+            <label class="grow">Base XP <input type="number" id="leveling-base-xp" min="1" value="100" placeholder="100" /></label>
+            <label class="grow">Multiplier <input type="number" id="leveling-multiplier" step="0.1" min="1" value="1.5" placeholder="1.5" /></label>
+          </div>
+
+          <h4 style="margin:18px 0 10px;font-size:0.95rem">Blacklists</h4>
+          <label class="grow">Channel IDs (comma-separated)
+            <input type="text" id="leveling-channels" placeholder="123456789, 987654321" />
+          </label>
+          <label class="grow">Role IDs (comma-separated)
+            <input type="text" id="leveling-roles" placeholder="123456789, 987654321" />
+          </label>
+
+          <h4 style="margin:18px 0 10px;font-size:0.95rem">Level-up Notification</h4>
+          <label><input type="checkbox" id="leveling-notify-enabled" /> Enabled</label>
+          <label>Channel
+            <select id="leveling-notify-channel" data-searchable="true">
+              <option value="">-- Same channel --</option>
+            </select>
+          </label>
+          <label>Message <input type="text" id="leveling-notify-message" placeholder="GG {user}, you leveled up to level {level}!" /></label>
+
+          <button type="submit" class="save-btn" style="margin-top:14px">Save Leveling Settings</button>
+        </form>
+
+        <div class="panel sub-panel">
+          <h3>Top Users</h3>
+          <table class="data-table" id="leveling-leaderboard-table">
+            <thead><tr><th>Rank</th><th>User</th><th>Level</th><th>Total XP</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </section>
 

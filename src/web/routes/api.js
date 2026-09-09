@@ -25,6 +25,7 @@ import * as Quest from "../../models/Quest.js";
 import * as QuestProgress from "../../models/QuestProgress.js";
 import * as QuestBoard from "../../models/QuestBoard.js";
 import { updateQuestBoard } from "../../utils/questBoard.js";
+import * as LevelingSettings from "../../models/LevelingSettings.js";
 import { requirePermission } from "../middleware/auth.js";
 
 const router = Router();
@@ -866,6 +867,27 @@ router.delete("/quests/:guildId/:id", requireAuth, requirePermission("quests"), 
   await QuestProgress.deleteForQuest(quest.id);
   await updateQuestBoard(req.app.get("client"), req.params.guildId);
   res.json({ ok: true });
+});
+
+// Leveling
+router.get("/leveling/:guildId/settings", requireAuth, requirePermission("leveling"), async (req, res) => {
+  const settings = await LevelingSettings.getOrCreate(req.params.guildId);
+  res.json(settings);
+});
+
+router.post("/leveling/:guildId/settings", requireAuth, requirePermission("leveling"), async (req, res) => {
+  try {
+    const settings = await LevelingSettings.save(req.params.guildId, req.body || {});
+    res.json(settings);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.get("/leveling/:guildId/leaderboard", requireAuth, requirePermission("leveling"), async (req, res) => {
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
+  const leaderboard = await EconomyAccount.getLevelLeaderboard(req.params.guildId, limit);
+  res.json(leaderboard);
 });
 
 export default router;

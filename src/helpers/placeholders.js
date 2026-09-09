@@ -1,4 +1,4 @@
-export function replacePlaceholders(text, { member, user, guild, channel, client } = {}) {
+export function replacePlaceholders(text, { member, user, guild, channel, client, level, xp } = {}) {
   if (!text) return "";
 
   const resolvedUser = member?.user || user;
@@ -25,6 +25,8 @@ export function replacePlaceholders(text, { member, user, guild, channel, client
     date: new Date().toLocaleDateString(),
     time: new Date().toLocaleTimeString(),
     now: new Date().toISOString(),
+    level: level != null ? String(level) : "",
+    xp: xp != null ? String(xp) : "",
   };
 
   return String(text).replace(/{([a-zA-Z0-9._]+)}/g, (match, key) => {
