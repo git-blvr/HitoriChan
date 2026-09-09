@@ -835,11 +835,11 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
           </div>
 
           <h4 style="margin:18px 0 10px;font-size:0.95rem">Blacklists</h4>
-          <label class="grow">Channel IDs (comma-separated)
-            <input type="text" id="leveling-channels" placeholder="123456789, 987654321" />
+          <label class="grow">Channels
+            <select id="leveling-channels" multiple data-searchable="true" data-entity="channel" placeholder="Pick channels to ignore for XP"></select>
           </label>
-          <label class="grow">Role IDs (comma-separated)
-            <input type="text" id="leveling-roles" placeholder="123456789, 987654321" />
+          <label class="grow">Roles
+            <select id="leveling-roles" multiple data-searchable="true" data-entity="role" placeholder="Pick roles to ignore for XP"></select>
           </label>
 
           <h4 style="margin:18px 0 10px;font-size:0.95rem">Level-up Notification</h4>

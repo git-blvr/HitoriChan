@@ -239,6 +239,28 @@ function populateRoles(selectId, selectedId) {
   refreshSelectFilter(select);
 }
 
+function populateMultiChannels(selectId, selectedIds = [], placeholder = "-- None --") {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const selectedSet = new Set(selectedIds);
+  const options = guildData.channels.map((c) =>
+    `<option value="${c.id}" ${selectedSet.has(c.id) ? "selected" : ""}>#${escapeHtml(c.name)}</option>`
+  ).join("");
+  select.innerHTML = `<option value="">${escapeHtml(placeholder)}</option>` + options;
+  refreshSelectFilter(select);
+}
+
+function populateMultiRoles(selectId, selectedIds = [], placeholder = "-- None --") {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const selectedSet = new Set(selectedIds);
+  const options = guildData.roles.map((r) =>
+    `<option value="${r.id}" ${selectedSet.has(r.id) ? "selected" : ""}>${escapeHtml(r.name)}</option>`
+  ).join("");
+  select.innerHTML = `<option value="">${escapeHtml(placeholder)}</option>` + options;
+  refreshSelectFilter(select);
+}
+
 async function loadGuildCategories(guildId) {
   if (!guildId) return [];
   if (guildData.id === guildId && guildData.categories) return guildData.categories;
@@ -414,8 +436,201 @@ function makeSelectSearchable(select) {
   close();
 }
 
+function getMultiSelectValues(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return [];
+  return Array.from(select.selectedOptions).map((o) => o.value);
+}
+
+function makeMultiSelectCombobox(select) {
+  if (select._comboboxMulti) return;
+
+  select.style.display = "none";
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "combobox combobox-multi";
+  select.parentNode.insertBefore(wrapper, select);
+  wrapper.appendChild(select);
+
+  const pills = document.createElement("div");
+  pills.className = "combobox-pills";
+  wrapper.appendChild(pills);
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "combobox-input";
+  input.placeholder = "Type to filter and pick...";
+  input.autocomplete = "off";
+  input.setAttribute("role", "combobox");
+  input.setAttribute("aria-expanded", "false");
+  input.setAttribute("aria-autocomplete", "list");
+  wrapper.appendChild(input);
+
+  const list = document.createElement("ul");
+  list.className = "combobox-list";
+  list.setAttribute("role", "listbox");
+  list.hidden = true;
+  wrapper.appendChild(list);
+
+  let activeIndex = -1;
+  let allOptions = [];
+
+  const saveOptions = () => {
+    allOptions = Array.from(select.options).map((o) => ({
+      value: o.value,
+      text: o.textContent,
+      selected: o.selected,
+      disabled: o.disabled,
+    }));
+  };
+
+  const selectedValues = () => Array.from(select.selectedOptions).map((o) => o.value);
+
+  const renderPills = () => {
+    const selected = allOptions.filter((o) => o.selected && o.value !== "");
+    if (!selected.length) {
+      pills.innerHTML = "";
+      return;
+    }
+    pills.innerHTML = selected.map((o) => `
+      <span class="combobox-pill" data-value="${escapeHtml(o.value)}">
+        ${escapeHtml(o.text)}
+        <button type="button" class="combobox-pill-remove" aria-label="Remove" data-value="${escapeHtml(o.value)}">×</button>
+      </span>
+    `).join("");
+    pills.querySelectorAll(".combobox-pill-remove").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleValue(btn.dataset.value, false);
+      });
+    });
+  };
+
+  const renderList = (filter = "") => {
+    const q = filter.trim().toLowerCase();
+    const matches = allOptions.filter((o, i) =>
+      i === 0 || q === "" || o.text.toLowerCase().includes(q) || o.value.toLowerCase().includes(q)
+    );
+
+    list.innerHTML = matches.map((o, i) => `
+      <li class="combobox-option ${o.selected ? "selected" : ""}"
+          role="option"
+          data-value="${escapeHtml(o.value)}"
+          data-index="${i}"
+          ${o.disabled ? "aria-disabled=\"true\"" : ""}>
+        ${escapeHtml(o.text)}
+      </li>
+    `).join("");
+
+    activeIndex = q ? 0 : -1;
+    updateActive();
+  };
+
+  const updateActive = () => {
+    list.querySelectorAll(".combobox-option").forEach((opt, i) => {
+      opt.classList.toggle("active", i === activeIndex);
+      opt.setAttribute("aria-selected", i === activeIndex ? "true" : "false");
+    });
+  };
+
+  const toggleValue = (value, isSelected) => {
+    if (!value) return;
+    const option = select.querySelector(`option[value="${CSS.escape(value)}"]`);
+    if (!option) return;
+    option.selected = isSelected;
+    saveOptions();
+    renderPills();
+    renderList(input.value);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+
+  const open = () => {
+    list.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    renderList("");
+  };
+
+  const close = () => {
+    list.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+    input.value = "";
+  };
+
+  input.addEventListener("focus", () => {
+    input.value = "";
+    open();
+  });
+
+  input.addEventListener("input", () => {
+    if (list.hidden) open();
+    renderList(input.value);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (list.hidden) return;
+    const options = list.querySelectorAll(".combobox-option");
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeIndex = Math.min(activeIndex + 1, options.length - 1);
+      updateActive();
+      options[activeIndex]?.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIndex = Math.max(activeIndex - 1, 0);
+      updateActive();
+      options[activeIndex]?.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const opt = options[activeIndex];
+      if (opt) {
+        const value = opt.dataset.value;
+        const currentlySelected = allOptions.find((o) => o.value === value)?.selected;
+        toggleValue(value, !currentlySelected);
+      } else {
+        close();
+      }
+    } else if (e.key === "Escape") {
+      close();
+      input.blur();
+    }
+  });
+
+  input.addEventListener("blur", () => {
+    setTimeout(() => {
+      if (document.activeElement !== input) close();
+    }, 150);
+  });
+
+  list.addEventListener("mousedown", (e) => {
+    const opt = e.target.closest(".combobox-option");
+    if (!opt) return;
+    e.preventDefault();
+    const value = opt.dataset.value;
+    const currentlySelected = allOptions.find((o) => o.value === value)?.selected;
+    toggleValue(value, !currentlySelected);
+  });
+
+  select._comboboxMulti = { input, list, refresh: () => { saveOptions(); renderPills(); renderList(""); } };
+  select._refreshFilter = () => select._comboboxMulti.refresh();
+  select._setFilter = (values) => {
+    Array.from(select.options).forEach((o) => { o.selected = values.includes(o.value); });
+    saveOptions();
+    renderPills();
+    renderList("");
+  };
+
+  saveOptions();
+  renderPills();
+  renderList("");
+  close();
+}
+
 function refreshSelectFilter(select) {
-  select?._refreshFilter?.();
+  if (select.multiple) {
+    select?._comboboxMulti?.refresh?.();
+  } else {
+    select?._refreshFilter?.();
+  }
 }
 
 function formatDate(ts) {
@@ -812,8 +1027,8 @@ const sections = {
     document.getElementById("leveling-cooldown").value = settings.cooldownSeconds;
     document.getElementById("leveling-base-xp").value = settings.baseXp;
     document.getElementById("leveling-multiplier").value = settings.multiplier;
-    document.getElementById("leveling-channels").value = (settings.channels || []).join(", ");
-    document.getElementById("leveling-roles").value = (settings.roles || []).join(", ");
+    populateMultiChannels("leveling-channels", settings.channels || []);
+    populateMultiRoles("leveling-roles", settings.roles || []);
     document.getElementById("leveling-notify-enabled").checked = settings.notifyEnabled;
     populateChannels("leveling-notify-channel", settings.notifyChannelId || "", "-- Same channel --");
     document.getElementById("leveling-notify-message").value = settings.notifyMessage;
@@ -2410,8 +2625,8 @@ document.getElementById("leveling-form").addEventListener("submit", async (e) =>
     cooldownSeconds: Number(document.getElementById("leveling-cooldown").value) || 0,
     baseXp: Number(document.getElementById("leveling-base-xp").value) || 100,
     multiplier: Number(document.getElementById("leveling-multiplier").value) || 1,
-    channels: parseIdList(document.getElementById("leveling-channels").value),
-    roles: parseIdList(document.getElementById("leveling-roles").value),
+    channels: getMultiSelectValues("leveling-channels"),
+    roles: getMultiSelectValues("leveling-roles"),
     notifyEnabled: document.getElementById("leveling-notify-enabled").checked,
     notifyChannelId: document.getElementById("leveling-notify-channel").value || null,
     notifyMessage: document.getElementById("leveling-notify-message").value.trim() || null,
@@ -3099,7 +3314,8 @@ function initSelectFilters() {
   ]);
   document.querySelectorAll("select").forEach((select) => {
     if (select.id && excluded.has(select.id)) return;
-    makeSelectSearchable(select);
+    if (select.multiple) makeMultiSelectCombobox(select);
+    else makeSelectSearchable(select);
   });
 }
 

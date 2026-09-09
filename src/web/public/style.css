@@ -583,6 +583,50 @@ body {
   color: #fff;
 }
 
+.combobox-multi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.combobox-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.combobox-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 18px;
+  background: rgba(139, 92, 246, 0.18);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+.combobox-pill-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.combobox-pill-remove:hover {
+  background: rgba(239, 68, 68, 0.5);
+}
+
 .checkbox-group {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
