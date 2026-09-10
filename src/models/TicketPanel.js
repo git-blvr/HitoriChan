@@ -6,15 +6,15 @@ const getByNameStmt = db.prepare("SELECT * FROM ticket_panels WHERE guild_id = ?
 const insertStmt = db.prepare(`
   INSERT INTO ticket_panels (
     guild_id, name, type, title, description, color, image_url, thumbnail_url,
-    use_dominant_color, button_label, button_color,
+    use_dominant_color, button_label, button_color, use_category_dropdown,
     category_id, staff_role_id, transcript_channel_id, welcome_message,
     fields, components, categories
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const updateStmt = db.prepare(`
   UPDATE ticket_panels SET
     name = ?, type = ?, title = ?, description = ?, color = ?, image_url = ?, thumbnail_url = ?,
-    use_dominant_color = ?, button_label = ?, button_color = ?,
+    use_dominant_color = ?, button_label = ?, button_color = ?, use_category_dropdown = ?,
     category_id = ?, staff_role_id = ?, transcript_channel_id = ?, welcome_message = ?,
     fields = ?, components = ?, categories = ?
   WHERE id = ?
@@ -45,6 +45,7 @@ function fromRow(row) {
     useDominantColor: Boolean(row.use_dominant_color),
     buttonLabel: row.button_label,
     buttonColor: row.button_color,
+    useCategoryDropdown: Boolean(row.use_category_dropdown),
     categoryId: row.category_id,
     staffRoleId: row.staff_role_id,
     transcriptChannelId: row.transcript_channel_id,
@@ -81,6 +82,7 @@ export async function create(data) {
     data.useDominantColor ? 1 : 0,
     data.buttonLabel ?? "Create Ticket",
     data.buttonColor ?? "green",
+    data.useCategoryDropdown ? 1 : 0,
     data.categoryId ?? null,
     data.staffRoleId ?? null,
     data.transcriptChannelId ?? null,
@@ -108,6 +110,7 @@ export async function update(id, data) {
     (data.useDominantColor !== undefined ? data.useDominantColor : panel.useDominantColor) ? 1 : 0,
     data.buttonLabel ?? panel.buttonLabel,
     data.buttonColor ?? panel.buttonColor,
+    (data.useCategoryDropdown !== undefined ? data.useCategoryDropdown : panel.useCategoryDropdown) ? 1 : 0,
     data.categoryId ?? panel.categoryId,
     data.staffRoleId ?? panel.staffRoleId,
     data.transcriptChannelId ?? panel.transcriptChannelId,

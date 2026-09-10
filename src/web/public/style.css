@@ -1138,6 +1138,18 @@ input[type="color"] {
 .ticket-cv2-preview .cv2-button.red { background: #ed4245; }
 .ticket-cv2-preview .cv2-button.gray { background: #4f545c; }
 
+.ticket-cv2-preview .cv2-select,
+.ticket-embed-preview .cv2-select {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--surface-2);
+  color: #fff;
+  min-width: 180px;
+  margin-top: 12px;
+}
+
 /* Table extras */
 .user-cell {
   display: flex;

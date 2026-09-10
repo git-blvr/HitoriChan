@@ -3,6 +3,8 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
   ContainerBuilder,
   TextDisplayBuilder,
   MediaGalleryBuilder,
@@ -25,6 +27,28 @@ function buildButton(customId, label, color) {
     .setCustomId(customId)
     .setLabel(label)
     .setStyle(styleMap[color] ?? ButtonStyle.Success);
+}
+
+function buildCategorySelect(customId, categories, placeholder) {
+  const options = categories
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => String(c.label).trim())
+    .map(({ c, i }) => {
+      const label = String(c.label).trim().slice(0, 100);
+      const builder = new StringSelectMenuOptionBuilder().setLabel(label).setValue(String(i));
+      const desc = String(c.description || "").trim().slice(0, 100);
+      if (desc) builder.setDescription(desc);
+      return builder;
+    });
+
+  if (!options.length) return null;
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(customId)
+    .setPlaceholder(placeholder || "Select a category")
+    .addOptions(options);
+
+  return new ActionRowBuilder().addComponents(select);
 }
 
 export async function resolveTicketPanelColor(panel) {
@@ -81,9 +105,12 @@ function buildSection(text, thumbUrl = null) {
 
 export async function buildTicketPanelPayload(panel, customId) {
   const color = toColorInt(await resolveTicketPanelColor(panel));
-  const row = new ActionRowBuilder().addComponents(
-    buildButton(customId, panel.buttonLabel, panel.buttonColor)
-  );
+  const selectRow = panel.useCategoryDropdown
+    ? buildCategorySelect(`ticket:select_category:${panel.id}`, panel.categories, panel.buttonLabel)
+    : null;
+  const buttonRow = !selectRow
+    ? new ActionRowBuilder().addComponents(buildButton(customId, panel.buttonLabel, panel.buttonColor))
+    : null;
 
   if (panel.type === "cv2") {
     const container = new ContainerBuilder();
@@ -103,7 +130,6 @@ export async function buildTicketPanelPayload(panel, customId) {
       container.addTextDisplayComponents(buildText(String(panel.description)));
     }
 
-    let hasTicketButton = false;
     if (Array.isArray(panel.components)) {
       for (const c of panel.components) {
         if (!c || !c.type) continue;
@@ -116,16 +142,17 @@ export async function buildTicketPanelPayload(panel, customId) {
           container.addMediaGalleryComponents(gallery);
         } else if (c.type === "separator") {
           container.addSeparatorComponents(new SeparatorBuilder().setDivider(Boolean(c.divider)).setSpacing(c.large ? 2 : 1));
-        } else if (c.type === "ticket") {
-          hasTicketButton = true;
+        } else if (c.type === "ticket" && !selectRow) {
           const b = buildButton(customId, c.label || panel.buttonLabel, c.color || panel.buttonColor);
           container.addActionRowComponents(new ActionRowBuilder().addComponents(b));
         }
       }
     }
 
-    if (!hasTicketButton) {
-      container.addActionRowComponents(row);
+    if (selectRow) {
+      container.addActionRowComponents(selectRow);
+    } else if (buttonRow) {
+      container.addActionRowComponents(buttonRow);
     }
 
     return { components: [container], flags: MessageFlags.IsComponentsV2 };
@@ -146,5 +173,5 @@ export async function buildTicketPanelPayload(panel, customId) {
     }
   }
 
-  return { embeds: [embed], components: [row] };
+  return { embeds: [embed], components: [selectRow || buttonRow] };
 }

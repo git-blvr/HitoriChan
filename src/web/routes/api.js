@@ -427,6 +427,7 @@ function parsePanelBody(body) {
     imageUrl: body.imageUrl?.trim() || null,
     thumbnailUrl: body.thumbnailUrl?.trim() || null,
     useDominantColor: Boolean(body.useDominantColor),
+    useCategoryDropdown: Boolean(body.useCategoryDropdown),
     buttonLabel: body.buttonLabel?.trim() || "Create Ticket",
     buttonColor: body.buttonColor?.trim() || "green",
     categoryId: body.categoryId?.trim() || null,

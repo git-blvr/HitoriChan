@@ -508,6 +508,12 @@ const MIGRATIONS = [
       );
     `,
   },
+  {
+    version: 26,
+    sql: `
+      ALTER TABLE ticket_panels ADD COLUMN use_category_dropdown INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];
 
 export function migrate() {

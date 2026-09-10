@@ -1750,6 +1750,7 @@ function getTicketPanelPayload() {
     imageUrl: document.getElementById("ticket-image").value.trim() || null,
     thumbnailUrl: document.getElementById("ticket-thumbnail").value.trim() || null,
     useDominantColor: document.getElementById("ticket-use-dominant").checked,
+    useCategoryDropdown: document.getElementById("ticket-use-dropdown").checked,
     buttonLabel: document.getElementById("ticket-button-label")?.value?.trim() || "Create Ticket",
     buttonColor: document.getElementById("ticket-button-color")?.value || "green",
     categoryId: document.getElementById("ticket-category").value || null,
@@ -1771,6 +1772,8 @@ function renderTicketPreview() {
   const thumbnailUrl = document.getElementById("ticket-thumbnail").value.trim();
   const buttonLabel = document.getElementById("ticket-button-label")?.value?.trim() || "Create Ticket";
   const buttonColor = document.getElementById("ticket-button-color")?.value || "green";
+  const useDropdown = document.getElementById("ticket-use-dropdown")?.checked;
+  const categories = getTicketCategories();
   const fields = getTicketFields();
   const components = getTicketComponents();
   const box = document.getElementById("ticket-preview-box");
@@ -1795,7 +1798,11 @@ function renderTicketPreview() {
           ${description ? `<div class="embed-description">${escapeHtml(description).replace(/\n/g, "<br>")}</div>` : ""}
           ${fieldsHtml}
           ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" class="embed-image" alt="" />` : ""}
-          <button type="button" class="cv2-button ${escapeHtml(buttonColor)}" style="margin-top: 12px">${escapeHtml(buttonLabel)}</button>
+          ${
+            useDropdown && categories.length
+              ? `<select class="cv2-select" style="margin-top: 12px"><option>${escapeHtml(buttonLabel)}</option>${categories.map((c) => `<option>${escapeHtml(c.label)}</option>`).join("")}</select>`
+              : `<button type="button" class="cv2-button ${escapeHtml(buttonColor)}" style="margin-top: 12px">${escapeHtml(buttonLabel)}</button>`
+          }
         </div>
       </div>
     `;
@@ -1818,6 +1825,8 @@ function renderTicketPreview() {
         html += `<button type="button" class="cv2-button ${escapeHtml(cColor)}">${escapeHtml(c.label || buttonLabel)}</button>`;
       }
     }
+  } else if (useDropdown && categories.length) {
+    html += `<select class="cv2-select">${categories.map((c) => `<option>${escapeHtml(c.label)}</option>`).join("")}</select>`;
   } else {
     html += `<button type="button" class="cv2-button ${escapeHtml(buttonColor)}">${escapeHtml(buttonLabel)}</button>`;
   }
@@ -1910,6 +1919,7 @@ function fillTicketEditor(panel) {
   document.getElementById("ticket-image").value = panel.imageUrl || "";
   document.getElementById("ticket-thumbnail").value = panel.thumbnailUrl || "";
   document.getElementById("ticket-use-dominant").checked = panel.useDominantColor;
+  document.getElementById("ticket-use-dropdown").checked = panel.useCategoryDropdown;
   document.getElementById("ticket-button-label").value = panel.buttonLabel || "Create Ticket";
   document.getElementById("ticket-button-color").value = panel.buttonColor || "green";
 
