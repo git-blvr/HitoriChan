@@ -2775,13 +2775,60 @@ function buildQuestConditions(condition = { match: "all", blocks: [] }) {
   list.innerHTML = "";
   document.getElementById("quest-match").value = condition.match || "all";
   for (const block of condition.blocks || []) {
-    addQuestConditionBlock(block);
+    addConditionNode(block, list);
   }
 }
 
-function addQuestConditionBlock(block = {}) {
-  const list = document.getElementById("quest-conditions-list");
-  if (!list) return;
+function addConditionNode(node, container) {
+  if (!node || !container) return;
+  if (node.match && node.blocks) {
+    addQuestConditionGroup(node, container);
+  } else {
+    addQuestConditionBlock(node, container);
+  }
+}
+
+function addQuestConditionGroup(group = {}, container) {
+  if (!container) return;
+  const groupCard = document.createElement("div");
+  groupCard.className = "quest-condition-group";
+  groupCard.dataset.match = group.match || "all";
+
+  const match = group.match || "all";
+  groupCard.innerHTML = `
+    <div class="quest-condition-group-header">
+      <label style="white-space:nowrap"><input type="checkbox" class="quest-condition-not" ${group.not ? "checked" : ""} /> NOT</label>
+      <select class="quest-condition-group-match">
+        <option value="all" ${match === "all" ? "selected" : ""}>All must match (AND)</option>
+        <option value="any" ${match === "any" ? "selected" : ""}>Any can match (OR)</option>
+      </select>
+      <button type="button" class="save-btn quest-add-condition-in-group">+ Condition</button>
+      <button type="button" class="save-btn quest-add-group-in-group" style="background:var(--surface-2)">+ Group</button>
+      <button type="button" class="save-btn quest-remove-condition" style="background:var(--surface-2)">Remove</button>
+    </div>
+    <div class="quest-condition-group-list quest-list"></div>
+  `;
+
+  groupCard.querySelector(".quest-remove-condition").addEventListener("click", () => groupCard.remove());
+  groupCard.querySelector(".quest-add-condition-in-group").addEventListener("click", () => {
+    const list = groupCard.querySelector(".quest-condition-group-list");
+    addQuestConditionBlock({}, list);
+  });
+  groupCard.querySelector(".quest-add-group-in-group").addEventListener("click", () => {
+    const list = groupCard.querySelector(".quest-condition-group-list");
+    addQuestConditionGroup({ match: "all", blocks: [] }, list);
+  });
+
+  const list = groupCard.querySelector(".quest-condition-group-list");
+  for (const block of group.blocks || []) {
+    addConditionNode(block, list);
+  }
+
+  container.appendChild(groupCard);
+}
+
+function addQuestConditionBlock(block = {}, container) {
+  if (!container) return;
 
   const card = document.createElement("div");
   card.className = "quest-condition-card";
@@ -2835,7 +2882,7 @@ function addQuestConditionBlock(block = {}) {
     renderConditionValue(card, entity, field, block.value);
   }, 0);
 
-  list.appendChild(card);
+  container.appendChild(card);
 }
 
 function renderConditionField(card, entity, selectedField) {
@@ -2905,30 +2952,47 @@ function populateUsersForEl(select, selectedId) {
 
 function getQuestConditions() {
   const match = document.getElementById("quest-match").value || "all";
-  const blocks = [];
-  document.querySelectorAll(".quest-condition-card").forEach((card) => {
-    const not = card.querySelector(".quest-condition-not")?.checked || false;
-    const entity = card.querySelector(".quest-condition-entity")?.value;
-    const field = card.querySelector(".quest-condition-field")?.value;
-    const op = card.querySelector(".quest-condition-op")?.value;
-    if (!entity || !field) return;
-
-    const config = QUEST_CONDITION_CONFIG[entity].fields[field];
-    let value = "";
-
-    if (config.type === "boolean") {
-      value = card.querySelector(".quest-condition-value-check")?.checked || false;
-    } else if (config.type === "channel" || config.type === "role" || config.type === "user") {
-      value = card.querySelector(".quest-condition-value-select")?.value || "";
-    } else if (config.type === "number") {
-      value = Number(card.querySelector(".quest-condition-value-input")?.value) || 0;
-    } else {
-      value = card.querySelector(".quest-condition-value-input")?.value.trim() || "";
-    }
-
-    blocks.push({ not, entity, field, op, value });
-  });
+  const list = document.getElementById("quest-conditions-list");
+  const blocks = getConditionNodes(list);
   return { match, blocks };
+}
+
+function getConditionNodes(container) {
+  const blocks = [];
+  if (!container) return blocks;
+
+  for (const child of container.children) {
+    if (child.classList.contains("quest-condition-card")) {
+      const not = child.querySelector(".quest-condition-not")?.checked || false;
+      const entity = child.querySelector(".quest-condition-entity")?.value;
+      const field = child.querySelector(".quest-condition-field")?.value;
+      const op = child.querySelector(".quest-condition-op")?.value;
+      if (!entity || !field) continue;
+
+      const config = QUEST_CONDITION_CONFIG[entity].fields[field];
+      let value = "";
+
+      if (config.type === "boolean") {
+        value = child.querySelector(".quest-condition-value-check")?.checked || false;
+      } else if (config.type === "channel" || config.type === "role" || config.type === "user") {
+        value = child.querySelector(".quest-condition-value-select")?.value || "";
+      } else if (config.type === "number") {
+        value = Number(child.querySelector(".quest-condition-value-input")?.value) || 0;
+      } else {
+        value = child.querySelector(".quest-condition-value-input")?.value.trim() || "";
+      }
+
+      blocks.push({ not, entity, field, op, value });
+    } else if (child.classList.contains("quest-condition-group")) {
+      const not = child.querySelector(".quest-condition-not")?.checked || false;
+      const match = child.querySelector(".quest-condition-group-match")?.value || "all";
+      const list = child.querySelector(".quest-condition-group-list");
+      const inner = getConditionNodes(list);
+      blocks.push({ not, match, blocks: inner });
+    }
+  }
+
+  return blocks;
 }
 
 // Quest variables UI
@@ -3188,7 +3252,12 @@ window.deleteQuest = async (id) => {
 
 document.getElementById("quest-add-variable").addEventListener("click", () => addQuestVariableRow());
 document.getElementById("quest-add-task").addEventListener("click", () => addQuestTaskCard());
-document.getElementById("quest-add-condition").addEventListener("click", () => addQuestConditionBlock());
+document.getElementById("quest-add-condition").addEventListener("click", () => {
+  addQuestConditionBlock({}, document.getElementById("quest-conditions-list"));
+});
+document.getElementById("quest-add-group").addEventListener("click", () => {
+  addQuestConditionGroup({ match: "all", blocks: [] }, document.getElementById("quest-conditions-list"));
+});
 
 document.getElementById("quest-form").addEventListener("submit", async (e) => {
   e.preventDefault();

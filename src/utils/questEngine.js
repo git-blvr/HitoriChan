@@ -445,42 +445,57 @@ function buildConditionAst(condition, dsl) {
     return null;
   }
 
-  function buildLeaf(block) {
-    if (!block || !block.entity || !block.field) return null;
+  return buildGroup(condition);
+}
 
-    let leaf;
-    const methodOps = new Set(["has_role", "has_any_role", "in_channel"]);
+function buildGroup(group) {
+  if (!group || !group.blocks || !group.blocks.length) return null;
 
-    if (methodOps.has(block.op)) {
-      leaf = { type: "method", entity: block.entity, field: block.field, arg: toAstValue(block.value) };
-    } else if (block.field === "has_role" || block.field === "has_any_role" || block.field === "in_channel") {
-      leaf = { type: "method", entity: block.entity, field: block.field, arg: toAstValue(block.value) };
-    } else {
-      leaf = { type: "compare", entity: block.entity, field: block.field, op: block.op, value: toAstValue(block.value) };
-    }
-
-    if (block.not) return { type: "not", expr: leaf };
-    return leaf;
-  }
-
-  function toAstValue(value) {
-    if (typeof value === "boolean") return { type: "literal", value };
-    if (typeof value === "number") return { type: "literal", value };
-    if (typeof value === "string" && value.startsWith("$")) return { type: "variable", name: value.slice(1) };
-    return { type: "literal", value };
-  }
-
-  const blocks = condition.blocks.map(buildLeaf).filter(Boolean);
+  const blocks = group.blocks.map(buildConditionBlock).filter(Boolean);
   if (!blocks.length) return null;
-
   if (blocks.length === 1) return blocks[0];
 
-  const combiner = condition.match === "any" ? "or" : "and";
+  const combiner = group.match === "any" ? "or" : "and";
   let root = blocks[0];
   for (let i = 1; i < blocks.length; i++) {
     root = { type: combiner, left: root, right: blocks[i] };
   }
   return root;
+}
+
+function buildConditionBlock(block) {
+  if (!block) return null;
+
+  // Nested group
+  if (block.match && block.blocks) {
+    const inner = buildGroup(block);
+    if (!inner) return null;
+    if (block.not) return { type: "not", expr: inner };
+    return inner;
+  }
+
+  if (!block.entity || !block.field) return null;
+
+  let leaf;
+  const methodOps = new Set(["has_role", "has_any_role", "in_channel"]);
+
+  if (methodOps.has(block.op)) {
+    leaf = { type: "method", entity: block.entity, field: block.field, arg: toAstValue(block.value) };
+  } else if (block.field === "has_role" || block.field === "has_any_role" || block.field === "in_channel") {
+    leaf = { type: "method", entity: block.entity, field: block.field, arg: toAstValue(block.value) };
+  } else {
+    leaf = { type: "compare", entity: block.entity, field: block.field, op: block.op, value: toAstValue(block.value) };
+  }
+
+  if (block.not) return { type: "not", expr: leaf };
+  return leaf;
+}
+
+function toAstValue(value) {
+  if (typeof value === "boolean") return { type: "literal", value };
+  if (typeof value === "number") return { type: "literal", value };
+  if (typeof value === "string" && value.startsWith("$")) return { type: "variable", name: value.slice(1) };
+  return { type: "literal", value };
 }
 
 async function runQuest(quest, context, client) {

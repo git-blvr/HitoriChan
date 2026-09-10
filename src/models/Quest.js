@@ -32,7 +32,7 @@ function fromRow(row) {
     description: row.description,
     schedule: row.schedule,
     dsl: row.dsl,
-    condition: parseJson(row.condition, []),
+    condition: parseJson(row.condition, { match: "all", blocks: [] }),
     variables: parseJson(row.variables, {}),
     tasks: parseJson(row.tasks, []),
     rewardType: row.reward_type,
