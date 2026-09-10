@@ -33,7 +33,12 @@ export async function buildInteractionPayload(type, user, target, guild) {
   const defaults = getInteractionDefaults(type);
 
   const message = config.message || defaults.message;
-  const image = config.image || config.images?.[0] || null;
+
+  let image = null;
+  const images = [];
+  if (config.image) images.push(config.image);
+  if (Array.isArray(config.images)) images.push(...config.images.filter(Boolean));
+  image = images.length ? images : null;
 
   const text = replacePlaceholders(message, {
     user,

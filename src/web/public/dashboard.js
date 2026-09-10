@@ -1063,18 +1063,50 @@ const sections = {
 
     list.innerHTML = Object.entries(defaults).map(([type, def]) => {
       const config = saved[type] || {};
+      const images = [];
+      if (config.image) images.push(config.image);
+      if (Array.isArray(config.images)) images.push(...config.images.filter(Boolean));
+
+      const imageInputs = images.length
+        ? images.map((url, i) => `
+          <div class="interaction-image-row" data-index="${i}">
+            <input type="url" class="interaction-image" value="${escapeHtml(url)}" placeholder="https://..." />
+            <button type="button" class="remove-btn interaction-remove-image">Remove</button>
+          </div>
+        `).join("")
+        : "";
+
       return `
         <div class="interaction-card" data-type="${escapeHtml(type)}">
           <h3>${escapeHtml(type[0].toUpperCase() + type.slice(1))}</h3>
           <label>Message
-            <input type="text" class="interaction-message" data-type="${escapeHtml(type)}" value="${escapeHtml(config.message ?? def.message)}" placeholder="{user} ${type}s {target}" />
+            <input type="text" class="interaction-message" value="${escapeHtml(config.message ?? def.message)}" placeholder="{user} ${type}s {target}" />
           </label>
-          <label>Image URL
-            <input type="url" class="interaction-image" data-type="${escapeHtml(type)}" value="${escapeHtml(config.image ?? "")}" placeholder="https://..." />
-          </label>
+          <div class="interaction-images" data-type="${escapeHtml(type)}">
+            ${imageInputs}
+            <button type="button" class="save-btn interaction-add-image" style="background:var(--surface-2)">+ Image URL</button>
+          </div>
         </div>
       `;
     }).join("");
+
+    document.querySelectorAll(".interaction-add-image").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const container = btn.closest(".interaction-images");
+        const row = document.createElement("div");
+        row.className = "interaction-image-row";
+        row.innerHTML = `
+          <input type="url" class="interaction-image" placeholder="https://..." />
+          <button type="button" class="remove-btn interaction-remove-image">Remove</button>
+        `;
+        container.insertBefore(row, btn);
+        row.querySelector(".interaction-remove-image").addEventListener("click", () => row.remove());
+      });
+    });
+
+    document.querySelectorAll(".interaction-remove-image").forEach((btn) => {
+      btn.addEventListener("click", () => btn.closest(".interaction-image-row").remove());
+    });
   },
 
   users: async () => {
@@ -2717,8 +2749,10 @@ document.getElementById("interactions-form").addEventListener("submit", async (e
   document.querySelectorAll(".interaction-card").forEach((card) => {
     const type = card.dataset.type;
     const message = card.querySelector(".interaction-message").value.trim();
-    const image = card.querySelector(".interaction-image").value.trim();
-    interactions[type] = { message, image };
+    const images = Array.from(card.querySelectorAll(".interaction-image"))
+      .map((input) => input.value.trim())
+      .filter(Boolean);
+    interactions[type] = { message, images };
   });
 
   try {

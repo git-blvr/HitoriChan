@@ -665,6 +665,23 @@ body {
   text-transform: capitalize;
 }
 
+.interaction-images {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.interaction-image-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.interaction-image-row input {
+  flex: 1;
+}
+
 .checkbox-group {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
