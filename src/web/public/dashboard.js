@@ -1674,7 +1674,7 @@ function resetTicketEditor() {
   document.getElementById("ticket-editor-title").textContent = "New Ticket Panel";
   document.getElementById("ticket-payload-preview").hidden = true;
   populateCategories("ticket-category", "");
-  populateRoles("ticket-staff-role", "");
+  populateMultiRoles("ticket-staff-roles", []);
   populateChannels("ticket-transcript", "", "-- None --");
   populateChannels("ticket-send-channel", "", "-- Select a channel --");
   renderTicketFields([]);
@@ -1754,9 +1754,15 @@ function getTicketPanelPayload() {
     buttonLabel: document.getElementById("ticket-button-label")?.value?.trim() || "Create Ticket",
     buttonColor: document.getElementById("ticket-button-color")?.value || "green",
     categoryId: document.getElementById("ticket-category").value || null,
-    staffRoleId: document.getElementById("ticket-staff-role").value || null,
+    staffRoleIds: getMultiSelectValues("ticket-staff-roles"),
     transcriptChannelId: document.getElementById("ticket-transcript").value || null,
     welcomeMessage: document.getElementById("ticket-welcome").value.trim() || null,
+    welcomeType: document.getElementById("ticket-welcome-type").value,
+    welcomeTitle: document.getElementById("ticket-welcome-title").value.trim() || null,
+    welcomeColor: hexToInt(document.getElementById("ticket-welcome-color").value),
+    welcomeImageUrl: document.getElementById("ticket-welcome-image").value.trim() || null,
+    welcomeThumbnailUrl: document.getElementById("ticket-welcome-thumbnail").value.trim() || null,
+    welcomeUseDominantColor: document.getElementById("ticket-welcome-dominant").checked,
     fields: getTicketFields(),
     components: getTicketComponents(),
     categories: getTicketCategories(),
@@ -1924,11 +1930,17 @@ function fillTicketEditor(panel) {
   document.getElementById("ticket-button-color").value = panel.buttonColor || "green";
 
   populateCategories("ticket-category", panel.categoryId || "");
-  populateRoles("ticket-staff-role", panel.staffRoleId || "");
+  populateMultiRoles("ticket-staff-roles", panel.staffRoleIds || (panel.staffRoleId ? [panel.staffRoleId] : []));
   populateChannels("ticket-transcript", panel.transcriptChannelId || "", "-- None --");
   populateChannels("ticket-send-channel", "", "-- Select a channel --");
 
   document.getElementById("ticket-welcome").value = panel.welcomeMessage || "";
+  document.getElementById("ticket-welcome-type").value = panel.welcomeType || "embed";
+  document.getElementById("ticket-welcome-title").value = panel.welcomeTitle || "";
+  document.getElementById("ticket-welcome-color").value = intToHex(panel.welcomeColor);
+  document.getElementById("ticket-welcome-image").value = panel.welcomeImageUrl || "";
+  document.getElementById("ticket-welcome-thumbnail").value = panel.welcomeThumbnailUrl || "";
+  document.getElementById("ticket-welcome-dominant").checked = panel.welcomeUseDominantColor;
   renderTicketFields(panel.fields || []);
   renderTicketComponents(panel.components || []);
   renderTicketCategories(panel.categories || []);
@@ -2057,6 +2069,24 @@ document.getElementById("ticket-dominant-btn").addEventListener("click", async (
     });
     document.getElementById("ticket-color").value = intToHex(color);
     showToast("Dominant color applied", "success");
+  } catch (err) {
+    showToast(err.message || "Could not get dominant color", "error");
+  }
+});
+
+document.getElementById("ticket-welcome-dominant-btn").addEventListener("click", async () => {
+  const source = document.getElementById("ticket-welcome-image").value.trim() || document.getElementById("ticket-welcome-thumbnail").value.trim();
+  if (!source) {
+    showToast("No welcome image found to sample. Add a welcome image URL first.", "error");
+    return;
+  }
+  try {
+    const { color } = await json(`/api/tickets/dominant-color/${currentGuild}`, {
+      method: "POST",
+      body: JSON.stringify({ imageUrl: source }),
+    });
+    document.getElementById("ticket-welcome-color").value = intToHex(color);
+    showToast("Dominant color applied to welcome", "success");
   } catch (err) {
     showToast(err.message || "Could not get dominant color", "error");
   }

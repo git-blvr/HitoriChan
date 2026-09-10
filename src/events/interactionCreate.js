@@ -11,7 +11,7 @@ import {
 } from "discord.js";
 import * as TicketPanel from "../models/TicketPanel.js";
 import * as Ticket from "../models/Ticket.js";
-import { resolveTicketPanelColor } from "../helpers/ticketPanels.js";
+import { resolveTicketPanelColor, buildTicketWelcomeMessage, getStaffRoleIds, isStaffRole } from "../helpers/ticketPanels.js";
 import { cv2 } from "../helpers/cv2.js";
 import { embErr, embWrn } from "../helpers/embeds.js";
 import { buildShopInterface, buildItemSelectMessage, buildItemPreview, purchaseItem } from "../utils/shopManager.js";
@@ -29,8 +29,10 @@ function ticketButton(customId, label, color = "red") {
     .setStyle(styleMap[color] ?? ButtonStyle.Danger);
 }
 
-async function createTicketChannel(guild, user, panel) {
-  const baseName = `ticket-${user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 80);
+async function createTicketChannel(guild, user, panel, category = null) {
+  const categoryLabel = panel.categories?.find((c) => c.label === category)?.label;
+  const categoryName = categoryLabel || category;
+  const baseName = `ticket-${categoryName ? `${categoryName}-` : ""}${user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 80);
   const name = `${baseName}-${Math.floor(Date.now() / 1000) % 100000}`;
 
   const overwrites = [
@@ -39,9 +41,9 @@ async function createTicketChannel(guild, user, panel) {
     { id: guild.members.me?.id ?? guild.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages] },
   ];
 
-  if (panel.staffRoleId) {
+  for (const roleId of getStaffRoleIds(panel)) {
     overwrites.push({
-      id: panel.staffRoleId,
+      id: roleId,
       allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages],
     });
   }
@@ -52,20 +54,6 @@ async function createTicketChannel(guild, user, panel) {
     parent: panel.categoryId || undefined,
     permissionOverwrites: overwrites,
   });
-}
-
-function buildTicketWelcomeEmbed(panel, userId, category, claimerId, createdAt) {
-  const color = panel.color ?? 0x7c3aed;
-  const embed = new EmbedBuilder()
-    .setTitle("A ticket is open")
-    .setDescription(`By <@${userId}>`)
-    .setColor(color)
-    .addFields(
-      { name: "Category", value: category || "—", inline: true },
-      { name: "Claimed by", value: claimerId ? `<@${claimerId}>` : "No one", inline: true },
-      { name: "Created in", value: `<t:${Math.floor(createdAt / 1000)}:F>`, inline: false }
-    );
-  return embed;
 }
 
 function ticketActionRow(ticket, claimerId) {
@@ -88,7 +76,7 @@ async function createTicketFromInteraction(interaction, panel, category = null) 
   }
 
   try {
-    const channel = await createTicketChannel(interaction.guild, interaction.user, panel);
+    const channel = await createTicketChannel(interaction.guild, interaction.user, panel, category);
     const ticket = await Ticket.create({
       guildId: interaction.guildId,
       panelId: panel.id,
@@ -102,8 +90,8 @@ async function createTicketFromInteraction(interaction, panel, category = null) 
     if (color != null) panel.color = color;
 
     const row = ticketActionRow(ticket, null);
-    const welcomeEmbed = buildTicketWelcomeEmbed(panel, interaction.user.id, ticket.category, null, ticket.createdAt.getTime());
-    await channel.send({ embeds: [welcomeEmbed], components: [row] });
+    const welcomePayload = await buildTicketWelcomeMessage(panel, interaction.user, interaction.member, interaction.guild, channel, ticket, null, row);
+    await channel.send(welcomePayload);
 
     return interaction.editReply({ content: `Ticket created: <#${channel.id}>` });
   } catch (err) {
@@ -202,8 +190,10 @@ async function updateWelcomeMessage(channel, ticket, panel) {
   if (color != null) panel.color = color;
 
   const row = ticketActionRow(ticket, ticket.claimerId);
-  const embed = buildTicketWelcomeEmbed(panel, ticket.userId, ticket.category, ticket.claimerId, ticket.createdAt.getTime());
-  await welcomeMessage.edit({ embeds: [embed], components: [row] });
+  const member = await channel.guild?.members?.fetch?.(ticket.userId).catch(() => null);
+  const user = member?.user ?? null;
+  const welcomePayload = await buildTicketWelcomeMessage(panel, user, member, channel.guild, channel, ticket, ticket.claimerId, row);
+  await welcomeMessage.edit(welcomePayload);
 }
 
 async function handleTicketSelectMenu(interaction) {
@@ -279,7 +269,7 @@ async function handleTicketButton(interaction, client) {
     }
 
     const panel = await TicketPanel.get(ticket.panelId);
-    const isStaff = panel?.staffRoleId ? interaction.member.roles.cache.has(panel.staffRoleId) : false;
+    const isStaff = isStaffRole(interaction.member, panel);
     if (ticket.userId !== interaction.user.id && !isStaff && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
       return interaction.reply({ content: "You cannot close this ticket.", flags: MessageFlags.Ephemeral });
     }
@@ -293,13 +283,27 @@ async function handleTicketButton(interaction, client) {
       if (transcriptId && channel) {
         const transcriptChannel = client.channels.cache.get(transcriptId);
         if (transcriptChannel?.isTextBased()) {
+          let transcriptText = `Ticket transcript\nChannel: #${channel.name}\nUser: ${ticket.userId}\nClosed by: ${interaction.user.id}\nClosed at: ${new Date().toISOString()}\n\n`;
+
+          try {
+            const messages = await channel.messages.fetch({ limit: 100 });
+            const sorted = [...messages.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+            for (const m of sorted) {
+              const author = m.author?.tag || m.author?.username || m.author?.id || "Unknown";
+              const content = m.content?.trim() || (m.attachments.size ? `[${m.attachments.size} attachment(s)]` : "");
+              transcriptText += `[${new Date(m.createdTimestamp).toISOString()}] ${author}: ${content}\n`;
+            }
+          } catch (err) {
+            transcriptText += `\n[Could not fetch messages: ${err.message}]\n`;
+          }
+
           const embed = new EmbedBuilder()
             .setTitle(`Ticket closed`)
             .setDescription(`Ticket <#${ticket.channelId}> was closed by <@${interaction.user.id}>`)
             .setColor(0x7c3aed)
             .setFooter({ text: `User: ${ticket.userId}` })
             .setTimestamp();
-          await transcriptChannel.send({ embeds: [embed] });
+          await transcriptChannel.send({ embeds: [embed], files: [{ attachment: Buffer.from(transcriptText, "utf8"), name: `ticket-${ticket.id}.txt` }] });
         }
       }
 
@@ -325,7 +329,7 @@ async function handleTicketButton(interaction, client) {
     }
 
     const panel = await TicketPanel.get(ticket.panelId);
-    const isStaff = panel?.staffRoleId ? interaction.member.roles.cache.has(panel.staffRoleId) : false;
+    const isStaff = isStaffRole(interaction.member, panel);
     if (ticket.claimerId && ticket.claimerId !== interaction.user.id && !isStaff && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
       return interaction.reply({ content: "This ticket is already claimed.", flags: MessageFlags.Ephemeral });
     }
@@ -357,11 +361,11 @@ async function handleTicketButton(interaction, client) {
     if (!ticket || ticket.guildId !== interaction.guildId) {
       return interaction.reply({ content: "This ticket no longer exists.", flags: MessageFlags.Ephemeral });
     }
-    if (ticket.claimerId !== interaction.user.id && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+    const panel = await TicketPanel.get(ticket.panelId);
+    const isStaff = isStaffRole(interaction.member, panel);
+    if (ticket.claimerId !== interaction.user.id && !isStaff && !interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
       return interaction.reply({ content: "You cannot unclaim this ticket.", flags: MessageFlags.Ephemeral });
     }
-
-    const panel = await TicketPanel.get(ticket.panelId);
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {

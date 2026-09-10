@@ -7,15 +7,17 @@ const insertStmt = db.prepare(`
   INSERT INTO ticket_panels (
     guild_id, name, type, title, description, color, image_url, thumbnail_url,
     use_dominant_color, button_label, button_color, use_category_dropdown,
-    category_id, staff_role_id, transcript_channel_id, welcome_message,
+    category_id, staff_role_id, staff_role_ids, transcript_channel_id, welcome_message,
+    welcome_type, welcome_title, welcome_color, welcome_image_url, welcome_thumbnail_url, welcome_use_dominant_color,
     fields, components, categories
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const updateStmt = db.prepare(`
   UPDATE ticket_panels SET
     name = ?, type = ?, title = ?, description = ?, color = ?, image_url = ?, thumbnail_url = ?,
     use_dominant_color = ?, button_label = ?, button_color = ?, use_category_dropdown = ?,
-    category_id = ?, staff_role_id = ?, transcript_channel_id = ?, welcome_message = ?,
+    category_id = ?, staff_role_id = ?, staff_role_ids = ?, transcript_channel_id = ?, welcome_message = ?,
+    welcome_type = ?, welcome_title = ?, welcome_color = ?, welcome_image_url = ?, welcome_thumbnail_url = ?, welcome_use_dominant_color = ?,
     fields = ?, components = ?, categories = ?
   WHERE id = ?
 `);
@@ -48,8 +50,15 @@ function fromRow(row) {
     useCategoryDropdown: Boolean(row.use_category_dropdown),
     categoryId: row.category_id,
     staffRoleId: row.staff_role_id,
+    staffRoleIds: parseJson(row.staff_role_ids),
     transcriptChannelId: row.transcript_channel_id,
     welcomeMessage: row.welcome_message,
+    welcomeType: row.welcome_type,
+    welcomeTitle: row.welcome_title,
+    welcomeColor: row.welcome_color,
+    welcomeImageUrl: row.welcome_image_url,
+    welcomeThumbnailUrl: row.welcome_thumbnail_url,
+    welcomeUseDominantColor: Boolean(row.welcome_use_dominant_color),
     fields: parseJson(row.fields),
     components: parseJson(row.components),
     categories: parseJson(row.categories),
@@ -85,8 +94,15 @@ export async function create(data) {
     data.useCategoryDropdown ? 1 : 0,
     data.categoryId ?? null,
     data.staffRoleId ?? null,
+    JSON.stringify(data.staffRoleIds ?? []),
     data.transcriptChannelId ?? null,
     data.welcomeMessage ?? null,
+    data.welcomeType ?? "embed",
+    data.welcomeTitle ?? null,
+    data.welcomeColor ?? null,
+    data.welcomeImageUrl ?? null,
+    data.welcomeThumbnailUrl ?? null,
+    data.welcomeUseDominantColor ? 1 : 0,
     JSON.stringify(data.fields ?? []),
     JSON.stringify(data.components ?? []),
     JSON.stringify(data.categories ?? [])
@@ -113,8 +129,15 @@ export async function update(id, data) {
     (data.useCategoryDropdown !== undefined ? data.useCategoryDropdown : panel.useCategoryDropdown) ? 1 : 0,
     data.categoryId ?? panel.categoryId,
     data.staffRoleId ?? panel.staffRoleId,
+    data.staffRoleIds !== undefined ? JSON.stringify(data.staffRoleIds) : JSON.stringify(panel.staffRoleIds),
     data.transcriptChannelId ?? panel.transcriptChannelId,
     data.welcomeMessage ?? panel.welcomeMessage,
+    data.welcomeType ?? panel.welcomeType,
+    data.welcomeTitle ?? panel.welcomeTitle,
+    data.welcomeColor ?? panel.welcomeColor,
+    data.welcomeImageUrl ?? panel.welcomeImageUrl,
+    data.welcomeThumbnailUrl ?? panel.welcomeThumbnailUrl,
+    (data.welcomeUseDominantColor !== undefined ? data.welcomeUseDominantColor : panel.welcomeUseDominantColor) ? 1 : 0,
     JSON.stringify(data.fields ?? panel.fields),
     JSON.stringify(data.components ?? panel.components),
     JSON.stringify(data.categories ?? panel.categories),

@@ -514,6 +514,18 @@ const MIGRATIONS = [
       ALTER TABLE ticket_panels ADD COLUMN use_category_dropdown INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    version: 27,
+    sql: `
+      ALTER TABLE ticket_panels ADD COLUMN staff_role_ids TEXT NOT NULL DEFAULT '[]';
+      ALTER TABLE ticket_panels ADD COLUMN welcome_type TEXT NOT NULL DEFAULT 'embed';
+      ALTER TABLE ticket_panels ADD COLUMN welcome_title TEXT;
+      ALTER TABLE ticket_panels ADD COLUMN welcome_color INTEGER;
+      ALTER TABLE ticket_panels ADD COLUMN welcome_image_url TEXT;
+      ALTER TABLE ticket_panels ADD COLUMN welcome_thumbnail_url TEXT;
+      ALTER TABLE ticket_panels ADD COLUMN welcome_use_dominant_color INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];
 
 export function migrate() {

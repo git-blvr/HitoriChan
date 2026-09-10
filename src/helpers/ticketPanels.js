@@ -15,6 +15,8 @@ import {
   MessageFlags,
 } from "discord.js";
 import { get_dominant_color } from "../utils/color_utils.js";
+import { replacePlaceholders } from "./placeholders.js";
+import { cv2 } from "./cv2.js";
 
 function buildButton(customId, label, color) {
   const styleMap = {
@@ -101,6 +103,78 @@ function buildSection(text, thumbUrl = null) {
     if (thumb) section.setThumbnailAccessory(thumb);
   }
   return section;
+}
+
+export function getStaffRoleIds(panel) {
+  const ids = [];
+  if (panel.staffRoleId) ids.push(panel.staffRoleId);
+  if (Array.isArray(panel.staffRoleIds)) {
+    for (const id of panel.staffRoleIds) {
+      if (id && !ids.includes(id)) ids.push(id);
+    }
+  }
+  return ids;
+}
+
+export function isStaffRole(member, panel) {
+  const ids = getStaffRoleIds(panel);
+  if (!ids.length) return false;
+  return ids.some((id) => member?.roles?.cache?.has?.(id));
+}
+
+async function resolveWelcomeColor(panel) {
+  if (!panel.welcomeUseDominantColor) return toColorInt(panel.welcomeColor ?? panel.color ?? 0x7c3aed);
+  const imageUrl = panel.welcomeImageUrl || panel.welcomeThumbnailUrl;
+  if (!imageUrl) return toColorInt(panel.welcomeColor ?? panel.color ?? 0x7c3aed);
+  try {
+    return await get_dominant_color(imageUrl);
+  } catch {
+    return toColorInt(panel.welcomeColor ?? panel.color ?? 0x7c3aed);
+  }
+}
+
+export async function buildTicketWelcomeMessage(panel, user, member, guild, channel, ticket, claimerId, actionRow) {
+  const createdAt = ticket?.createdAt?.getTime?.() ?? Date.now();
+  const category = ticket?.category ?? null;
+  const title = panel.welcomeTitle || "A ticket is open";
+  const description = panel.welcomeMessage || `By <@${user.id}>`;
+  const color = await resolveWelcomeColor(panel);
+  const image = panel.welcomeImageUrl || null;
+  const thumbnail = panel.welcomeThumbnailUrl || null;
+
+  const context = { member, user, guild, channel, client: guild?.client };
+  const resolvedTitle = replacePlaceholders(title, context);
+  const resolvedDescription = replacePlaceholders(description, context);
+
+  const fields = [
+    { name: "Category", value: category || "—", inline: true },
+    { name: "Claimed by", value: claimerId ? `<@${claimerId}>` : "No one", inline: true },
+    { name: "Created", value: `<t:${Math.floor(createdAt / 1000)}:F>`, inline: false },
+  ];
+
+  if (panel.welcomeType === "cv2") {
+    return cv2({
+      color,
+      title: resolvedTitle,
+      description: resolvedDescription,
+      image,
+      thumbnail,
+      fields,
+      components: [actionRow],
+      ephemeral: false,
+    });
+  }
+
+  const embed = new EmbedBuilder();
+  if (resolvedTitle) embed.setTitle(resolvedTitle);
+  if (resolvedDescription) embed.setDescription(resolvedDescription);
+  if (color != null) embed.setColor(color);
+  if (image) embed.setImage(image);
+  if (thumbnail) embed.setThumbnail(thumbnail);
+  for (const f of fields) {
+    if (f.name && f.value) embed.addFields(f);
+  }
+  return { embeds: [embed], components: [actionRow] };
 }
 
 export async function buildTicketPanelPayload(panel, customId) {

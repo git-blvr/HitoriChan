@@ -325,10 +325,8 @@
                 <option value="">-- None --</option>
               </select>
             </label>
-            <label class="grow">Staff Role
-              <select id="ticket-staff-role">
-                <option value="">-- None --</option>
-              </select>
+            <label class="grow">Staff Roles
+              <select id="ticket-staff-roles" multiple></select>
             </label>
           </div>
 
@@ -338,7 +336,35 @@
             </select>
           </label>
 
-          <label>Welcome Message <textarea id="ticket-welcome" rows="3" data-payload-import="text" placeholder="Message sent inside the ticket channel. Use {user} to ping the user."></textarea></label>
+          <div class="panel sub-panel">
+            <h3>Ticket Welcome Message</h3>
+            <p class="hint">This is the message sent inside a new ticket channel. Use {user} for the user.</p>
+            <div class="inline-fields">
+              <label class="grow">Type
+                <select id="ticket-welcome-type">
+                  <option value="embed">Embed</option>
+                  <option value="cv2">Components V2</option>
+                </select>
+              </label>
+              <label class="grow">Title <input type="text" id="ticket-welcome-title" placeholder="A ticket is open" /></label>
+            </div>
+            <div class="inline-fields">
+              <label class="grow">Color
+                <span class="color-row">
+                  <input type="color" id="ticket-welcome-color" value="#7c3aed" />
+                  <button type="button" id="ticket-welcome-dominant-btn" class="save-btn dominant-btn" title="Use dominant color of the welcome image">
+                    Dominant color
+                  </button>
+                </span>
+              </label>
+              <label class="grow" style="padding-bottom:8px"><input type="checkbox" id="ticket-welcome-dominant" /> Auto-apply dominant color</label>
+            </div>
+            <div class="inline-fields">
+              <label class="grow">Image URL <input type="text" id="ticket-welcome-image" placeholder="https://..." /></label>
+              <label class="grow">Thumbnail URL <input type="text" id="ticket-welcome-thumbnail" placeholder="https://..." /></label>
+            </div>
+            <label>Description <textarea id="ticket-welcome" rows="3" data-payload-import="text" placeholder="Message sent inside the ticket channel. Use {user} to ping the user."></textarea></label>
+          </div>
 
           <div class="panel sub-panel" id="ticket-categories-panel">
             <h3>Ticket Categories</h3>
