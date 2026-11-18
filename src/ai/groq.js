@@ -127,9 +127,8 @@ function stripThoughts(text) {
   return text
     .replace(/<think>[\s\S]*?<\/think>/gi, "")
     .replace(/<thinking>[\s\S]*?<\/thinking>/gi, "")
-    .replace(/\*[^*]+\*/g, "")
     .replace(/\[think\][\s\S]*?\[\/think\]/gi, "")
-    .replace(/thinking[\s\S]*/gi, "")
+    .replace(/\*[^*]+\*/g, "")
     .trim();
 }
 

@@ -60,7 +60,7 @@ async function loadGuilds() {
 
 function canAccessSection(section) {
   if (currentUser.isAdmin) return true;
-  if (section === "overview") return true;
+  if (section === "overview" || section === "security") return true;
   return currentUser.permissions.includes(section);
 }
 
@@ -281,6 +281,37 @@ function populateCategories(selectId, selectedId) {
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
+
+// Delegated click actions — replaces inline onclick attributes so that the
+// Content-Security-Policy can forbid inline scripts entirely.
+const ACTION_HANDLERS = {
+  "edit-ticket-panel": (d) => editTicketPanel(Number(d.id)),
+  "delete-ticket-panel": (d) => deleteTicketPanel(Number(d.id)),
+  "remove-ticket-field": (d) => removeTicketField(Number(d.index)),
+  "remove-ticket-component": (d) => removeTicketComponent(Number(d.index)),
+  "remove-ticket-category": (d) => removeTicketCategory(Number(d.index)),
+  "delete-trigger": (d) => deleteTrigger(d.keyword),
+  "edit-quest": (d) => editQuest(Number(d.id)),
+  "delete-quest": (d) => deleteQuest(Number(d.id)),
+  "edit-user": (d) => editUser(Number(d.id)),
+  "delete-user": (d) => deleteUser(Number(d.id)),
+  "edit-shop-category": (d) => editShopCategory(Number(d.id)),
+  "delete-shop-category": (d) => deleteShopCategory(Number(d.id)),
+  "view-shop-category": (d) => showShopCategoryItems(Number(d.id)),
+  "new-shop-item": (d) => newShopItem(Number(d.id)),
+  "edit-shop-item": (d) => editShopItem(Number(d.categoryId), Number(d.id)),
+  "delete-shop-item": (d) => deleteShopItem(Number(d.id)),
+  "remove-shop-interface-component": (d) => removeShopInterfaceComponent(Number(d.index)),
+  "remove-system-component": (d) => removeSystemComponent(d.list, Number(d.index)),
+  "revoke-session": (d) => revokeSession(Number(d.id)),
+};
+
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  const handler = ACTION_HANDLERS[el.dataset.action];
+  if (handler) handler(el.dataset, el, e);
+});
 
 function makeSelectSearchable(select) {
   if (select._combobox) return;
@@ -902,8 +933,8 @@ const sections = {
         <td>${escapeHtml(p.buttonLabel)}</td>
         <td title="${escapeHtml(p.categoryId || "")}">${escapeHtml(guildData.categories.find((c) => c.id === p.categoryId)?.name || "—")}</td>
         <td>
-          <button onclick="editTicketPanel(${p.id})">Edit</button>
-          <button onclick="deleteTicketPanel(${p.id})">Delete</button>
+          <button data-action="edit-ticket-panel" data-id="${p.id}">Edit</button>
+          <button data-action="delete-ticket-panel" data-id="${p.id}">Delete</button>
         </td>
       </tr>
     `).join("") || '<tr><td colspan="5">No panels</td></tr>';
@@ -953,7 +984,7 @@ const sections = {
       <tr>
         <td>${escapeHtml(r.keyword)}</td>
         <td>${escapeHtml(r.commandName)}</td>
-        <td><button onclick="deleteTrigger('${r.keyword}')">Delete</button></td>
+        <td><button data-action="delete-trigger" data-keyword="${escapeHtml(r.keyword)}">Delete</button></td>
       </tr>
     `).join("") || '<tr><td colspan="3">No triggers</td></tr>';
   },
@@ -999,8 +1030,8 @@ const sections = {
         <td>${q.enabled ? "Yes" : "No"}</td>
         <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(q.dsl)}">${escapeHtml(q.dsl)}</td>
         <td>
-          <button onclick="editQuest(${q.id})">Edit</button>
-          <button onclick="deleteQuest(${q.id})">Delete</button>
+          <button data-action="edit-quest" data-id="${q.id}">Edit</button>
+          <button data-action="delete-quest" data-id="${q.id}">Delete</button>
         </td>
       </tr>
     `).join("") || '<tr><td colspan="5">No quests</td></tr>';
@@ -1123,14 +1154,93 @@ const sections = {
         <td>${escapeHtml((u.permissions || []).join(", "))}</td>
         <td>${formatDate(u.createdAt)}</td>
         <td>
-          <button onclick="editUser(${u.id})">Edit</button>
-          <button onclick="deleteUser(${u.id})">Delete</button>
+          <button data-action="edit-user" data-id="${u.id}">Edit</button>
+          <button data-action="delete-user" data-id="${u.id}">Delete</button>
         </td>
       </tr>
     `).join("") || '<tr><td colspan="4">No users</td></tr>';
 
     resetUserEditor();
   },
+
+  security: async () => {
+    const me = await json("/api/auth/me");
+    document.getElementById("sec-username").textContent = me.user.username + (me.user.isAdmin ? " (admin)" : "");
+    document.getElementById("sec-expires").textContent = formatDate(me.session.expiresAt);
+
+    const hint = document.getElementById("password-hint");
+    const pwForm = document.getElementById("password-form");
+    if (me.user.isAdmin) {
+      hint.textContent = "The bootstrap admin password is generated at startup and printed to the console. Set DASHBOARD_PASSWORD in the environment for a persistent password.";
+      pwForm.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
+    } else {
+      hint.textContent = "Minimum 8 characters. Other sessions will be signed out.";
+      pwForm.querySelectorAll("input, button").forEach((el) => (el.disabled = false));
+    }
+
+    const canManageUsers = currentUser.isAdmin || currentUser.permissions.includes("users");
+    const sessions = await json(canManageUsers ? "/api/security/sessions" : "/api/auth/sessions");
+    document.getElementById("sec-session-count").textContent = sessions.length;
+    document.getElementById("sessions-user-col").hidden = !canManageUsers;
+
+    const tbody = document.querySelector("#sessions-table tbody");
+    tbody.innerHTML = sessions.map((s) => `
+      <tr class="${s.current ? "current-session" : ""}">
+        ${canManageUsers ? `<td>${escapeHtml(s.username)}</td>` : ""}
+        <td>${escapeHtml(shortUserAgent(s.userAgent))}</td>
+        <td>${escapeHtml(s.ip || "—")}</td>
+        <td>${formatDate(s.createdAt)}</td>
+        <td>${formatDate(s.lastSeenAt)}</td>
+        <td>${s.current
+          ? '<span class="status-ok">This session</span>'
+          : `<button data-action="revoke-session" data-id="${s.id}">Revoke</button>`}
+        </td>
+      </tr>
+    `).join("") || `<tr><td colspan="${canManageUsers ? 6 : 5}">No active sessions</td></tr>`;
+
+    const canAudit = currentUser.isAdmin || currentUser.permissions.includes("security");
+    document.getElementById("audit-panel").hidden = !canAudit;
+    if (canAudit) await loadAuditLog();
+  },
+};
+
+function shortUserAgent(ua) {
+  if (!ua) return "Unknown device";
+  const m = ua.match(/(Edg|Chrome|Firefox|Safari|OPR|Opera|MSIE|Trident)[\/ ]([\d.]+)/);
+  const browser = m ? `${m[1].replace("OPR", "Opera").replace("Edg", "Edge")} ${m[2].split(".")[0]}` : "Browser";
+  const os = /Windows/i.test(ua) ? "Windows"
+    : /Mac OS X/i.test(ua) ? "macOS"
+    : /Android/i.test(ua) ? "Android"
+    : /iPhone|iPad/i.test(ua) ? "iOS"
+    : /Linux/i.test(ua) ? "Linux" : "";
+  return os ? `${browser} · ${os}` : browser;
+}
+
+async function loadAuditLog() {
+  const params = new URLSearchParams({ limit: "200" });
+  const actor = document.getElementById("audit-filter-actor").value.trim();
+  const action = document.getElementById("audit-filter-action").value.trim();
+  if (actor) params.set("actor", actor);
+  if (action) params.set("action", action);
+  const rows = await json(`/api/security/audit?${params}`);
+  const tbody = document.querySelector("#audit-table tbody");
+  tbody.innerHTML = rows.map((r) => `
+    <tr>
+      <td>${formatDate(r.createdAt)}</td>
+      <td>${escapeHtml(r.actor)}</td>
+      <td>${escapeHtml(r.action)}</td>
+      <td>${escapeHtml(r.detail || "—")}</td>
+      <td>${escapeHtml(r.ip || "—")}</td>
+    </tr>
+  `).join("") || '<tr><td colspan="5">No audit entries</td></tr>';
+}
+
+window.revokeSession = async (id) => {
+  const canManageUsers = currentUser.isAdmin || currentUser.permissions.includes("users");
+  const base = canManageUsers ? "/api/security/sessions" : "/api/auth/sessions";
+  await json(`${base}/${id}`, { method: "DELETE" });
+  showToast("Session revoked", "success");
+  refreshSection();
 };
 
 async function loadCommandLogs() {
@@ -1767,7 +1877,7 @@ function renderTicketCategories(categories) {
         <label class="grow">Label <input type="text" class="cat-label" value="${escapeHtml(c.label)}" placeholder="Bug report" /></label>
         <label class="grow">Description <input type="text" class="cat-desc" value="${escapeHtml(c.description || "")}" placeholder="Short description (optional)" /></label>
       </div>
-      <button type="button" class="save-btn" onclick="removeTicketCategory(${i})">Remove</button>
+      <button type="button" class="save-btn" data-action="remove-ticket-category" data-index="${i}">Remove</button>
     </div>
   `).join("");
 }
@@ -1877,7 +1987,7 @@ function renderTicketFields(fields) {
   const list = document.getElementById("ticket-fields-list");
   list.innerHTML = fields.map((f, i) => `
     <div class="reorder-item ticket-field" data-index="${i}">
-      <header>Field ${i + 1} <button type="button" class="remove-btn" onclick="removeTicketField(${i})">Remove</button></header>
+      <header>Field ${i + 1} <button type="button" class="remove-btn" data-action="remove-ticket-field" data-index="${i}">Remove</button></header>
       <div class="inline-fields">
         <label class="grow">Name <input type="text" class="field-name" value="${escapeHtml(f.name)}" placeholder="Field name" /></label>
         <label class="grow"><input type="checkbox" class="field-inline" ${f.inline ? "checked" : ""} /> Inline</label>
@@ -1892,26 +2002,26 @@ function renderTicketComponents(components) {
   list.innerHTML = components.map((c, i) => {
     if (c.type === "text") return `
       <div class="reorder-item ticket-component" data-type="text" data-index="${i}">
-        <header>Text <button type="button" class="remove-btn" onclick="removeTicketComponent(${i})">Remove</button></header>
+        <header>Text <button type="button" class="remove-btn" data-action="remove-ticket-component" data-index="${i}">Remove</button></header>
         <textarea class="comp-content" rows="3" placeholder="Text content">${escapeHtml(c.content || "")}</textarea>
       </div>
     `;
     if (c.type === "image") return `
       <div class="reorder-item ticket-component" data-type="image" data-index="${i}">
-        <header>Image <button type="button" class="remove-btn" onclick="removeTicketComponent(${i})">Remove</button></header>
+        <header>Image <button type="button" class="remove-btn" data-action="remove-ticket-component" data-index="${i}">Remove</button></header>
         <input type="text" class="comp-url" value="${escapeHtml(c.url || "")}" placeholder="https://..." />
       </div>
     `;
     if (c.type === "separator") return `
       <div class="reorder-item ticket-component" data-type="separator" data-index="${i}">
-        <header>Separator <button type="button" class="remove-btn" onclick="removeTicketComponent(${i})">Remove</button></header>
+        <header>Separator <button type="button" class="remove-btn" data-action="remove-ticket-component" data-index="${i}">Remove</button></header>
         <label><input type="checkbox" class="comp-divider" ${c.divider ? "checked" : ""} /> Divider</label>
         <label><input type="checkbox" class="comp-large" ${c.large ? "checked" : ""} /> Large spacing</label>
       </div>
     `;
     if (c.type === "ticket") return `
       <div class="reorder-item ticket-component" data-type="ticket" data-index="${i}">
-        <header>Ticket Button <button type="button" class="remove-btn" onclick="removeTicketComponent(${i})">Remove</button></header>
+        <header>Ticket Button <button type="button" class="remove-btn" data-action="remove-ticket-component" data-index="${i}">Remove</button></header>
         <div class="inline-fields">
           <label class="grow">Label <input type="text" class="comp-label" value="${escapeHtml(c.label || "Create Ticket")}" placeholder="Button label" /></label>
           <label class="grow">Color
@@ -2184,10 +2294,10 @@ async function renderShopCategories() {
       <td>${escapeHtml(c.description || "—")}</td>
       <td>${c.items ? c.items.length : 0}</td>
       <td>
-        <button onclick="showShopCategoryItems(${c.id})">View</button>
-        <button onclick="editShopCategory(${c.id})">Edit</button>
-        <button onclick="deleteShopCategory(${c.id})">Delete</button>
-        <button onclick="newShopItem(${c.id})">Add Item</button>
+        <button data-action="view-shop-category" data-id="${c.id}">View</button>
+        <button data-action="edit-shop-category" data-id="${c.id}">Edit</button>
+        <button data-action="delete-shop-category" data-id="${c.id}">Delete</button>
+        <button data-action="new-shop-item" data-id="${c.id}">Add Item</button>
       </td>
     </tr>
   `).join("") || '<tr><td colspan="4">No categories</td></tr>';
@@ -2314,8 +2424,8 @@ window.showShopCategoryItems = (categoryId) => {
       <td>${item.priceSecondary ?? "—"}</td>
       <td>${escapeHtml((item.specialCommands || []).join(", ") || "—")}</td>
       <td>
-        <button onclick="editShopItem(${category.id}, ${item.id})">Edit</button>
-        <button onclick="deleteShopItem(${item.id})">Delete</button>
+        <button data-action="edit-shop-item" data-category-id="${category.id}" data-id="${item.id}">Edit</button>
+        <button data-action="delete-shop-item" data-id="${item.id}">Delete</button>
       </td>
     </tr>
   `).join("") || '<tr><td colspan="5">No items</td></tr>';
@@ -2342,25 +2452,25 @@ function renderShopInterfaceComponents(components) {
   list.innerHTML = (components || []).map((c, i) => {
     if (c.type === "text") return `
       <div class="reorder-item shop-interface-component" data-type="text" data-index="${i}">
-        <header>Text <button type="button" class="remove-btn" onclick="removeShopInterfaceComponent(${i})">Remove</button></header>
+        <header>Text <button type="button" class="remove-btn" data-action="remove-shop-interface-component" data-index="${i}">Remove</button></header>
         <textarea class="shop-comp-content" rows="3" placeholder="Text content">${escapeHtml(c.content || "")}</textarea>
       </div>
     `;
     if (c.type === "image") return `
       <div class="reorder-item shop-interface-component" data-type="image" data-index="${i}">
-        <header>Image <button type="button" class="remove-btn" onclick="removeShopInterfaceComponent(${i})">Remove</button></header>
+        <header>Image <button type="button" class="remove-btn" data-action="remove-shop-interface-component" data-index="${i}">Remove</button></header>
         <input type="text" class="shop-comp-url" value="${escapeHtml(c.url || "")}" placeholder="https://..." />
       </div>
     `;
     if (c.type === "media_gallery") return `
       <div class="reorder-item shop-interface-component" data-type="media_gallery" data-index="${i}">
-        <header>Media Gallery <button type="button" class="remove-btn" onclick="removeShopInterfaceComponent(${i})">Remove</button></header>
+        <header>Media Gallery <button type="button" class="remove-btn" data-action="remove-shop-interface-component" data-index="${i}">Remove</button></header>
         <textarea class="shop-comp-urls" rows="3" placeholder="One image URL per line">${escapeHtml((c.urls || []).join("\n"))}</textarea>
       </div>
     `;
     if (c.type === "separator") return `
       <div class="reorder-item shop-interface-component" data-type="separator" data-index="${i}">
-        <header>Separator <button type="button" class="remove-btn" onclick="removeShopInterfaceComponent(${i})">Remove</button></header>
+        <header>Separator <button type="button" class="remove-btn" data-action="remove-shop-interface-component" data-index="${i}">Remove</button></header>
       </div>
     `;
     return "";
@@ -2520,25 +2630,25 @@ function renderSystemComponents(listId, components) {
   list.innerHTML = (components || []).map((c, i) => {
     if (c.type === "text") return `
       <div class="reorder-item system-component" data-type="text" data-index="${i}">
-        <header>Text <button type="button" class="remove-btn" onclick="removeSystemComponent('${listId}', ${i})">Remove</button></header>
+        <header>Text <button type="button" class="remove-btn" data-action="remove-system-component" data-list="${listId}" data-index="${i}">Remove</button></header>
         <textarea class="system-comp-content" rows="3" data-payload-import="text" placeholder="Text content">${escapeHtml(c.content || "")}</textarea>
       </div>
     `;
     if (c.type === "image") return `
       <div class="reorder-item system-component" data-type="image" data-index="${i}">
-        <header>Image <button type="button" class="remove-btn" onclick="removeSystemComponent('${listId}', ${i})">Remove</button></header>
+        <header>Image <button type="button" class="remove-btn" data-action="remove-system-component" data-list="${listId}" data-index="${i}">Remove</button></header>
         <input type="text" class="system-comp-url" value="${escapeHtml(c.url || "")}" placeholder="https://..." />
       </div>
     `;
     if (c.type === "media_gallery") return `
       <div class="reorder-item system-component" data-type="media_gallery" data-index="${i}">
-        <header>Media Gallery <button type="button" class="remove-btn" onclick="removeSystemComponent('${listId}', ${i})">Remove</button></header>
+        <header>Media Gallery <button type="button" class="remove-btn" data-action="remove-system-component" data-list="${listId}" data-index="${i}">Remove</button></header>
         <textarea class="system-comp-urls" rows="3" placeholder="One image URL per line">${escapeHtml((c.urls || []).join("\n"))}</textarea>
       </div>
     `;
     if (c.type === "separator") return `
       <div class="reorder-item system-component" data-type="separator" data-index="${i}">
-        <header>Separator <button type="button" class="remove-btn" onclick="removeSystemComponent('${listId}', ${i})">Remove</button></header>
+        <header>Separator <button type="button" class="remove-btn" data-action="remove-system-component" data-list="${listId}" data-index="${i}">Remove</button></header>
       </div>
     `;
     return "";
@@ -2701,6 +2811,31 @@ document.getElementById("user-form").addEventListener("submit", async (e) => {
 });
 
 document.getElementById("user-cancel-btn").addEventListener("click", resetUserEditor);
+
+// Security section
+document.getElementById("password-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const currentPassword = document.getElementById("pw-current").value;
+  const newPassword = document.getElementById("pw-new").value;
+  const confirm = document.getElementById("pw-confirm").value;
+  if (newPassword !== confirm) {
+    showToast("New passwords do not match", "error");
+    return;
+  }
+  try {
+    await json("/api/auth/password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    e.target.reset();
+    showToast("Password updated. Other sessions were signed out.", "success");
+    refreshSection();
+  } catch (err) {
+    showToast(err.message || "Failed to update password", "error");
+  }
+});
+
+document.getElementById("audit-filter-btn").addEventListener("click", loadAuditLog);
 
 // Leveling
 document.getElementById("leveling-form").addEventListener("submit", async (e) => {

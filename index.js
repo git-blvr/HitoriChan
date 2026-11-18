@@ -17,6 +17,8 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel],
 });
 
+let webServer = null;
+
 async function main() {
   console.log("Connected to SQLite database");
 
@@ -25,14 +27,19 @@ async function main() {
   registerCommandListeners(client);
 
   await client.login(process.env.TOKEN);
-  await startWebServer(client);
+  webServer = await startWebServer(client);
+}
+
+function shutdown(code) {
+  webServer?.close();
+  closeDatabase();
+  client.destroy();
+  process.exit(code);
 }
 
 process.on("uncaughtException", (error) => {
   logCrash(error, "uncaughtException");
-  closeDatabase();
-  client.destroy();
-  process.exit(1);
+  shutdown(1);
 });
 
 process.on("unhandledRejection", (reason) => {
@@ -40,17 +47,8 @@ process.on("unhandledRejection", (reason) => {
   logCrash(error, "unhandledRejection");
 });
 
-process.on("SIGINT", () => {
-  closeDatabase();
-  client.destroy();
-  process.exit(0);
-});
-
-process.on("SIGTERM", () => {
-  closeDatabase();
-  client.destroy();
-  process.exit(0);
-});
+process.on("SIGINT", () => shutdown(0));
+process.on("SIGTERM", () => shutdown(0));
 
 client.on("error", (error) => logCrash(error, "clientError"));
 client.on("warn", (info) => console.warn("[Discord warning]", info));

@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#7c3aed" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <title>HitoriChan Dashboard Docs</title>
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/ui.css" />
@@ -196,6 +199,7 @@
           <li><a href="#quests">Quests</a></li>
           <li><a href="#leveling">Leveling</a></li>
           <li><a href="#users">Dashboard Users</a></li>
+          <li><a href="#security">Security</a></li>
           <li><a href="#tips">Tips & Shortcuts</a></li>
         </ul>
       </nav>
@@ -502,6 +506,18 @@
         </ul>
       </section>
 
+      <section class="panel" id="security">
+        <h2>Security</h2>
+        <p>The Security section is visible only to the built-in Admin account (or users with the <code>security</code> permission). It shows account and session security status.</p>
+        <ul>
+          <li><strong>Your session</strong> — shows the current login session with its expiry time and a <em>Sign out</em> button.</li>
+          <li><strong>Active sessions</strong> — every device/browser currently logged in, with IP, user agent, and last activity. Click <em>Revoke</em> to force any session to log out — including your other devices.</li>
+          <li><strong>Change password</strong> — update your own dashboard password. All of your existing sessions are revoked, so other sessions are logged out.</li>
+          <li><strong>Security audit log</strong> — record of login attempts, logouts, password changes, session revocations and user-management changes. Filter by event type.</li>
+        </ul>
+        <p>Sessions are stored as hashed tokens in the database and expire automatically (default 12 hours, configurable with <code>DASHBOARD_SESSION_TTL</code>). Revoking a session takes effect immediately.</p>
+      </section>
+
       <section class="panel" id="tips">
         <h2>Tips &amp; Shortcuts</h2>
         <ul>
@@ -514,29 +530,10 @@
         </ul>
       </section>
 
-      <p style="text-align:center; color:var(--muted); font-size:0.85rem; margin-top: 40px;">Documentation version matches the dashboard. Last updated with the Quests release.</p>
+      <p style="text-align:center; color:var(--muted); font-size:0.85rem; margin-top: 40px;">Documentation version matches the dashboard. Last updated with the Security release.</p>
     </main>
   </div>
 
-  <script>
-    const links = document.querySelectorAll('.docs-sidebar a');
-    const sections = document.querySelectorAll('.docs-content .panel');
-
-    function onScroll() {
-      let current = '';
-      const offset = 100;
-      for (const section of sections) {
-        if (section.getBoundingClientRect().top <= offset) {
-          current = section.id;
-        }
-      }
-      links.forEach((link) => {
-        link.classList.toggle('active', link.getAttribute('href') === `#${current}`);
-      });
-    }
-
-    window.addEventListener('scroll', onScroll);
-    onScroll();
-  </script>
+  <script src="/docs.js"></script>
 </body>
 </html>

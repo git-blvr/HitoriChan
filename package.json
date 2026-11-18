@@ -4,7 +4,8 @@
   "description": "BocchiChan is a fan-made Bocchi The Rock Discord bot! **Recent Updates** 1. Ai Enabled 2. Message history DataBase",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node src/scripts/smokeWeb.js",
+    "smoke": "node src/scripts/smokeWeb.js",
     "start": "node index.js",
     "dev": "nodemon index.js",
     "slist": "node src/scripts/listServers.js",
@@ -25,14 +26,10 @@
   },
   "homepage": "https://github.com/git-blvr/HitoriChan#readme",
   "dependencies": {
-    "@napi-rs/canvas": "^1.0.7",
+    "@napi-rs/canvas": "^1.1.1",
     "cookie-parser": "^1.4.7",
-    "discord.js": "^14.26.4",
+    "discord.js": "^14.28.1",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "fs": "^0.0.1-security",
-    "jsonwebtoken": "^9.0.3",
-    "path": "^0.12.7",
-    "url": "^0.11.4"
+    "express": "^5.3.0"
   }
 }

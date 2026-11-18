@@ -82,9 +82,16 @@ export async function loadLocalCommands() {
 
   for (const file of files) {
     const mod = await import(`file://${file}`);
-    const command = mod.default;
-    if (command?.data?.name) {
-      map.set(command.data.name, command.data.toJSON());
+    const root = mod.default;
+    if (!root) continue;
+
+    // Command modules export either a single { data, execute } or
+    // { commands: [...] } for grouped commands (e.g. interactions.js).
+    const commands = root.commands || (root.data?.name ? [root] : []);
+    for (const command of commands) {
+      if (command?.data?.name) {
+        map.set(command.data.name, command.data.toJSON());
+      }
     }
   }
 

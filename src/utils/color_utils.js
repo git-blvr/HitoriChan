@@ -1,16 +1,15 @@
 import { loadImage, createCanvas } from "@napi-rs/canvas";
 import path from "path";
 import { fileURLToPath } from "url";
+import { safeFetch } from "./safeFetch.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOAD_DIR = path.join(__dirname, "..", "..", "data", "uploads");
 
 async function resolve_source(source) {
     if (typeof source === "string" && source.startsWith("http")) {
-        const res = await fetch(source, { signal: AbortSignal.timeout(5000) });
-        if (!res.ok) throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`);
-        const array_buffer = await res.arrayBuffer();
-        return Buffer.from(array_buffer);
+        const { buffer } = await safeFetch(source);
+        return buffer;
     }
     if (typeof source === "string" && source.startsWith("attachment://")) {
         const filename = source.slice("attachment://".length);

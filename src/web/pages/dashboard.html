@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#7c3aed" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <title>HitoriChan Dashboard</title>
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/ui.css" />
@@ -28,6 +31,7 @@
       <a href="#leveling" data-section="leveling" data-icon="Lv">Leveling</a>
       <a href="#interactions" data-section="interactions" data-icon="In">Interactions</a>
       <a href="#users" data-section="users" data-icon="U">Users</a>
+      <a href="#security" data-section="security" data-icon="Se">Security</a>
       <a href="/docs" target="_blank" class="docs-link" data-icon="D">Docs</a>
     </nav>
     <div class="nav-footer">
@@ -940,6 +944,58 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
           <div id="interactions-list" class="config-list"></div>
           <button type="submit" class="save-btn" style="margin-top:14px">Save Interactions</button>
         </form>
+      </div>
+    </section>
+
+    <section id="security" class="content-section">
+      <div class="cards">
+        <div class="card"><h3>Signed in as</h3><p id="sec-username">-</p></div>
+        <div class="card"><h3>Active sessions</h3><p id="sec-session-count">-</p></div>
+        <div class="card"><h3>Session expires</h3><p id="sec-expires">-</p></div>
+      </div>
+
+      <div class="panel">
+        <h2>Change Password</h2>
+        <p class="hint" id="password-hint"></p>
+        <form id="password-form" class="config-form">
+          <div class="inline-fields">
+            <label class="grow">Current password
+              <input type="password" id="pw-current" autocomplete="current-password" required />
+            </label>
+            <label class="grow">New password
+              <input type="password" id="pw-new" autocomplete="new-password" minlength="8" required />
+            </label>
+            <label class="grow">Confirm new password
+              <input type="password" id="pw-confirm" autocomplete="new-password" required />
+            </label>
+          </div>
+          <button type="submit" class="save-btn" id="password-save-btn">Update Password</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Active Sessions</h2>
+        <p class="hint">Each login creates a revocable session. Revoking one signs that device out immediately.</p>
+        <table class="data-table" id="sessions-table">
+          <thead>
+            <tr><th id="sessions-user-col" hidden>User</th><th>Device</th><th>IP</th><th>Created</th><th>Last active</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="panel" id="audit-panel" hidden>
+        <h2>Audit Log</h2>
+        <p class="hint">Logins, permission changes and dashboard edits. Kept for 90 days.</p>
+        <div class="inline-form" style="margin-bottom:10px">
+          <input type="text" id="audit-filter-actor" placeholder="Filter by user" />
+          <input type="text" id="audit-filter-action" placeholder="Filter by action" />
+          <button type="button" class="save-btn" id="audit-filter-btn">Apply</button>
+        </div>
+        <table class="data-table" id="audit-table">
+          <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Detail</th><th>IP</th></tr></thead>
+          <tbody></tbody>
+        </table>
       </div>
     </section>
   </main>

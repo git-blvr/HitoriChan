@@ -3,7 +3,7 @@ import { db } from "../database/db.js";
 
 const listStmt = db.prepare("SELECT id, username, permissions, created_at FROM users ORDER BY username");
 const getStmt = db.prepare("SELECT * FROM users WHERE id = ?");
-const getByUsernameStmt = db.prepare("SELECT * FROM users WHERE username = ?");
+const getByUsernameStmt = db.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE");
 const insertStmt = db.prepare("INSERT INTO users (username, password_hash, permissions, created_at) VALUES (?, ?, ?, ?)");
 const updateStmt = db.prepare("UPDATE users SET username = ?, password_hash = ?, permissions = ? WHERE id = ?");
 const deleteStmt = db.prepare("DELETE FROM users WHERE id = ?");
@@ -65,8 +65,32 @@ export const ALL_PERMISSIONS = [
   "quests",
   "leveling",
   "interactions",
+  "security",
   "users",
 ];
+
+export const RESERVED_USERNAMES = ["admin"];
+export const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,32}$/;
+export const PASSWORD_MIN_LENGTH = 8;
+
+export function isReservedUsername(username) {
+  return RESERVED_USERNAMES.includes(String(username ?? "").toLowerCase());
+}
+
+export function usernamePolicyError(username) {
+  if (!USERNAME_PATTERN.test(String(username ?? ""))) {
+    return "Username must be 3-32 characters of letters, numbers, dots, dashes or underscores";
+  }
+  return null;
+}
+
+export function passwordPolicyError(password) {
+  if (typeof password !== "string" || password.length < PASSWORD_MIN_LENGTH) {
+    return `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
+  }
+  if (password.length > 256) return "Password is too long";
+  return null;
+}
 
 export function normalizePermissions(input) {
   const list = Array.isArray(input) ? input : (typeof input === "string" ? input.split(/[\n,]+/).map((s) => s.trim()) : []);
@@ -86,6 +110,13 @@ export async function getByUsername(username) {
 }
 
 export async function create(data) {
+  const usernameError = usernamePolicyError(data.username);
+  if (usernameError) throw new Error(usernameError);
+  if (isReservedUsername(data.username)) throw new Error("That username is reserved");
+  if (!data.passwordHash) {
+    const passwordError = passwordPolicyError(data.password);
+    if (passwordError) throw new Error(passwordError);
+  }
   const passwordHash = data.passwordHash || hashPassword(data.password);
   const perms = JSON.stringify(normalizePermissions(data.permissions));
   const now = Date.now();

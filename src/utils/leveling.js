@@ -180,23 +180,27 @@ export async function processVoiceMember(client, settings, guild, channel, membe
 
 export function startVoiceXpLoop(client) {
   setInterval(async () => {
-    for (const guild of client.guilds.cache.values()) {
-      const settings = await LevelingSettings.get(guild.id);
-      if (!settings?.enabled || !settings?.voiceEnabled) continue;
+    try {
+      for (const guild of client.guilds.cache.values()) {
+        const settings = await LevelingSettings.get(guild.id);
+        if (!settings?.enabled || !settings?.voiceEnabled) continue;
 
-      for (const channel of guild.channels.cache.values()) {
-        if (!channel.isVoiceBased() || !channel.members?.size) continue;
+        for (const channel of guild.channels.cache.values()) {
+          if (!channel.isVoiceBased() || !channel.members?.size) continue;
 
-        for (const member of channel.members.values()) {
-          try {
-            await processVoiceMember(client, settings, guild, channel, member);
-          } catch (err) {
-            console.error("[leveling] Voice XP error:", err.message);
+          for (const member of channel.members.values()) {
+            try {
+              await processVoiceMember(client, settings, guild, channel, member);
+            } catch (err) {
+              console.error("[leveling] Voice XP error:", err.message);
+            }
           }
         }
       }
+    } catch (err) {
+      console.error("[leveling] Voice XP loop error:", err.message);
     }
-  }, 10_000);
+  }, 10_000).unref();
 }
 
 export function renderProgressBar(percent, length = 10) {

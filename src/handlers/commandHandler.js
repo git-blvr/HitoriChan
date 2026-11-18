@@ -59,7 +59,9 @@ export function registerCommandListeners(client) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
 
-    await questEngine.onInteraction(client, interaction);
+    await questEngine.onInteraction(client, interaction).catch((err) =>
+      console.error("[quests] onInteraction failed:", err)
+    );
 
     const ctx = createCtx(interaction);
 
@@ -67,12 +69,13 @@ export function registerCommandListeners(client) {
       const shopItems = Array.isArray(command.shopItem) ? command.shopItem : [command.shopItem];
       const results = await Promise.all(shopItems.map(async (name) =>
         (await hasShopCommand(ctx.guild?.id, ctx.user.id, name)) || (await hasUnlockedCommand(ctx.guild?.id, ctx.user.id, name))
-      ));
+      )).catch(() => [false]);
       if (!results.some(Boolean)) {
         return interaction.reply(embErr(`This command is locked. Buy it from the shop or boost the server first.`, true));
       }
     }
 
+    const cmdInput = interaction.options.data.map((o) => `${o.name}: ${o.value}`).join(", ");
     try {
       await command.execute(ctx);
       await CommandLog.create({
@@ -82,9 +85,9 @@ export function registerCommandListeners(client) {
         userName: ctx.user.username,
         commandName: command.data.name,
         source: "slash",
-        input: interaction.options.data.map((o) => `${o.name}: ${o.value}`).join(", "),
+        input: cmdInput,
         success: true,
-      });
+      }).catch(() => {});
     } catch (error) {
       console.error(error);
       await CommandLog.create({
@@ -94,10 +97,10 @@ export function registerCommandListeners(client) {
         userName: ctx.user.username,
         commandName: command.data.name,
         source: "slash",
-        input: interaction.options.data.map((o) => `${o.name}: ${o.value}`).join(", "),
+        input: cmdInput,
         success: false,
         errorMessage: error.message,
-      });
+      }).catch(() => {});
       const payload = { ...safeMessagePayload("Something went wrong running that command."), flags: MessageFlags.Ephemeral };
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp(payload);
@@ -110,13 +113,15 @@ export function registerCommandListeners(client) {
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) return;
 
-    await questEngine.onMessage(client, message);
-
-    await logMessage(message);
-    await handleStreak(message);
-    await handleChat(message);
-    await handleTrigger(message);
-    await handleLeveling(client, message);
+    // Each subsystem is fault-isolated: a failure in one must not prevent
+    // the others (or prefix commands below) from running.
+    const safe = (label, fn) => fn.catch((err) => console.error(`[${label}] failed:`, err));
+    await safe("quests", questEngine.onMessage(client, message));
+    await safe("logMessage", logMessage(message));
+    await safe("streak", handleStreak(message));
+    await safe("chat", handleChat(message));
+    await safe("trigger", handleTrigger(message));
+    await safe("leveling", handleLeveling(client, message));
 
     const prefix = await getPrefix(message.guild.id);
     if (!message.content.startsWith(prefix)) return;
@@ -128,7 +133,9 @@ export function registerCommandListeners(client) {
     const command = client.prefixCommands.get(commandName);
     if (!command) return;
 
-    await questEngine.onCommand(client, message, commandName);
+    await questEngine.onCommand(client, message, commandName).catch((err) =>
+      console.error("[quests] onCommand failed:", err)
+    );
 
     const ctx = createCtx(message, args);
 
@@ -136,7 +143,7 @@ export function registerCommandListeners(client) {
       const shopItems = Array.isArray(command.shopItem) ? command.shopItem : [command.shopItem];
       const results = await Promise.all(shopItems.map(async (name) =>
         (await hasShopCommand(ctx.guild?.id, ctx.user.id, name)) || (await hasUnlockedCommand(ctx.guild?.id, ctx.user.id, name))
-      ));
+      )).catch(() => [false]);
       if (!results.some(Boolean)) {
         return message.reply(embErr(`This command is locked. Buy it from the shop or boost the server first.`, false));
       }
@@ -153,7 +160,7 @@ export function registerCommandListeners(client) {
         source: "prefix",
         input: args.join(" "),
         success: true,
-      });
+      }).catch(() => {});
     } catch (error) {
       console.error(error);
       await CommandLog.create({
@@ -166,7 +173,7 @@ export function registerCommandListeners(client) {
         input: args.join(" "),
         success: false,
         errorMessage: error.message,
-      });
+      }).catch(() => {});
       await message.reply(safeMessagePayload("Something went wrong running that command."));
     }
   });
@@ -183,7 +190,7 @@ async function logMessage(message) {
       content: message.content,
       attachments: message.attachments.map((a) => a.url),
     });
-    MessageLog.prune(5000);
+    if (Math.random() < 0.02) MessageLog.prune(5000);
   } catch (error) {
     console.error("Failed to log message:", error.message);
   }

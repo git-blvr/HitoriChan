@@ -1,8 +1,15 @@
 const clients = new Map();
+const SWEEP_INTERVAL_MS = 60_000;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of clients) {
+    if (now > record.resetAt) clients.delete(key);
+  }
+}, SWEEP_INTERVAL_MS).unref();
 
 function getKey(req, suffix = "") {
-  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
-  return `${ip}:${suffix}`;
+  return `${req.ip || req.socket?.remoteAddress || "unknown"}:${suffix}`;
 }
 
 export function rateLimit({ windowMs = 60_000, maxRequests = 30, suffix = "" } = {}) {
@@ -21,9 +28,10 @@ export function rateLimit({ windowMs = 60_000, maxRequests = 30, suffix = "" } =
 
     res.setHeader("X-RateLimit-Limit", maxRequests);
     res.setHeader("X-RateLimit-Remaining", Math.max(0, maxRequests - record.count));
-    res.setHeader("X-RateLimit-Reset", record.resetAt);
+    res.setHeader("X-RateLimit-Reset", Math.ceil(record.resetAt / 1000));
 
     if (record.count > maxRequests) {
+      res.setHeader("Retry-After", Math.ceil((record.resetAt - now) / 1000));
       return res.status(429).json({ error: "Too many requests. Please slow down." });
     }
 

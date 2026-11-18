@@ -30,7 +30,8 @@ export async function handleChat(message) {
   const settings = await AISettings.get(guild.id);
   if (!settings?.enabled) return;
 
-  const mention = `<@${message.client.user.id}>`;
+  const botId = message.client.user.id;
+  const mentionPattern = new RegExp(`<@!?${botId}>`, "g");
   let shouldReply = false;
   let userMessage = message.content ?? "";
   const imageURLs = getImageURLs(message);
@@ -39,8 +40,8 @@ export async function handleChat(message) {
     shouldReply = true;
   }
 
-  if (message.content?.includes(mention)) {
-    userMessage = userMessage.replace(new RegExp(mention, "g"), "").trim();
+  if (message.mentions.users.has(botId) || mentionPattern.test(userMessage)) {
+    userMessage = userMessage.replace(mentionPattern, "").trim();
     shouldReply = true;
   }
 

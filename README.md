@@ -62,7 +62,10 @@ SKIP_AUTO_DEPLOY=false
 
 # Optional dashboard settings
 WEB_PORT=3000
-JWT_SECRET=change_me
+# DASHBOARD_PASSWORD=persistent_admin_password   # otherwise generated each boot
+# TLS_KEY_PATH=certs/privkey.pem                 # serve dashboard over HTTPS
+# TLS_CERT_PATH=certs/fullchain.pem
+# DASHBOARD_ORIGINS=https://extra.example.com    # extra allowed API Origin
 ```
 
 ## Configuration
@@ -108,10 +111,11 @@ node src/scripts/deployCommands.js
 
 The bot now starts a web dashboard at `http://0.0.0.0:3000` (set `WEB_PORT` to use a different port).
 
-- Default login: `Admin` with a 6-digit password printed to the console on startup.
-- Sessions last 24 hours.
-- Layout: left navigation, top header, main content area.
-- Supports Economy, AI Config, Streak Config, Moderation Config, Triggers, and Logs.
+- Default login: `Admin` with a random password printed to the console on startup. Set `DASHBOARD_PASSWORD` for a persistent one.
+- Sessions are stored server-side (revocable, sliding 24-hour expiry) — see the **Security** section in the dashboard to view/revoke active sessions, change your password, and browse the audit log.
+- Additional logins with per-section permissions can be created under **Users**.
+- Serve over HTTPS by setting `TLS_KEY_PATH` + `TLS_CERT_PATH`.
+- Supports Economy, AI Config, Streak Config, Moderation Config, Triggers, Logs, Tickets, Shop, Quests, Leveling, Interactions and more.
 
 Put a `login-bg.webp` (or `.jpg`/`.png`) image in `src/web/public/assets/` to customize the login background.
 

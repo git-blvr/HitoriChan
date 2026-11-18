@@ -526,6 +526,38 @@ const MIGRATIONS = [
       ALTER TABLE ticket_panels ADD COLUMN welcome_use_dominant_color INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    version: 28,
+    sql: `
+      CREATE TABLE IF NOT EXISTS dashboard_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token_hash TEXT NOT NULL UNIQUE,
+        username TEXT NOT NULL,
+        is_admin INTEGER NOT NULL DEFAULT 0,
+        permissions TEXT NOT NULL DEFAULT '[]',
+        ip TEXT,
+        user_agent TEXT,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        last_seen_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        expires_at INTEGER NOT NULL,
+        revoked_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_dashboard_sessions_token ON dashboard_sessions(token_hash);
+      CREATE INDEX IF NOT EXISTS idx_dashboard_sessions_expiry ON dashboard_sessions(expires_at);
+      CREATE INDEX IF NOT EXISTS idx_dashboard_sessions_user ON dashboard_sessions(username);
+
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        actor TEXT NOT NULL,
+        action TEXT NOT NULL,
+        detail TEXT,
+        ip TEXT,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor, created_at);
+    `,
+  },
 ];
 
 export function migrate() {

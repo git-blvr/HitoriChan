@@ -139,3 +139,10 @@ data/
 *.db
 *.db-shm
 *.db-wal
+
+# AGENT
+AGENTS.md
+
+nul
+
+tmp/

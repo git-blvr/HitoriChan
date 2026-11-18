@@ -21,6 +21,9 @@ import * as BoostSettings from "../../models/BoostSettings.js";
 import { buildTicketPanelPayload } from "../../helpers/ticketPanels.js";
 import { get_dominant_color } from "../../utils/color_utils.js";
 import * as User from "../../models/User.js";
+import * as Session from "../../models/DashboardSession.js";
+import * as Audit from "../../models/AuditLog.js";
+import { revokeAllSessionsForUser } from "../auth.js";
 import * as Quest from "../../models/Quest.js";
 import * as QuestProgress from "../../models/QuestProgress.js";
 import * as QuestBoard from "../../models/QuestBoard.js";
@@ -32,6 +35,85 @@ import { DEFAULT_INTERACTIONS } from "../../utils/interactions.js";
 import { requirePermission } from "../middleware/auth.js";
 
 const router = Router();
+
+// ---------------------------------------------------------------------------
+// Auth / session management (any authenticated user)
+// ---------------------------------------------------------------------------
+router.get("/auth/me", requireAuth, (req, res) => {
+  res.json({
+    user: {
+      username: req.user.username,
+      isAdmin: req.user.isAdmin,
+      permissions: req.user.permissions,
+    },
+    session: {
+      id: req.session.id,
+      createdAt: req.session.createdAt,
+      lastSeenAt: req.session.lastSeenAt,
+      expiresAt: req.session.expiresAt,
+      ip: req.session.ip,
+      userAgent: req.session.userAgent,
+    },
+  });
+});
+
+router.post("/auth/password", requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (req.user.isAdmin) {
+    return res.status(400).json({
+      error: "The bootstrap admin password is generated at startup. Set DASHBOARD_PASSWORD in the environment to choose a persistent one.",
+    });
+  }
+  if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
+    return res.status(400).json({ error: "Current and new password are required" });
+  }
+  const user = await User.getByUsername(req.user.username);
+  if (!user) return res.status(404).json({ error: "User not found" });
+  const verified = await User.verify(user.username, currentPassword);
+  if (!verified) return res.status(401).json({ error: "Current password is incorrect" });
+  const policyError = User.passwordPolicyError(newPassword);
+  if (policyError) return res.status(400).json({ error: policyError });
+  await User.update(user.id, { password: newPassword });
+  revokeAllSessionsForUser(user.username, req.session.id);
+  Audit.add({ actor: req.user.username, action: "auth.password.change", ip: req.ip });
+  res.json({ ok: true });
+});
+
+router.get("/auth/sessions", requireAuth, (req, res) => {
+  const sessions = Session.listForUser(req.user.username).map((s) => ({ ...s, current: s.id === req.session.id }));
+  res.json(sessions);
+});
+
+router.delete("/auth/sessions/:id", requireAuth, (req, res) => {
+  const session = Session.getById(Number(req.params.id));
+  if (!session || session.username !== req.user.username) {
+    return res.status(404).json({ error: "Session not found" });
+  }
+  Session.revoke(session.id);
+  Audit.add({ actor: req.user.username, action: "auth.session.revoke", detail: `session=${session.id}`, ip: req.ip });
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Security administration (privileged)
+// ---------------------------------------------------------------------------
+router.get("/security/sessions", requireAuth, requirePermission("users"), (req, res) => {
+  const sessions = Session.listAll().map((s) => ({ ...s, current: s.id === req.session.id }));
+  res.json(sessions);
+});
+
+router.delete("/security/sessions/:id", requireAuth, requirePermission("users"), (req, res) => {
+  const session = Session.getById(Number(req.params.id));
+  if (!session) return res.status(404).json({ error: "Session not found" });
+  Session.revoke(session.id);
+  Audit.add({ actor: req.user.username, action: "security.session.revoke", detail: `session=${session.id} user=${session.username}`, ip: req.ip });
+  res.json({ ok: true });
+});
+
+router.get("/security/audit", requireAuth, requirePermission("security"), (req, res) => {
+  const { limit, action, actor } = req.query;
+  res.json(Audit.list({ limit, action, actor }));
+});
 
 // Guilds list
 router.get("/guilds", requireAuth, async (req, res) => {
@@ -746,10 +828,16 @@ router.get("/users/:id", requireAuth, requirePermission("users"), async (req, re
 router.post("/users", requireAuth, requirePermission("users"), async (req, res) => {
   const { username, password, permissions } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+  if (User.isReservedUsername(username)) return res.status(400).json({ error: "That username is reserved" });
+  const usernameError = User.usernamePolicyError(username);
+  if (usernameError) return res.status(400).json({ error: usernameError });
+  const passwordError = User.passwordPolicyError(password);
+  if (passwordError) return res.status(400).json({ error: passwordError });
   const existing = await User.getByUsername(username);
   if (existing) return res.status(409).json({ error: "Username already exists" });
   try {
     const user = await User.create({ username, password, permissions });
+    Audit.add({ actor: req.user.username, action: "user.create", detail: `user=${user.username}`, ip: req.ip });
     res.json({ id: user.id, username: user.username, permissions: user.permissions, createdAt: user.createdAt });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -760,8 +848,24 @@ router.post("/users/:id", requireAuth, requirePermission("users"), async (req, r
   const user = await User.get(Number(req.params.id));
   if (!user) return res.status(404).json({ error: "User not found" });
   const { username, password, permissions } = req.body || {};
+  if (username !== undefined && User.isReservedUsername(username)) {
+    return res.status(400).json({ error: "That username is reserved" });
+  }
+  if (username !== undefined) {
+    const usernameError = User.usernamePolicyError(username);
+    if (usernameError) return res.status(400).json({ error: usernameError });
+    const clash = await User.getByUsername(username);
+    if (clash && clash.id !== user.id) return res.status(409).json({ error: "Username already exists" });
+  }
+  if (password !== undefined && password !== "") {
+    const passwordError = User.passwordPolicyError(password);
+    if (passwordError) return res.status(400).json({ error: passwordError });
+  }
   try {
-    const updated = await User.update(user.id, { username, password, permissions });
+    const updated = await User.update(user.id, { username, password: password || undefined, permissions });
+    revokeAllSessionsForUser(user.username);
+    if (username && username !== user.username) revokeAllSessionsForUser(username);
+    Audit.add({ actor: req.user.username, action: "user.update", detail: `user=${updated.username}`, ip: req.ip });
     res.json({ id: updated.id, username: updated.username, permissions: updated.permissions, createdAt: updated.createdAt });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -772,6 +876,8 @@ router.delete("/users/:id", requireAuth, requirePermission("users"), async (req,
   const user = await User.get(Number(req.params.id));
   if (!user) return res.status(404).json({ error: "User not found" });
   await User.remove(user.id);
+  revokeAllSessionsForUser(user.username);
+  Audit.add({ actor: req.user.username, action: "user.delete", detail: `user=${user.username}`, ip: req.ip });
   res.json({ ok: true });
 });
 

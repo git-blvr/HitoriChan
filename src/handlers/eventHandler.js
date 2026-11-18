@@ -13,10 +13,15 @@ export async function loadEvents(client) {
     const event = imported.default;
     if (!event?.name) continue;
 
+    const handler = (...args) =>
+      Promise.resolve(event.execute(...args, client)).catch((err) =>
+        console.error(`[event:${event.name}]`, err)
+      );
+
     if (event.once) {
-      client.once(event.name, (...args) => event.execute(...args, client));
+      client.once(event.name, handler);
     } else {
-      client.on(event.name, (...args) => event.execute(...args, client));
+      client.on(event.name, handler);
     }
   }
 }
