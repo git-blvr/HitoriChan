@@ -13,6 +13,7 @@ const archiveStmt = db.prepare("UPDATE tickets SET status = 'archived', archived
 const claimStmt = db.prepare("UPDATE tickets SET claimer_id = ? WHERE id = ?");
 const unclaimStmt = db.prepare("UPDATE tickets SET claimer_id = NULL WHERE id = ?");
 const deleteStmt = db.prepare("DELETE FROM tickets WHERE id = ?");
+const countByStatusStmt = db.prepare("SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND status = ?");
 
 function fromRow(row) {
   if (!row) return null;
@@ -78,4 +79,8 @@ export async function remove(id) {
   return deleteStmt.run(id);
 }
 
-export default { get, getByChannel, getForGuild, getForUser, create, close, archive, claim, unclaim, remove };
+export async function countByStatus(guildId, status = "open") {
+  return countByStatusStmt.get(guildId, status)?.n ?? 0;
+}
+
+export default { get, getByChannel, getForGuild, getForUser, create, close, archive, claim, unclaim, remove, countByStatus };

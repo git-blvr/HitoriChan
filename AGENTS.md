@@ -8,6 +8,7 @@
 
 ## Commands
 - Start: `node index.js`
+- Build Rust native module: `npm run build:native` (requires a Rust toolchain; produces `native/hitori_native.node`)
 - Dev hot-reload: `npm run dev` (requires `nodemon` installed globally or in deps)
 - Auto-deploy slash commands: restart the bot (only deploys when local commands differ)
 - Force deploy all commands: `node src/scripts/deployCommands.js`
@@ -15,6 +16,8 @@
 
 ## Project structure
 - `index.js` — bot entry point
+- `native/` — Rust napi-rs crate (`hitori_native`); hot-path compute (quest DSL eval, dominant color, formatting)
+- `src/native/index.js` — loads `native/hitori_native.node`; every consumer falls back to the JS implementation when absent, so the bot works without building. `NATIVE_DISABLE=1` forces JS fallbacks.
 - `src/database/db.js` — SQLite connection, schema, migrations
 - `src/models/` — SQLite repository modules (replace Mongoose models)
 - `src/commands/<category>/<command>.js` — slash + prefix commands
@@ -45,6 +48,17 @@
 - Security-sensitive activity is recorded in `audit_logs` (90-day retention).
 - Protected pages live in `src/web/pages/` (not the static root). `src/web/public/` is public — never put authenticated content there.
 - `npm test` runs `src/scripts/smokeWeb.js`, which boots the dashboard with a stub client + temp DB and exercises the auth surface.
+
+## Dashboard design system
+- `src/web/public/tokens.css` — design tokens (phosphor `#00ff1e` on black, light variant via `html[data-theme="light"]`, `--accent`/`--ui-scale` knobs). Always use tokens — no hardcoded colors.
+- `src/web/public/fonts.css` — self-hosted Geist / Geist Mono / Instrument Serif (`assets/fonts/*.woff2` from `@fontsource/*`); CSP requires `font-src 'self'`.
+- Theme engine (`setTheme`, `hc-theme-v1` localStorage) and command palette (Ctrl K) live at the top of `dashboard.js`.
+- Section nav is grouped (`data-group`); permission names map 1:1 to section IDs — keep them aligned.
+- Deep links: `#<section-id>` loads that section; `showSection` keeps `location.hash` in sync.
+
+## Preview tooling (no bot token needed)
+- `node scripts/dev-dashboard.mjs` — dev dashboard on `http://127.0.0.1:3198` with a stub Discord client; login `Admin` / `preview-admin`.
+- `node scripts/browser.mjs shot|eval|errors <url> [out.png] [--w --h --mobile --wait --login user:pass --eval expr]` — zero-dep headless-Chrome CDP driver for screenshots, in-page JS, and console/network error sweeps. Set `CHROME_PATH` if Edge/Chrome isn't in a standard location.
 
 ## Notes
 - The bot auto-migrates the SQLite schema on startup.

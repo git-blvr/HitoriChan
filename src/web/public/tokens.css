@@ -1,0 +1,149 @@
+/* =========================================================
+   Design tokens — phosphor-on-black ops console.
+   One accent, hairline borders, stepped surfaces. The only
+   color a user can change is --accent (theme customizer).
+   ========================================================= */
+
+:root {
+  /* Density — every fixed length in the shell multiplies this. */
+  --ui-scale: 1;
+
+  /* Surfaces — pure black steps */
+  --bg-0: #000000;
+  --surface-0: #050505;
+  --surface-1: #0a0a0a;
+  --surface-2: #0f0f0f;
+  --surface-3: #141414;
+  --surface-4: #1a1a1a;
+  --surface-5: #222222;
+
+  /* Hairlines */
+  --border-0: rgba(255, 255, 255, 0.04);
+  --border-1: rgba(255, 255, 255, 0.07);
+  --border-2: rgba(255, 255, 255, 0.12);
+  --border-3: rgba(255, 255, 255, 0.2);
+
+  /* Text */
+  --text-1: #f5f5f5;
+  --text-2: #a3a3a3;
+  --text-3: #6b6b6b;
+
+  /* Signal accent — phosphor. Overridden by the theme engine. */
+  --accent: #00ff1e;
+  --accent-strong: color-mix(in srgb, var(--accent) 86%, #ffffff);
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-softer: color-mix(in srgb, var(--accent) 7%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent) 32%, transparent);
+  --accent-glow: 0 0 calc(14px * var(--ui-scale)) color-mix(in srgb, var(--accent) 22%, transparent);
+  --accent-contrast: #000000;
+
+  /* Semantic */
+  --success: #00ff1e;
+  --success-soft: rgba(0, 255, 30, 0.12);
+  --warning: #ffb224;
+  --warning-soft: rgba(255, 178, 36, 0.12);
+  --danger: #ff4d4f;
+  --danger-soft: rgba(255, 77, 79, 0.12);
+  --info: #4da3ff;
+  --info-soft: rgba(77, 163, 255, 0.12);
+
+  /* Type */
+  --font-ui: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-mono: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+
+  --text-2xs: calc(10px * var(--ui-scale));
+  --text-xs: calc(11px * var(--ui-scale));
+  --text-sm: calc(12.5px * var(--ui-scale));
+  --text-md: calc(14px * var(--ui-scale));
+  --text-lg: calc(16px * var(--ui-scale));
+  --text-xl: calc(20px * var(--ui-scale));
+  --text-stat: calc(30px * var(--ui-scale));
+  --text-hero: calc(44px * var(--ui-scale));
+
+  /* Radii */
+  --radius-xs: calc(4px * var(--ui-scale));
+  --radius-sm: calc(6px * var(--ui-scale));
+  --radius-md: calc(8px * var(--ui-scale));
+  --radius-lg: calc(12px * var(--ui-scale));
+  --radius-xl: calc(16px * var(--ui-scale));
+
+  /* Spacing rhythm */
+  --card-pad: calc(20px * var(--ui-scale));
+  --card-gap: calc(12px * var(--ui-scale));
+  --section-gap: calc(24px * var(--ui-scale));
+  --stack-gap: calc(16px * var(--ui-scale));
+  --field-gap: calc(10px * var(--ui-scale));
+
+  /* Elevation */
+  --shadow-1: 0 calc(1px * var(--ui-scale)) calc(2px * var(--ui-scale)) rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 calc(4px * var(--ui-scale)) calc(16px * var(--ui-scale)) rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 calc(12px * var(--ui-scale)) calc(40px * var(--ui-scale)) rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 calc(2px * var(--ui-scale)) var(--bg-0), 0 0 0 calc(4px * var(--ui-scale)) var(--accent);
+
+  /* Z scale */
+  --z-base: 1;
+  --z-sticky: 10;
+  --z-topbar: 20;
+  --z-dropdown: 40;
+  --z-overlay: 60;
+  --z-modal: 80;
+  --z-palette: 90;
+  --z-toast: 100;
+
+  /* Motion */
+  --duration-1: 90ms;
+  --duration-2: 160ms;
+  --duration-3: 260ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Legacy aliases so older markup keeps rendering. */
+  --bg: var(--bg-0);
+  --surface: var(--surface-2);
+  --surface-2: var(--surface-2);
+  --surface-glass: rgba(10, 10, 10, 0.78);
+  --text: var(--text-1);
+  --muted: var(--text-2);
+  --accent-hover: var(--accent-strong);
+  --border: var(--border-1);
+  --input: var(--surface-1);
+  --radius: var(--radius-lg);
+  --radius-sm: var(--radius-sm);
+  --shadow: var(--shadow-2);
+  --container: var(--accent);
+  --error: var(--danger);
+}
+
+/* Light theme — token swap, never hardcode elsewhere. */
+[data-theme="light"] {
+  --bg-0: #f4f4f2;
+  --surface-0: #fafafa;
+  --surface-1: #ffffff;
+  --surface-2: #f2f2f0;
+  --surface-3: #e8e8e5;
+  --surface-4: #dededa;
+  --surface-5: #d0d0cb;
+
+  --border-0: rgba(0, 0, 0, 0.05);
+  --border-1: rgba(0, 0, 0, 0.09);
+  --border-2: rgba(0, 0, 0, 0.15);
+  --border-3: rgba(0, 0, 0, 0.25);
+
+  --text-1: #141414;
+  --text-2: #525252;
+  --text-3: #8a8a8a;
+
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --accent-softer: color-mix(in srgb, var(--accent) 8%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent) 40%, transparent);
+  --accent-contrast: #000000;
+
+  --surface-glass: rgba(255, 255, 255, 0.82);
+  --input: var(--surface-1);
+
+  --shadow-1: 0 calc(1px * var(--ui-scale)) calc(2px * var(--ui-scale)) rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 calc(4px * var(--ui-scale)) calc(16px * var(--ui-scale)) rgba(0, 0, 0, 0.1);
+  --shadow-3: 0 calc(12px * var(--ui-scale)) calc(40px * var(--ui-scale)) rgba(0, 0, 0, 0.14);
+  --shadow-focus: 0 0 0 calc(2px * var(--ui-scale)) var(--surface-1), 0 0 0 calc(4px * var(--ui-scale)) var(--accent);
+}

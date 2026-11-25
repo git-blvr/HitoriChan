@@ -7,11 +7,15 @@ if (new URLSearchParams(location.search).get("expired")) {
   errorEl.hidden = false;
 }
 
+const EYE_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.1 6.1A16 16 0 0 0 2 12s3.5 7 10 7c1.2 0 2.3-.2 3.3-.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+
 toggleBtn?.addEventListener("click", () => {
   const isHidden = passwordInput.type === "password";
   passwordInput.type = isHidden ? "text" : "password";
-  toggleBtn.textContent = isHidden ? "🙈" : "👁";
+  toggleBtn.innerHTML = isHidden ? EYE_OFF : EYE_ON;
   toggleBtn.title = isHidden ? "Hide password" : "Show password";
+  toggleBtn.setAttribute("aria-label", toggleBtn.title);
   toggleBtn.setAttribute("aria-pressed", String(isHidden));
 });
 
@@ -22,7 +26,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
   const btn = e.target.querySelector(".login-btn");
 
   btn.disabled = true;
-  btn.textContent = "Logging in...";
+  btn.textContent = "Signing in…";
   errorEl.hidden = true;
 
   try {
@@ -44,6 +48,6 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
     errorEl.hidden = false;
   } finally {
     btn.disabled = false;
-    btn.textContent = "Login";
+    btn.textContent = "Sign in";
   }
 });

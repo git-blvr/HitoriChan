@@ -1,12 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex" />
-  <meta name="theme-color" content="#7c3aed" />
+  <meta name="theme-color" content="#000000" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
-  <title>HitoriChan Dashboard — Login</title>
+  <title>HitoriChan — Sign in</title>
+  <link rel="stylesheet" href="/fonts.css" />
+  <link rel="stylesheet" href="/tokens.css" />
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/ui.css" />
 </head>
@@ -15,17 +17,26 @@
     <div class="login-bg"></div>
     <div class="login-form-box">
       <div class="login-card">
-        <h1>Hitori Chan</h1>
-        <p class="login-subtitle">Bot Dashboard</p>
+        <div class="login-brand">
+          <span class="brand-mark" aria-hidden="true">H</span>
+          <span class="brand-text">
+            <span class="brand-name">HitoriChan</span>
+            <span class="brand-sub">Control center</span>
+          </span>
+        </div>
+        <h1>Sign in</h1>
+        <p class="login-subtitle">Enter your dashboard credentials to continue.</p>
         <form id="login-form" class="login-form">
           <label for="username">Username</label>
           <input id="username" name="username" type="text" autocomplete="username" required />
           <label for="password">Password</label>
           <div class="password-wrap">
             <input id="password" name="password" type="password" placeholder="Insert your password here." autocomplete="current-password" required />
-            <button type="button" class="toggle-password" id="toggle-password" title="Show password">👁</button>
+            <button type="button" class="toggle-password" id="toggle-password" title="Show password" aria-label="Show password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
           </div>
-          <button type="submit" class="login-btn">Login</button>
+          <button type="submit" class="login-btn">Sign in</button>
         </form>
         <p id="login-error" class="login-error" hidden></p>
       </div>

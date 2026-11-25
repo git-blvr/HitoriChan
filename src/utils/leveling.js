@@ -1,4 +1,5 @@
 import { MessageFlags } from "discord.js";
+import native from "../native/index.js";
 import * as LevelingSettings from "../models/LevelingSettings.js";
 import * as EconomyAccount from "../models/EconomyAccount.js";
 import { replacePlaceholders } from "../helpers/placeholders.js";
@@ -204,6 +205,7 @@ export function startVoiceXpLoop(client) {
 }
 
 export function renderProgressBar(percent, length = 10) {
+  if (native?.renderProgressBar) return native.renderProgressBar(percent, length);
   const filled = Math.round((percent / 100) * length);
   const empty = length - filled;
   return "█".repeat(filled) + "░".repeat(empty);

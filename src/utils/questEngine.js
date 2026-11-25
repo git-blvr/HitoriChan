@@ -5,6 +5,7 @@ import { getGuildEconomyConfig } from "./economyManager.js";
 import { cv2, text, mediaGallery, separator } from "../helpers/cv2.js";
 import { get_dominant_color } from "./color_utils.js";
 import { replacePlaceholders } from "../helpers/placeholders.js";
+import native from "../native/index.js";
 
 // =========================================================
 // DSL tokenizer / parser
@@ -498,6 +499,66 @@ function toAstValue(value) {
   return { type: "literal", value };
 }
 
+// Normalized plain-object context for the Rust evaluator — mirrors
+// getEntityField/callMethod lookups without discord.js objects.
+function buildNativeContext(context, quest) {
+  const member = getMember(context.member || context.user || context.message?.member);
+  const msg = context.message;
+  const channel = context.message?.channel || context.client?.channels?.cache?.get(context.channelId);
+
+  return {
+    counters: context.progress?.counters || {},
+    variables: quest?.variables || {},
+    keyword: context.keyword ?? null,
+    commandName: context.commandName ?? null,
+    channelId: context.channelId ?? null,
+    guildId: context.guildId ?? null,
+    channelName: channel?.name ?? null,
+    message: msg
+      ? {
+          content: msg.content ?? "",
+          channelId: msg.channelId || msg.channel?.id || null,
+          authorId: msg.author?.id ?? null,
+          guildId: msg.guildId ?? msg.guild?.id ?? null,
+          attachments: msg.attachments?.size ?? 0,
+        }
+      : null,
+    user: member
+      ? {
+          id: member.id ?? null,
+          username: member.user?.username ?? member.username ?? null,
+          displayName: member.displayName ?? member.user?.username ?? null,
+          isBot: member.user?.bot ?? false,
+          boosted: Boolean(member.premiumSince),
+          roles: member.roles?.cache ? [...member.roles.cache.keys()] : [],
+        }
+      : null,
+    economy: context.economy
+      ? { primary: context.economy.primary || 0, secondary: context.economy.secondary || 0 }
+      : null,
+  };
+}
+
+function evaluateQuestCondition(quest, context) {
+  if (native?.evalQuest) {
+    try {
+      const r = native.evalQuest(
+        quest.dsl || null,
+        quest.condition?.blocks?.length ? JSON.stringify(quest.condition) : null,
+        JSON.stringify(buildNativeContext(context, quest))
+      );
+      if (!r.valid) return { valid: false, result: false };
+      return { valid: true, result: r.result };
+    } catch (err) {
+      console.error(`Quest ${quest.id} native eval error:`, err.message);
+    }
+  }
+
+  const conditionAst = buildConditionAst(quest.condition, quest.dsl);
+  if (!conditionAst) return { valid: false, result: false };
+  return { valid: true, result: evaluateCondition(conditionAst, context, quest) };
+}
+
 async function runQuest(quest, context, client) {
   if (!quest.enabled || (!quest.dsl && !quest.condition?.blocks?.length)) return;
 
@@ -512,13 +573,11 @@ async function runQuest(quest, context, client) {
   context.progress = progress;
   await ensureEconomy(context, client);
 
-  const conditionAst = buildConditionAst(quest.condition, quest.dsl);
-  if (!conditionAst) {
+  const { valid, result } = evaluateQuestCondition(quest, context);
+  if (!valid) {
     console.error(`Quest ${quest.id} has no valid condition`);
     return;
   }
-
-  const result = evaluateCondition(conditionAst, context, quest);
   if (!result) return;
 
   // Mark completed
@@ -825,12 +884,17 @@ export async function onVoiceStateUpdate(client, oldState, newState) {
 }
 
 export function testParse(dsl) {
+  if (native?.parseQuestDsl) return native.parseQuestDsl(dsl);
   const tokens = tokenize(dsl);
   const parser = new Parser(tokens);
   return { tokens, ast: parser.parseStatement() };
 }
 
 export function evaluateConditionForTest(dsl, quest, context) {
+  if (native?.evalQuest) {
+    const r = native.evalQuest(dsl, null, JSON.stringify(buildNativeContext(context, quest)));
+    return Boolean(r.valid && r.result);
+  }
   const tokens = tokenize(dsl);
   const parser = new Parser(tokens);
   const ast = parser.parseStatement();

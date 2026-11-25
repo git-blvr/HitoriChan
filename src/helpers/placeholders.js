@@ -1,3 +1,5 @@
+import native from "../native/index.js";
+
 export function replacePlaceholders(text, { member, user, target, guild, channel, client, level, xp, quest } = {}) {
   if (!text) return "";
 
@@ -37,6 +39,8 @@ export function replacePlaceholders(text, { member, user, target, guild, channel
     xp: xp != null ? String(xp) : "",
     quest: quest != null ? String(quest) : "",
   };
+
+  if (native?.replacePlaceholders) return native.replacePlaceholders(String(text), values);
 
   return String(text).replace(/{([a-zA-Z0-9._]+)}/g, (match, key) => {
     const normalized = key.toLowerCase();

@@ -1,6 +1,6 @@
 const guildSelect = document.getElementById("guild-select");
 const sectionTitle = document.getElementById("section-title");
-const navLinks = document.querySelectorAll(".nav-links a");
+const navLinks = document.querySelectorAll(".nav-links a[data-section]");
 
 let currentGuild = "";
 let currentSection = "overview";
@@ -11,6 +11,330 @@ let currentUser = { isAdmin: false, permissions: [] };
 let activityChart = null;
 let guildData = { id: null, channels: [], roles: [], categories: [], members: [] };
 const resolvedCache = { users: {}, roles: {}, channels: {} };
+
+// ---------------------------------------------------------------------------
+// Theme engine — mode, accent, density. Persisted per browser.
+// ---------------------------------------------------------------------------
+const THEME_KEY = "hc-theme-v1";
+const THEME_DEFAULT = { mode: "dark", accent: "#00ff1e", scale: 1, collapsed: false };
+const ACCENT_PRESETS = [
+  { id: "phosphor", color: "#00ff1e" },
+  { id: "magenta", color: "#ff2ec4" },
+  { id: "violet", color: "#8b5cf6" },
+  { id: "amber", color: "#ffb224" },
+  { id: "cyan", color: "#22d3ee" },
+  { id: "crimson", color: "#ff4d4f" },
+];
+
+let theme = loadTheme();
+
+function loadTheme() {
+  try {
+    return { ...THEME_DEFAULT, ...(JSON.parse(localStorage.getItem(THEME_KEY)) || {}) };
+  } catch {
+    return { ...THEME_DEFAULT };
+  }
+}
+
+function saveTheme() {
+  try { localStorage.setItem(THEME_KEY, JSON.stringify(theme)); } catch { /* private mode */ }
+}
+
+function accentContrast(hex) {
+  const c = String(hex || "").replace("#", "");
+  if (c.length !== 6) return "#000000";
+  const r = parseInt(c.slice(0, 2), 16) / 255;
+  const g = parseInt(c.slice(2, 4), 16) / 255;
+  const b = parseInt(c.slice(4, 6), 16) / 255;
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 0.55 ? "#000000" : "#ffffff";
+}
+
+function applyTheme() {
+  const root = document.documentElement;
+  root.dataset.theme = theme.mode;
+  root.style.setProperty("--accent", theme.accent);
+  root.style.setProperty("--accent-contrast", accentContrast(theme.accent));
+  root.style.setProperty("--ui-scale", String(theme.scale || 1));
+  document.body.classList.toggle("nav-collapsed", theme.collapsed === true);
+
+  document.querySelectorAll("#theme-mode .seg-btn").forEach((b) =>
+    b.classList.toggle("active", b.dataset.mode === theme.mode));
+  document.querySelectorAll(".accent-swatch").forEach((s) =>
+    s.classList.toggle("active", s.dataset.color.toLowerCase() === String(theme.accent).toLowerCase()));
+  const scaleInput = document.getElementById("ui-scale");
+  const scaleVal = document.getElementById("scale-val");
+  if (scaleInput) scaleInput.value = Math.round((theme.scale || 1) * 100);
+  if (scaleVal) scaleVal.textContent = `${Math.round((theme.scale || 1) * 100)}%`;
+  const custom = document.getElementById("accent-custom");
+  if (custom && custom.value.toLowerCase() !== String(theme.accent).toLowerCase()) custom.value = theme.accent;
+}
+
+function setTheme(patch) {
+  theme = { ...theme, ...patch };
+  saveTheme();
+  applyTheme();
+}
+
+function initThemeUI() {
+  const pop = document.getElementById("theme-pop");
+  const btn = document.getElementById("theme-btn");
+  if (!pop || !btn) return;
+
+  const grid = document.getElementById("accent-grid");
+  grid.innerHTML = ACCENT_PRESETS.map((p) => `
+    <button type="button" class="accent-swatch" role="option" data-color="${p.color}"
+      aria-label="${p.id}" title="${p.id}" style="background:${p.color}"></button>
+  `).join("");
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    pop.hidden = !pop.hidden;
+  });
+  document.getElementById("theme-close").addEventListener("click", () => (pop.hidden = true));
+  pop.addEventListener("click", (e) => e.stopPropagation());
+  document.addEventListener("click", (e) => {
+    if (!pop.hidden && !e.target.closest("#theme-pop") && e.target !== btn) pop.hidden = true;
+  });
+
+  document.querySelectorAll("#theme-mode .seg-btn").forEach((b) =>
+    b.addEventListener("click", () => setTheme({ mode: b.dataset.mode })));
+
+  grid.addEventListener("click", (e) => {
+    const sw = e.target.closest(".accent-swatch");
+    if (sw) setTheme({ accent: sw.dataset.color });
+  });
+
+  document.getElementById("accent-custom").addEventListener("input", (e) =>
+    setTheme({ accent: e.target.value }));
+
+  document.getElementById("ui-scale").addEventListener("input", (e) =>
+    setTheme({ scale: Number(e.target.value) / 100 }));
+
+  document.getElementById("theme-reset").addEventListener("click", () => setTheme({ ...THEME_DEFAULT }));
+  applyTheme();
+}
+
+// ---------------------------------------------------------------------------
+// Command palette — Ctrl K, jump to sections / switch server / quick actions
+// ---------------------------------------------------------------------------
+const paletteModal = document.getElementById("palette-modal");
+const paletteInput = document.getElementById("palette-input");
+const paletteList = document.getElementById("palette-list");
+let paletteActive = 0;
+
+function paletteItems() {
+  const sections = [];
+  document.querySelectorAll(".nav-links a[data-section]").forEach((link) => {
+    if (link.hidden || !canAccessSection(link.dataset.section)) return;
+    sections.push({
+      group: "Jump to",
+      label: link.textContent.trim(),
+      icon: link.querySelector("svg")?.outerHTML || "",
+      run: () => showSection(link.dataset.section),
+    });
+  });
+
+  const guilds = allGuilds.map((g) => ({
+    group: "Servers",
+    label: g.name,
+    icon: g.icon
+      ? `<img src="${escapeHtml(g.icon)}" alt="" style="width:15px;height:15px;border-radius:4px" />`
+      : "",
+    hint: g.id === currentGuild ? "current" : `${(g.memberCount || 0).toLocaleString()} members`,
+    run: () => selectGuild(g.id),
+  }));
+
+  const actions = [
+    {
+      group: "Actions", label: "Refresh current section",
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2.5 12a9.5 9.5 0 0 1 15.6-7.2l-4.1 4.1M21.5 12a9.5 9.5 0 0 1-15.6 7.2l4.1-4.1"/></svg>',
+      run: () => refreshSection(),
+    },
+    {
+      group: "Actions", label: theme.mode === "dark" ? "Switch to light theme" : "Switch to dark theme",
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>',
+      run: () => setTheme({ mode: theme.mode === "dark" ? "light" : "dark" }),
+    },
+    {
+      group: "Actions", label: "Customize appearance",
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>',
+      run: () => { document.getElementById("theme-pop").hidden = false; },
+    },
+    {
+      group: "Actions", label: "Open documentation",
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>',
+      run: () => window.open("/docs", "_blank"),
+    },
+    {
+      group: "Actions", label: "Log out",
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>',
+      run: async () => { await api("/api/logout", { method: "POST" }); window.location.href = "/"; },
+    },
+  ];
+
+  return [...sections, ...guilds, ...actions];
+}
+
+function renderPalette() {
+  const q = paletteInput.value.trim().toLowerCase();
+  const items = paletteItems().filter((it) => !q || it.label.toLowerCase().includes(q));
+
+  if (!items.length) {
+    paletteList.innerHTML = '<div class="palette-empty">No results</div>';
+    paletteList._items = [];
+    return;
+  }
+
+  paletteActive = Math.min(paletteActive, items.length - 1);
+  let lastGroup = null;
+  paletteList.innerHTML = items.map((it, i) => {
+    const groupHead = it.group !== lastGroup
+      ? `<div class="palette-group-label">${escapeHtml(it.group)}</div>` : "";
+    lastGroup = it.group;
+    return `${groupHead}
+      <button type="button" role="option" class="palette-item ${i === paletteActive ? "active" : ""}" data-index="${i}">
+        ${it.icon}
+        <span>${escapeHtml(it.label)}</span>
+        ${it.hint ? `<span class="palette-hint">${escapeHtml(it.hint)}</span>` : ""}
+      </button>`;
+  }).join("");
+  paletteList._items = items;
+
+  const active = paletteList.querySelector(".palette-item.active");
+  active?.scrollIntoView({ block: "nearest" });
+}
+
+function openPalette() {
+  paletteModal.hidden = false;
+  paletteActive = 0;
+  paletteInput.value = "";
+  renderPalette();
+  paletteInput.focus();
+}
+
+function closePalette() {
+  paletteModal.hidden = true;
+}
+
+function initPalette() {
+  if (!paletteModal) return;
+  document.getElementById("palette-open").addEventListener("click", openPalette);
+  paletteModal.querySelector(".palette-backdrop").addEventListener("click", closePalette);
+
+  paletteInput.addEventListener("input", () => { paletteActive = 0; renderPalette(); });
+  paletteInput.addEventListener("keydown", (e) => {
+    const items = paletteList._items || [];
+    if (e.key === "ArrowDown") { e.preventDefault(); paletteActive = Math.min(paletteActive + 1, items.length - 1); renderPalette(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); paletteActive = Math.max(paletteActive - 1, 0); renderPalette(); }
+    else if (e.key === "Enter") { e.preventDefault(); items[paletteActive]?.run(); closePalette(); }
+  });
+  paletteList.addEventListener("click", (e) => {
+    const btn = e.target.closest(".palette-item");
+    if (!btn) return;
+    (paletteList._items || [])[Number(btn.dataset.index)]?.run();
+    closePalette();
+  });
+  paletteList.addEventListener("mousemove", (e) => {
+    const btn = e.target.closest(".palette-item");
+    if (!btn) return;
+    const i = Number(btn.dataset.index);
+    if (i !== paletteActive) { paletteActive = i; renderPalette(); }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      paletteModal.hidden ? openPalette() : closePalette();
+    } else if (e.key === "Escape" && !paletteModal.hidden) {
+      closePalette();
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Guild switcher card
+// ---------------------------------------------------------------------------
+const guildCard = document.getElementById("guild-card");
+const guildMenu = document.getElementById("guild-menu");
+
+function guildInitials(name) {
+  const clean = String(name || "").trim();
+  if (!clean) return "—";
+  const words = clean.split(/\s+/).slice(0, 2);
+  return words.map((w) => w[0]).join("").toUpperCase();
+}
+
+function updateGuildCard(guildId) {
+  const g = allGuilds.find((x) => x.id === guildId);
+  const iconEl = document.getElementById("guild-icon");
+  const fallbackEl = document.getElementById("guild-fallback");
+  const nameEl = document.getElementById("guild-name");
+  const subEl = document.getElementById("guild-sub");
+
+  if (g) {
+    nameEl.textContent = g.name || g.id;
+    subEl.textContent = `${(g.memberCount || 0).toLocaleString()} members`;
+    if (g.icon) {
+      iconEl.src = g.icon;
+      iconEl.hidden = false;
+      fallbackEl.hidden = true;
+    } else {
+      iconEl.hidden = true;
+      fallbackEl.hidden = false;
+      fallbackEl.textContent = guildInitials(g.name);
+    }
+  } else {
+    nameEl.textContent = allGuilds.length ? "Select a server" : "No servers";
+    subEl.textContent = "Bot-wide view";
+    iconEl.hidden = true;
+    fallbackEl.hidden = false;
+    fallbackEl.textContent = "H";
+  }
+}
+
+function renderGuildMenu() {
+  if (!guildMenu) return;
+  guildMenu.innerHTML = allGuilds.map((g) => `
+    <button type="button" role="option" class="guild-option" data-id="${g.id}" aria-selected="${g.id === currentGuild}">
+      ${g.icon
+        ? `<img src="${escapeHtml(g.icon)}" alt="" />`
+        : `<span class="guild-fallback">${escapeHtml(guildInitials(g.name))}</span>`}
+      <span class="guild-meta">
+        <span class="guild-name">${escapeHtml(g.name || g.id)}</span>
+        <span class="guild-sub">${(g.memberCount || 0).toLocaleString()} members</span>
+      </span>
+    </button>
+  `).join("");
+}
+
+function selectGuild(id) {
+  if (guildSelect.value === id) return;
+  guildSelect.value = id;
+  guildSelect.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function initGuildSwitcher() {
+  if (!guildCard || !guildMenu) return;
+  guildCard.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = guildMenu.hidden;
+    guildMenu.hidden = !open;
+    guildCard.setAttribute("aria-expanded", String(open));
+  });
+  guildMenu.addEventListener("click", (e) => {
+    const opt = e.target.closest(".guild-option");
+    if (!opt) return;
+    selectGuild(opt.dataset.id);
+    guildMenu.hidden = true;
+    guildCard.setAttribute("aria-expanded", "false");
+  });
+  document.addEventListener("click", (e) => {
+    if (!guildMenu.hidden && !e.target.closest(".guild-card-wrap")) {
+      guildMenu.hidden = true;
+      guildCard.setAttribute("aria-expanded", "false");
+    }
+  });
+}
 
 function api(path, options = {}) {
   return fetch(path, { credentials: "same-origin", ...options });
@@ -50,11 +374,11 @@ async function loadGuilds() {
     const g = allGuilds[0];
     currentGuild = g.id;
     guildSelect.value = g.id;
-    updateGuildIcon(g.id);
     await loadGuildData(g.id);
   }
 
-  refreshSelectFilter(guildSelect);
+  updateGuildCard(currentGuild);
+  renderGuildMenu();
   return allGuilds;
 }
 
@@ -70,19 +394,36 @@ async function initUser() {
     allPermissions = permissions || [];
     currentUser = user || { isAdmin: false, permissions: [] };
     updateNavVisibility();
+    renderUserChip();
   } catch {
     currentUser = { isAdmin: false, permissions: [] };
   }
 }
 
+function renderUserChip() {
+  const name = currentUser.username || "Account";
+  const role = currentUser.isAdmin ? "Admin" : "Staff";
+  const initial = (name.trim()[0] || "?").toUpperCase();
+  for (const [id, val] of [["user-name", name], ["user-name-top", name]]) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+  for (const id of ["user-avatar", "user-avatar-top"]) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = initial;
+  }
+  const roleEl = document.getElementById("user-role");
+  if (roleEl) roleEl.textContent = role;
+}
+
 function updateNavVisibility() {
   document.querySelectorAll(".nav-links a").forEach((link) => {
-    const section = link.dataset.section;
-    if (section === "users" && !canAccessSection("users")) {
-      link.hidden = true;
-      return;
-    }
-    link.hidden = !canAccessSection(section);
+    if (!link.dataset.section) return; // docs link stays visible
+    link.hidden = !canAccessSection(link.dataset.section);
+  });
+  document.querySelectorAll(".nav-group").forEach((group) => {
+    const links = Array.from(group.querySelectorAll("a"));
+    group.hidden = links.length > 0 && links.every((l) => l.hidden);
   });
 }
 
@@ -818,16 +1159,147 @@ function parsePayloadToEmbed(raw) {
   };
 }
 
+const VITAL_ICONS = {
+  status: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg>',
+  ping: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2Z"/></svg>',
+  servers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>',
+  members: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M3.5 20c.5-3.5 2.7-5.5 5.5-5.5S14 16.5 14.5 20"/><path d="M16 5.5a3.5 3.5 0 0 1 0 5.6M17.5 15c1.6.8 2.7 2.3 3 5"/></svg>',
+  commands: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M13 5l-2 14"/></svg>',
+  activity: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>',
+  ticket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2.5 2.5 0 0 0 0 5v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2.5 2.5 0 0 0 0-5Z"/><path d="M13 5v14"/></svg>',
+  timeout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
+  afk: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 13A8 8 0 1 1 11 4a7 7 0 0 0 9 9Z"/></svg>',
+  voice: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+};
+
+function vitalCard({ label, icon, value, sub, accent }) {
+  return `
+    <div class="vital-card${accent ? " vital-card--accent" : ""}">
+      <div class="vital-head">
+        <span class="vital-label">${escapeHtml(label)}</span>
+        <span class="vital-icon" aria-hidden="true">${icon}</span>
+      </div>
+      <div class="vital-value">${value}</div>
+      ${sub ? `<div class="vital-sub">${sub}</div>` : ""}
+    </div>`;
+}
+
+function cmdDelta(today, yesterday) {
+  if (today == null || yesterday == null) return `<span class="muted">guild only</span>`;
+  if (yesterday === 0) {
+    return today === 0
+      ? `<span class="muted">none yesterday either</span>`
+      : `<span class="ok">new activity today</span>`;
+  }
+  const pct = Math.round(((today - yesterday) / yesterday) * 100);
+  if (pct === 0) return `<span class="muted">same as yesterday</span>`;
+  return pct > 0
+    ? `<span class="ok">+${pct}% vs yesterday</span>`
+    : `<span class="err">${pct}% vs yesterday</span>`;
+}
+
+function updateHero(vitals, overview) {
+  const h = new Date().getHours();
+  const greeting = h < 5 ? "Working late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  document.getElementById("hero-greeting").textContent = greeting;
+  document.getElementById("hero-date").textContent =
+    new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+
+  const g = vitals?.guild;
+  document.getElementById("hero-guild").textContent = g?.name || vitals?.bot?.tag?.split("#")[0] || "HitoriChan";
+
+  const online = vitals?.bot?.status === "online" || vitals?.bot?.status === "dnd";
+  const ping = vitals?.bot?.ping;
+  document.getElementById("chip-dot").className = `status-dot${online ? "" : " err"}`;
+  document.getElementById("chip-status").textContent = (vitals?.bot?.tag || "—").slice(0, 14);
+  document.getElementById("chip-ping").textContent = ping >= 0 ? `${ping} ms` : "—";
+  document.getElementById("chip-members").textContent =
+    g?.memberCount != null ? g.memberCount.toLocaleString() : (vitals?.bot?.users ?? 0).toLocaleString();
+  document.getElementById("chip-tickets").textContent = vitals?.tickets?.open ?? "—";
+  document.getElementById("chip-uptime").textContent = formatDuration(vitals?.bot?.uptime ?? 0).replace(/^up /, "");
+}
+
+function renderVitals(vitals, overview) {
+  const g = vitals?.guild;
+  const ping = vitals?.bot?.ping ?? -1;
+  const uptime = formatDuration(vitals?.bot?.uptime ?? 0);
+  const noGuild = '<span class="muted">select a server</span>';
+
+  const cards = [
+    {
+      label: "Bot status", icon: VITAL_ICONS.status, accent: true,
+      value: vitals?.bot?.status === "online" ? "Online" : escapeHtml(vitals?.bot?.status || "—"),
+      sub: `up ${uptime}`,
+    },
+    {
+      label: "Latency", icon: VITAL_ICONS.ping,
+      value: ping >= 0 ? `${ping}ms` : "—",
+      sub: ping >= 0 ? '<span class="ok">stable</span> <span class="muted">· websocket</span>' : '<span class="err">no gateway</span>',
+    },
+    {
+      label: "Servers", icon: VITAL_ICONS.servers,
+      value: (vitals?.bot?.guilds ?? 0).toLocaleString(),
+      sub: "guilds connected",
+    },
+    {
+      label: "Members", icon: VITAL_ICONS.members,
+      value: g?.memberCount != null ? g.memberCount.toLocaleString() : (vitals?.bot?.users ?? 0).toLocaleString(),
+      sub: g ? "in this server" : "across all servers",
+    },
+    {
+      label: "Commands registered", icon: VITAL_ICONS.commands,
+      value: (vitals?.commands?.registered ?? 0).toLocaleString(),
+      sub: "slash + prefix",
+    },
+    {
+      label: "Commands run today", icon: VITAL_ICONS.activity,
+      value: vitals?.commands?.today != null ? vitals.commands.today.toLocaleString() : "—",
+      sub: cmdDelta(vitals?.commands?.today, vitals?.commands?.yesterday),
+    },
+    {
+      label: "Open tickets", icon: VITAL_ICONS.ticket,
+      value: vitals?.tickets?.open != null ? vitals.tickets.open.toLocaleString() : "—",
+      sub: g ? "awaiting staff" : noGuild,
+    },
+    {
+      label: "Active timeouts", icon: VITAL_ICONS.timeout,
+      value: g?.activeTimeouts != null ? g.activeTimeouts.toLocaleString() : "—",
+      sub: g ? "members timed out" : noGuild,
+    },
+    {
+      label: "AFK members", icon: VITAL_ICONS.afk,
+      value: g?.afkMembers != null ? g.afkMembers.toLocaleString() : "—",
+      sub: g?.voiceActive != null ? `${g.voiceActive} in voice now` : noGuild,
+    },
+    {
+      label: "Messages (7d)", icon: VITAL_ICONS.activity,
+      value: (overview?.totals?.messages ?? 0).toLocaleString(),
+      sub: "logged this week",
+    },
+    {
+      label: "Voice hours (7d)", icon: VITAL_ICONS.voice,
+      value: (overview?.totals?.voiceHours ?? 0).toLocaleString(),
+      sub: "across all servers",
+    },
+    {
+      label: "Collaborators (7d)", icon: VITAL_ICONS.members,
+      value: (overview?.totals?.collaborators ?? 0).toLocaleString(),
+      sub: "unique chatters",
+    },
+  ];
+
+  document.getElementById("vitals-grid").innerHTML = cards.map(vitalCard).join("");
+}
+
 const sections = {
   overview: async () => {
-    const [overview, guilds] = await Promise.all([json("/api/overview"), json("/api/guilds")]);
+    const [overview, vitals] = await Promise.all([
+      json("/api/overview"),
+      json(currentGuild ? `/api/vitals/${currentGuild}` : "/api/vitals"),
+    ]);
 
-    document.getElementById("stat-servers").textContent = overview.bot.guilds;
-    document.getElementById("stat-users").textContent = overview.bot.users;
-    document.getElementById("stat-messages").textContent = overview.totals.messages.toLocaleString();
-    document.getElementById("stat-voice").textContent = overview.totals.voiceHours.toLocaleString();
-    document.getElementById("stat-collaborators").textContent = overview.totals.collaborators.toLocaleString();
-    document.getElementById("stat-uptime").textContent = formatDuration(overview.bot.uptime);
+    updateHero(vitals, overview);
+    renderVitals(vitals, overview);
 
     document.getElementById("sys-bot").textContent = overview.bot.tag;
     document.getElementById("sys-status").textContent = overview.bot.status;
@@ -1371,6 +1843,7 @@ function showSection(name) {
     name = "overview";
   }
   currentSection = name;
+  if (location.hash.slice(1) !== name) history.replaceState(null, "", `#${name}`);
   const display = sectionDisplayNames[name] || (name[0].toUpperCase() + name.slice(1));
   sectionTitle.textContent = display;
   document.querySelectorAll(".content-section").forEach((el) => el.classList.remove("active"));
@@ -1392,6 +1865,13 @@ navLinks.forEach((link) => {
     e.preventDefault();
     showSection(link.dataset.section);
   });
+});
+
+window.addEventListener("hashchange", () => {
+  const name = location.hash.slice(1);
+  if (name && name !== currentSection && document.getElementById(name)?.classList.contains("content-section")) {
+    showSection(name);
+  }
 });
 
 document.getElementById("logout-btn").addEventListener("click", async () => {
@@ -1531,6 +2011,14 @@ async function renderChart(guildId, days) {
     activityChart.destroy();
   }
 
+  const css = getComputedStyle(document.documentElement);
+  const accent = css.getPropertyValue("--accent").trim() || "#00ff1e";
+  const info = css.getPropertyValue("--info").trim() || "#4da3ff";
+  const warn = css.getPropertyValue("--warning").trim() || "#ffb224";
+  const text2 = css.getPropertyValue("--text-2").trim() || "#a3a3a3";
+  const text3 = css.getPropertyValue("--text-3").trim() || "#6b6b6b";
+  const gridColor = theme.mode === "light" ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.06)";
+
   activityChart = new Chart(ctx, {
     type: "bar",
     data: {
@@ -1539,19 +2027,19 @@ async function renderChart(guildId, days) {
         {
           label: "Messages",
           data: data.map((d) => d.messages),
-          backgroundColor: "#7c3aed",
+          backgroundColor: accent,
           borderRadius: 6,
         },
         {
           label: "Voice Hours",
           data: data.map((d) => d.voiceHours),
-          backgroundColor: "#22c55e",
+          backgroundColor: info,
           borderRadius: 6,
         },
         {
           label: "Collaborators",
           data: data.map((d) => d.collaborators),
-          backgroundColor: "#3b82f6",
+          backgroundColor: warn,
           borderRadius: 6,
         },
       ],
@@ -1560,12 +2048,12 @@ async function renderChart(guildId, days) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: "#f3f4f6" } },
+        legend: { labels: { color: text2 } },
       },
       scales: {
         x: {
           ticks: {
-            color: "#9ca3af",
+            color: text3,
             maxRotation: 45,
             minRotation: 0,
             callback(value) {
@@ -1575,11 +2063,11 @@ async function renderChart(guildId, days) {
               return value;
             },
           },
-          grid: { color: "rgba(255, 255, 255, 0.06)" },
+          grid: { color: gridColor },
         },
         y: {
-          ticks: { color: "#9ca3af" },
-          grid: { color: "rgba(255, 255, 255, 0.06)" },
+          ticks: { color: text3 },
+          grid: { color: gridColor },
         },
       },
     },
@@ -1591,28 +2079,16 @@ document.getElementById("chart-range").addEventListener("change", async (e) => {
 });
 
 function updateGuildIcon(guildId) {
-  const iconEl = document.getElementById("guild-icon");
-  if (!iconEl) return;
-  if (!guildId) {
-    iconEl.hidden = true;
-    return;
-  }
-  const g = allGuilds.find((x) => x.id === guildId);
-  if (g && g.icon) {
-    iconEl.src = g.icon;
-    iconEl.alt = g.name;
-    iconEl.hidden = false;
-  } else {
-    iconEl.hidden = true;
-  }
+  updateGuildCard(guildId);
 }
 
 guildSelect.addEventListener("change", async (e) => {
   currentGuild = e.target.value;
-  updateGuildIcon(currentGuild);
+  updateGuildCard(currentGuild);
+  renderGuildMenu();
   if (currentGuild) await loadGuildData(currentGuild);
   if (currentSection === "overview") {
-    await renderChart(currentGuild || "", document.getElementById("chart-range").value);
+    refreshSection();
   } else {
     refreshSection();
   }
@@ -3632,6 +4108,7 @@ function initSelectFilters() {
     "ticket-button-color",
     "shop-item-multiplier-type",
     "cmd-filter-success",
+    "guild-select",
   ]);
   document.querySelectorAll("select").forEach((select) => {
     if (select.id && excluded.has(select.id)) return;
@@ -3640,7 +4117,41 @@ function initSelectFilters() {
   });
 }
 
+// Hero quick actions + sidebar collapse
+document.getElementById("hero-new-quest")?.addEventListener("click", () => showSection("quests"));
+document.getElementById("hero-new-panel")?.addEventListener("click", () => {
+  showSection("tickets");
+  document.getElementById("ticket-new-btn")?.click();
+});
+document.getElementById("hero-refresh")?.addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  btn.classList.add("spin");
+  await refreshSection();
+  btn.classList.remove("spin");
+});
+document.getElementById("nav-collapse")?.addEventListener("click", () =>
+  setTheme({ collapsed: !theme.collapsed }));
+
+// Mobile nav drawer
+const navScrim = document.getElementById("nav-scrim");
+function setNavOpen(open) {
+  document.body.classList.toggle("nav-open", open);
+  if (navScrim) navScrim.hidden = !open;
+}
+document.getElementById("nav-menu-btn")?.addEventListener("click", () =>
+  setNavOpen(!document.body.classList.contains("nav-open")));
+navScrim?.addEventListener("click", () => setNavOpen(false));
+document.querySelector(".nav-links")?.addEventListener("click", (e) => {
+  if (e.target.closest("a")) setNavOpen(false);
+});
+
 // Init
+initThemeUI();
+initPalette();
+initGuildSwitcher();
 initSelectFilters();
 initPayloadImportButtons();
-initUser().then(() => loadGuilds().then(() => showSection("overview")));
+initUser().then(() => loadGuilds().then(() => {
+  const initial = location.hash.slice(1);
+  showSection(initial && document.getElementById(initial)?.classList.contains("content-section") ? initial : "overview");
+}));

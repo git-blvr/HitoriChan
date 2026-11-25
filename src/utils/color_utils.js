@@ -1,7 +1,8 @@
-import { loadImage, createCanvas } from "@napi-rs/canvas";
 import path from "path";
+import fs from "fs/promises";
 import { fileURLToPath } from "url";
 import { safeFetch } from "./safeFetch.js";
+import native from "../native/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOAD_DIR = path.join(__dirname, "..", "..", "data", "uploads");
@@ -21,8 +22,9 @@ async function resolve_source(source) {
     return source;
 }
 
-export async function get_dominant_color(source) {
-    const image = await loadImage(await resolve_source(source));
+async function dominant_color_js(source) {
+    const { loadImage, createCanvas } = await import("@napi-rs/canvas");
+    const image = await loadImage(source);
     const size = 64;
     const canvas = createCanvas(size, size);
     const ctx = canvas.getContext("2d");
@@ -64,6 +66,25 @@ export async function get_dominant_color(source) {
     const g = Math.round(best.g / best.count);
     const b = Math.round(best.b / best.count);
     return (r << 16) + (g << 8) + b;
+}
+
+export async function get_dominant_color(source) {
+    const resolved = await resolve_source(source);
+
+    if (native?.dominantColor) {
+        try {
+            const buffer = Buffer.isBuffer(resolved)
+                ? resolved
+                : typeof resolved === "string"
+                  ? await fs.readFile(resolved)
+                  : null;
+            if (buffer) return native.dominantColor(buffer);
+        } catch {
+            // fall through to the canvas implementation
+        }
+    }
+
+    return dominant_color_js(resolved);
 }
 
 export async function apply_dominant_color(target, source) {

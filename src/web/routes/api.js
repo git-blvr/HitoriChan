@@ -438,6 +438,62 @@ router.get("/overview", requireAuth, async (req, res) => {
   });
 });
 
+// Live vitals for the overview hero (per-guild when :guildId is given)
+router.get(["/vitals", "/vitals/:guildId"], requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const guildId = req.params.guildId || null;
+  const guild = guildId ? client.guilds.cache.get(guildId) : null;
+
+  const now = Date.now();
+  const dayStart = new Date().setHours(0, 0, 0, 0);
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  const body = {
+    bot: {
+      tag: client.user?.tag ?? "—",
+      avatar: client.user?.displayAvatarURL?.({ size: 64 }) ?? null,
+      status: client.user?.status ?? "online",
+      ping: client.ws.ping ?? -1,
+      uptime: Math.floor(process.uptime()),
+      guilds: client.guilds.cache.size,
+      users: Array.from(client.guilds.cache.values()).reduce((acc, g) => acc + (g.memberCount || 0), 0),
+    },
+    commands: {
+      registered: client.commands?.size ?? 0,
+      today: guildId ? CommandLog.countForGuild(guildId, dayStart) : null,
+      yesterday: guildId ? CommandLog.countForGuild(guildId, dayStart - dayMs, dayStart) : null,
+    },
+    tickets: { open: guildId ? await Ticket.countByStatus(guildId, "open") : null },
+  };
+
+  if (guild) {
+    const channels = Array.from(guild.channels.cache.values());
+    const voiceChannels = channels.filter((c) => c.isVoiceBased?.() ?? (c.type === ChannelType.GuildVoice || c.type === ChannelType.GuildStageVoice));
+    const activeTimeouts = guild.members.cache.filter(
+      (m) => m.communicationDisabledUntilTimestamp && m.communicationDisabledUntilTimestamp > now
+    ).size;
+
+    body.guild = {
+      id: guild.id,
+      name: guild.name,
+      icon: guild.iconURL?.() ?? null,
+      memberCount: guild.memberCount ?? null,
+      boostCount: guild.premiumSubscriptionCount ?? null,
+      boostTier: guild.premiumTier ?? null,
+      roleCount: guild.roles.cache.size,
+      channelCount: guild.channels.cache.size,
+      afkChannelId: guild.afkChannelId ?? null,
+      afkMembers: guild.afkChannel?.members?.size ?? 0,
+      voiceActive: voiceChannels.reduce((acc, c) => acc + (c.members?.size ?? 0), 0),
+      activeTimeouts,
+    };
+  } else {
+    body.guild = null;
+  }
+
+  res.json(body);
+});
+
 // Stats for chart
 router.get("/stats", requireAuth, async (req, res) => {
   const client = req.app.get("client");

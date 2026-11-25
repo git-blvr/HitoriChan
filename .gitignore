@@ -146,3 +146,8 @@ AGENTS.md
 nul
 
 tmp/
+
+.devin/
+# Rust native module
+native/target/
+native/*.node

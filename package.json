@@ -11,7 +11,8 @@
     "slist": "node src/scripts/listServers.js",
     "sleave": "node src/scripts/leaveServer.js",
     "inviteclear": "node src/scripts/clearInvites.js",
-    "deploy": "node src/scripts/deployCommands.js"
+    "deploy": "node src/scripts/deployCommands.js",
+    "build:native": "node src/scripts/buildNative.js"
   },
   "repository": {
     "type": "git",

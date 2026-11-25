@@ -13,6 +13,10 @@ const listRecent = db.prepare(`
   SELECT * FROM command_logs ORDER BY created_at DESC LIMIT ?
 `);
 
+const countGuildRange = db.prepare(`
+  SELECT COUNT(*) AS n FROM command_logs WHERE guild_id = ? AND created_at >= ? AND created_at < ?
+`);
+
 function buildFilteredQuery({ user, command, success }) {
   const clauses = ["guild_id = ?"];
   const params = [];
@@ -68,6 +72,10 @@ export function getForGuild(guildId, options = 100) {
 export function getRecent(limit = 100) {
   const rows = listRecent.all(limit);
   return rows.map(parse);
+}
+
+export function countForGuild(guildId, since = 0, until = Number.MAX_SAFE_INTEGER) {
+  return countGuildRange.get(guildId, since, until)?.n ?? 0;
 }
 
 function parse(row) {
