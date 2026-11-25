@@ -21,6 +21,16 @@ import { securityHeaders, noStore, sameSiteGuard } from "./middleware/security.j
 import { rateLimit } from "./middleware/rateLimit.js";
 import * as Audit from "../models/AuditLog.js";
 import * as Session from "../models/DashboardSession.js";
+import {
+  OAUTH_STATE_COOKIE,
+  OAUTH_STATE_TTL_MS,
+  oauthEnabled,
+  newState,
+  stateMatches,
+  buildAuthorizeUrl,
+  completeOAuth,
+  computeDiscordAccess,
+} from "./oauth.js";
 import api from "./routes/api.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -113,6 +123,83 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
     }
     res.clearCookie(SESSION_COOKIE, { path: "/" });
     res.json({ ok: true });
+  });
+
+  // ------------------------------------------------------------------
+  // Discord OAuth2 sign-in. Guild access is granted to servers the user
+  // OWNS that also contain the bot; developer IDs get every guild.
+  // ------------------------------------------------------------------
+  app.get("/auth/config", (req, res) => {
+    res.json({ oauth: oauthEnabled() });
+  });
+
+  app.get("/auth/discord", rateLimit({ windowMs: 60_000, maxRequests: 20, suffix: "oauth" }), (req, res) => {
+    if (!oauthEnabled()) return res.redirect("/?error=oauth_disabled");
+    const state = newState();
+    res.cookie(OAUTH_STATE_COOKIE, state, {
+      httpOnly: true,
+      maxAge: OAUTH_STATE_TTL_MS,
+      sameSite: "lax", // must survive the cross-site return navigation from Discord
+      secure: req.secure,
+      path: "/",
+    });
+    res.redirect(buildAuthorizeUrl(req, state));
+  });
+
+  app.get("/auth/discord/callback", rateLimit({ windowMs: 60_000, maxRequests: 40, suffix: "oauthcb" }), async (req, res) => {
+    res.clearCookie(OAUTH_STATE_COOKIE, { path: "/" });
+    if (!oauthEnabled()) return res.redirect("/?error=oauth_disabled");
+
+    const { state, code } = req.query;
+    if (!stateMatches(state, req.cookies?.[OAUTH_STATE_COOKIE])) {
+      return res.redirect("/?error=state");
+    }
+    if (typeof code !== "string" || !code) {
+      return res.redirect("/?error=oauth");
+    }
+
+    try {
+      const client = req.app.get("client");
+      const { me, guilds: oauthGuilds } = await completeOAuth(req, code);
+      const access = computeDiscordAccess(me, oauthGuilds, client);
+      const actor = access.identity.username;
+
+      if (!access.isDeveloper && access.guilds.length === 0) {
+        Audit.add({ actor, action: "auth.login.discord.denied", detail: "no owned guilds with the bot", ip: req.ip });
+        return res.redirect("/?error=no_guilds");
+      }
+
+      const { token } = createSession(
+        {
+          ...access.identity,
+          isAdmin: false,
+          permissions: access.permissions,
+          guilds: access.guilds,
+        },
+        { ip: req.ip, userAgent: req.headers["user-agent"] }
+      );
+      Audit.add({
+        actor,
+        action: "auth.login.discord",
+        detail: access.isDeveloper ? "developer" : `guilds=${access.guilds.length}`,
+        ip: req.ip,
+      });
+      res.cookie(SESSION_COOKIE, token, {
+        httpOnly: true,
+        maxAge: SESSION_TTL_MS,
+        // lax: the /dashboard navigation after the Discord redirect chain is
+        // still cross-site-initiated, so strict cookies would be withheld and
+        // the first landing would bounce back to the login page.
+        sameSite: "lax",
+        secure: req.secure,
+        path: "/",
+      });
+      res.redirect("/dashboard");
+    } catch (err) {
+      console.error("[oauth] callback failed:", err.message);
+      Audit.add({ actor: "discord", action: "auth.login.discord.fail", detail: String(err.message).slice(0, 200), ip: req.ip });
+      res.redirect("/?error=oauth");
+    }
   });
 
   app.use("/api", rateLimit({ windowMs: 60_000, maxRequests: 240, suffix: "api" }), auditMutations, api);

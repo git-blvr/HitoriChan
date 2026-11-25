@@ -78,7 +78,7 @@ export function registerCommandListeners(client) {
     const cmdInput = interaction.options.data.map((o) => `${o.name}: ${o.value}`).join(", ");
     try {
       await command.execute(ctx);
-      await CommandLog.create({
+      logCommand({
         guildId: ctx.guild?.id,
         channelId: ctx.channel?.id,
         userId: ctx.user.id,
@@ -87,10 +87,10 @@ export function registerCommandListeners(client) {
         source: "slash",
         input: cmdInput,
         success: true,
-      }).catch(() => {});
+      });
     } catch (error) {
       console.error(error);
-      await CommandLog.create({
+      logCommand({
         guildId: ctx.guild?.id,
         channelId: ctx.channel?.id,
         userId: ctx.user.id,
@@ -100,7 +100,7 @@ export function registerCommandListeners(client) {
         input: cmdInput,
         success: false,
         errorMessage: error.message,
-      }).catch(() => {});
+      });
       const payload = { ...safeMessagePayload("Something went wrong running that command."), flags: MessageFlags.Ephemeral };
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp(payload);
@@ -151,7 +151,7 @@ export function registerCommandListeners(client) {
 
     try {
       await command.execute(ctx);
-      await CommandLog.create({
+      logCommand({
         guildId: ctx.guild?.id,
         channelId: ctx.channel?.id,
         userId: ctx.user.id,
@@ -160,10 +160,10 @@ export function registerCommandListeners(client) {
         source: "prefix",
         input: args.join(" "),
         success: true,
-      }).catch(() => {});
+      });
     } catch (error) {
       console.error(error);
-      await CommandLog.create({
+      logCommand({
         guildId: ctx.guild?.id,
         channelId: ctx.channel?.id,
         userId: ctx.user.id,
@@ -173,10 +173,18 @@ export function registerCommandListeners(client) {
         input: args.join(" "),
         success: false,
         errorMessage: error.message,
-      }).catch(() => {});
+      });
       await message.reply(safeMessagePayload("Something went wrong running that command."));
     }
   });
+}
+
+function logCommand(data) {
+  try {
+    CommandLog.create(data);
+  } catch (error) {
+    console.error("Failed to log command:", error.message);
+  }
 }
 
 async function logMessage(message) {

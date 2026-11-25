@@ -6,10 +6,16 @@ import fs from "fs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
+// Newest build wins — a fresh `cargo build` output in target/release may be
+// newer than the copied root artifact when the root file is locked (e.g. the
+// bot has it loaded while a rebuild happens).
 const candidates = [
   path.join(__dirname, "..", "..", "native", "hitori_native.node"),
   path.join(__dirname, "..", "..", "native", "target", "release", "hitori_native.node"),
-];
+].sort((a, b) => {
+  const mt = (p) => (fs.existsSync(p) ? fs.statSync(p).mtimeMs : 0);
+  return mt(b) - mt(a);
+});
 
 let native = null;
 if (process.env.NATIVE_DISABLE === "1" || process.env.NATIVE_DISABLE === "true") {

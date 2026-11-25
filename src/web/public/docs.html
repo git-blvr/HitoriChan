@@ -1,175 +1,188 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex" />
-  <meta name="theme-color" content="#7c3aed" />
+  <meta name="theme-color" content="#000000" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <title>HitoriChan Dashboard Docs</title>
+  <link rel="stylesheet" href="/fonts.css" />
+  <link rel="stylesheet" href="/tokens.css" />
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/ui.css" />
   <style>
-    .docs-body {
-      margin: 0;
-      min-height: 100vh;
-      background: radial-gradient(circle at 15% 20%, #11111a 0%, #06060a 45%, #020203 100%);
-    }
-
     .docs-header {
       position: sticky;
       top: 0;
-      z-index: 100;
+      z-index: var(--z-topbar);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 28px;
-      background: var(--surface-glass);
-      border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(16px);
+      gap: calc(12px * var(--ui-scale));
+      padding: calc(14px * var(--ui-scale)) calc(24px * var(--ui-scale));
+      background: var(--surface-0);
+      border-bottom: calc(1px * var(--ui-scale)) solid var(--border-1);
     }
 
     .docs-header h1 {
-      font-size: 1.3rem;
       margin: 0;
-      background: linear-gradient(90deg, #c084fc, #8b5cf6);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: var(--text-xl);
+      color: var(--text-1);
+      letter-spacing: -0.01em;
     }
 
     .docs-header a {
-      color: var(--muted);
+      color: var(--text-2);
       text-decoration: none;
-      font-size: 0.95rem;
+      font-size: var(--text-sm);
+      transition: color var(--duration-1) var(--ease-out);
     }
 
-    .docs-header a:hover { color: var(--text); }
+    .docs-header a:hover { color: var(--text-1); }
 
     .docs-layout {
       display: grid;
-      grid-template-columns: 260px 1fr;
-      gap: 32px;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 32px 28px 80px;
+      grid-template-columns: calc(250px * var(--ui-scale)) 1fr;
+      gap: calc(28px * var(--ui-scale));
+      max-width: calc(1200px * var(--ui-scale));
+      margin-inline: auto;
+      padding: calc(28px * var(--ui-scale)) calc(24px * var(--ui-scale)) calc(80px * var(--ui-scale));
     }
 
     .docs-sidebar {
       position: sticky;
-      top: 82px;
-      height: calc(100vh - 120px);
+      top: calc(76px * var(--ui-scale));
+      height: calc(100vh - calc(96px * var(--ui-scale)));
       overflow-y: auto;
-      padding-right: 16px;
+      padding-inline-end: calc(12px * var(--ui-scale));
     }
 
     .docs-sidebar ul {
       list-style: none;
       margin: 0;
       padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: calc(2px * var(--ui-scale));
     }
-
-    .docs-sidebar li + li { margin-top: 4px; }
 
     .docs-sidebar a {
       display: block;
-      padding: 8px 14px;
-      border-radius: 10px;
-      color: var(--muted);
+      padding: calc(7px * var(--ui-scale)) calc(10px * var(--ui-scale));
+      border-radius: var(--radius-md);
+      border: calc(1px * var(--ui-scale)) solid transparent;
+      color: var(--text-2);
       text-decoration: none;
-      font-size: 0.92rem;
-      transition: background 0.15s, color 0.15s;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      transition: background var(--duration-1) var(--ease-out), color var(--duration-1) var(--ease-out), border-color var(--duration-1) var(--ease-out);
     }
 
-    .docs-sidebar a:hover,
+    .docs-sidebar a:hover { color: var(--text-1); background: var(--surface-2); }
+
     .docs-sidebar a.active {
-      background: rgba(139, 92, 246, 0.12);
-      color: var(--text);
+      color: var(--accent-readable);
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
     }
 
-    .docs-content h2 {
-      margin-top: 0;
-      padding-top: 82px;
-      margin-top: -82px;
-      color: var(--text);
-      font-size: 1.6rem;
+    .docs-content { min-width: 0; }
+
+    .docs-content .panel {
+      scroll-margin-top: calc(76px * var(--ui-scale));
+      margin-bottom: var(--section-gap);
     }
 
-    .docs-content h3 {
-      color: var(--text);
-      font-size: 1.2rem;
-      margin-top: 28px;
+    .docs-content h3 { margin-top: calc(22px * var(--ui-scale)); }
+
+    .docs-content p {
+      color: var(--text-2);
+      line-height: 1.65;
+      margin: calc(10px * var(--ui-scale)) 0;
     }
 
-    .docs-content p,
+    .docs-content ul {
+      margin: calc(8px * var(--ui-scale)) 0;
+      padding-inline-start: calc(22px * var(--ui-scale));
+    }
+
     .docs-content li {
-      color: var(--muted);
+      color: var(--text-2);
       line-height: 1.65;
     }
 
-    .docs-content strong { color: var(--text); }
+    .docs-content li + li { margin-top: calc(4px * var(--ui-scale)); }
 
-    .docs-content .panel {
-      margin-bottom: 24px;
-    }
+    .docs-content strong { color: var(--text-1); }
 
     .docs-content code {
-      background: var(--input);
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-family: "SFMono-Regular", Consolas, monospace;
-      font-size: 0.9em;
+      background: var(--surface-2);
+      border: calc(1px * var(--ui-scale)) solid var(--border-1);
+      padding: calc(1px * var(--ui-scale)) calc(6px * var(--ui-scale));
+      border-radius: var(--radius-xs);
+      font-family: var(--font-mono);
+      font-size: 0.88em;
     }
 
     .docs-content pre {
-      background: var(--input);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 16px;
+      background: var(--surface-0);
+      border: calc(1px * var(--ui-scale)) solid var(--border-1);
+      border-radius: var(--radius-md);
+      padding: calc(16px * var(--ui-scale));
       overflow-x: auto;
-      font-size: 0.9rem;
+      font-size: var(--text-sm);
+      line-height: 1.6;
     }
 
     .docs-content table {
       width: 100%;
       border-collapse: collapse;
-      margin: 12px 0;
+      margin: calc(12px * var(--ui-scale)) 0;
     }
 
     .docs-content th,
     .docs-content td {
-      text-align: left;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.92rem;
+      text-align: start;
+      padding: calc(9px * var(--ui-scale)) calc(12px * var(--ui-scale));
+      border-bottom: calc(1px * var(--ui-scale)) solid var(--border-1);
+      font-size: var(--text-sm);
     }
 
-    .docs-content th { color: var(--text); }
+    .docs-content th { color: var(--text-1); font-weight: 600; }
 
     .docs-tag {
       display: inline-block;
-      padding: 3px 10px;
-      border-radius: 20px;
-      background: rgba(139, 92, 246, 0.15);
-      border: 1px solid rgba(139, 92, 246, 0.3);
-      font-size: 0.78rem;
-      color: #d8b4fe;
-      margin-right: 6px;
+      padding: calc(3px * var(--ui-scale)) calc(10px * var(--ui-scale));
+      border-radius: calc(999px * var(--ui-scale));
+      background: var(--accent-soft);
+      border: calc(1px * var(--ui-scale)) solid var(--accent-border);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--accent-readable);
+      margin-inline-end: calc(6px * var(--ui-scale));
+    }
+
+    .docs-footer {
+      text-align: center;
+      color: var(--text-3);
+      font-size: var(--text-sm);
+      margin-top: calc(40px * var(--ui-scale));
     }
 
     @media (max-width: 900px) {
-      .docs-layout {
-        grid-template-columns: 1fr;
-      }
+      .docs-layout { grid-template-columns: 1fr; }
       .docs-sidebar {
         position: static;
         height: auto;
-        padding-right: 0;
+        padding-inline-end: 0;
       }
       .docs-sidebar ul {
-        display: flex;
+        flex-direction: row;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: calc(8px * var(--ui-scale));
       }
     }
   </style>
@@ -508,6 +521,7 @@
 
       <section class="panel" id="security">
         <h2>Security</h2>
+        <p>Sign-in is through Discord OAuth: you get access to the servers you <strong>own</strong> that have the bot. Developer accounts (configured with <code>DEV_USER_IDS</code>) get access to every server. Local dashboard accounts still work for staff access.</p>
         <p>The Security section is visible only to the built-in Admin account (or users with the <code>security</code> permission). It shows account and session security status.</p>
         <ul>
           <li><strong>Your session</strong> — shows the current login session with its expiry time and a <em>Sign out</em> button.</li>
@@ -530,7 +544,7 @@
         </ul>
       </section>
 
-      <p style="text-align:center; color:var(--muted); font-size:0.85rem; margin-top: 40px;">Documentation version matches the dashboard. Last updated with the Security release.</p>
+      <p class="docs-footer">Documentation version matches the dashboard. Last updated with the Security release.</p>
     </main>
   </div>
 

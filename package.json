@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node src/scripts/smokeWeb.js",
     "smoke": "node src/scripts/smokeWeb.js",
+    "test:commands": "node scripts/test-commands.mjs",
     "start": "node index.js",
     "dev": "nodemon index.js",
     "slist": "node src/scripts/listServers.js",

@@ -1,11 +1,40 @@
 const passwordInput = document.getElementById("password");
 const toggleBtn = document.getElementById("toggle-password");
 const errorEl = document.getElementById("login-error");
+const discordBtn = document.getElementById("discord-login");
+const discordNote = document.getElementById("discord-note");
+const localDetails = document.getElementById("login-local");
 
-if (new URLSearchParams(location.search).get("expired")) {
-  errorEl.textContent = "Your session expired. Please log in again.";
+const ERROR_MESSAGES = {
+  expired: "Your session expired. Please log in again.",
+  no_guilds: "No manageable servers found. You must own a server that has the bot.",
+  oauth: "Discord sign-in failed. Please try again.",
+  state: "Sign-in session expired. Please try again.",
+  oauth_disabled: "Discord sign-in is not configured on this dashboard.",
+};
+
+const params = new URLSearchParams(location.search);
+const errorCode = params.get("expired") ? "expired" : params.get("error");
+if (errorCode && ERROR_MESSAGES[errorCode]) {
+  errorEl.textContent = ERROR_MESSAGES[errorCode];
   errorEl.hidden = false;
 }
+
+// Show the Discord button when OAuth is configured; otherwise the local
+// account form is the only way in, so open it directly.
+fetch("/auth/config")
+  .then((res) => (res.ok ? res.json() : { oauth: false }))
+  .then((cfg) => {
+    if (cfg.oauth) {
+      discordBtn.hidden = false;
+      discordNote.hidden = false;
+    } else {
+      localDetails.open = true;
+    }
+  })
+  .catch(() => {
+    localDetails.open = true;
+  });
 
 const EYE_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
 const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.1 6.1A16 16 0 0 0 2 12s3.5 7 10 7c1.2 0 2.3-.2 3.3-.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';

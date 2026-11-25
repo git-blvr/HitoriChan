@@ -6,8 +6,8 @@ const TOKEN_BYTES = 32;
 const PRUNE_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const insertStmt = db.prepare(
-  `INSERT INTO dashboard_sessions (token_hash, username, is_admin, permissions, ip, user_agent, created_at, last_seen_at, expires_at)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  `INSERT INTO dashboard_sessions (token_hash, username, is_admin, permissions, auth_type, discord_id, display_name, avatar, guilds, ip, user_agent, created_at, last_seen_at, expires_at)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 );
 const getByHashStmt = db.prepare("SELECT * FROM dashboard_sessions WHERE token_hash = ?");
 const touchStmt = db.prepare("UPDATE dashboard_sessions SET last_seen_at = ?, expires_at = ?, ip = ?, user_agent = ? WHERE id = ?");
@@ -31,6 +31,12 @@ function fromRow(row) {
     permissions: JSON.parse(row.permissions || "[]"),
     ip: row.ip,
     userAgent: row.user_agent,
+    authType: row.auth_type || "local",
+    discordId: row.discord_id || null,
+    displayName: row.display_name || null,
+    avatar: row.avatar || null,
+    // null guilds = unrestricted (local users & developers); array = ACL list
+    guilds: row.guilds ? JSON.parse(row.guilds) : null,
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
     expiresAt: row.expires_at,
@@ -38,12 +44,14 @@ function fromRow(row) {
   };
 }
 
-export function create({ username, isAdmin = false, permissions = [], ip = null, userAgent = null, ttlMs }) {
+export function create({ username, isAdmin = false, permissions = [], authType = "local", discordId = null, displayName = null, avatar = null, guilds = null, ip = null, userAgent = null, ttlMs }) {
   const token = TOKEN_PREFIX + randomBytes(TOKEN_BYTES).toString("base64url");
   const now = Date.now();
   const expiresAt = now + ttlMs;
   const result = insertStmt.run(
     hashToken(token), username, isAdmin ? 1 : 0, JSON.stringify(permissions),
+    authType, discordId, displayName, avatar,
+    guilds == null ? null : JSON.stringify(guilds),
     ip, userAgent && String(userAgent).slice(0, 512), now, now, expiresAt
   );
   return { token, id: result.lastInsertRowid, expiresAt };

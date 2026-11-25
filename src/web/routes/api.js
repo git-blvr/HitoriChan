@@ -24,6 +24,7 @@ import * as User from "../../models/User.js";
 import * as Session from "../../models/DashboardSession.js";
 import * as Audit from "../../models/AuditLog.js";
 import { revokeAllSessionsForUser } from "../auth.js";
+import { MAIN_GUILD_ID } from "../oauth.js";
 import * as Quest from "../../models/Quest.js";
 import * as QuestProgress from "../../models/QuestProgress.js";
 import * as QuestBoard from "../../models/QuestBoard.js";
@@ -33,8 +34,11 @@ import * as MarriageSettings from "../../models/MarriageSettings.js";
 import * as InteractionSettings from "../../models/InteractionSettings.js";
 import { DEFAULT_INTERACTIONS } from "../../utils/interactions.js";
 import { requirePermission } from "../middleware/auth.js";
+import gifmakerRouter from "./gifmaker.js";
 
 const router = Router();
+
+router.use("/gifmaker", gifmakerRouter);
 
 // ---------------------------------------------------------------------------
 // Auth / session management (any authenticated user)
@@ -43,8 +47,15 @@ router.get("/auth/me", requireAuth, (req, res) => {
   res.json({
     user: {
       username: req.user.username,
+      displayName: req.user.displayName,
+      avatar: req.user.avatar,
+      discordId: req.user.discordId,
+      authType: req.user.authType,
+      isDeveloper: req.user.isDeveloper,
+      mainGuildId: req.user.isDeveloper ? MAIN_GUILD_ID : null,
       isAdmin: req.user.isAdmin,
       permissions: req.user.permissions,
+      guilds: req.user.guilds,
     },
     session: {
       id: req.session.id,
@@ -59,6 +70,9 @@ router.get("/auth/me", requireAuth, (req, res) => {
 
 router.post("/auth/password", requireAuth, async (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
+  if (req.user.authType === "discord") {
+    return res.status(400).json({ error: "This account signs in with Discord — there is no local password." });
+  }
   if (req.user.isAdmin) {
     return res.status(400).json({
       error: "The bootstrap admin password is generated at startup. Set DASHBOARD_PASSWORD in the environment to choose a persistent one.",
@@ -115,10 +129,50 @@ router.get("/security/audit", requireAuth, requirePermission("security"), (req, 
   res.json(Audit.list({ limit, action, actor }));
 });
 
+// Guilds the session is allowed to see. Admins/developers/local users get
+// everything; Discord sign-ins get only the guilds they owned at login.
+function accessibleGuilds(client, user) {
+  const all = Array.from(client.guilds.cache.values());
+  if (!user || user.isAdmin || user.isDeveloper || user.guilds == null) return all;
+  const allowed = new Set(user.guilds.map(String));
+  return all.filter((g) => allowed.has(g.id));
+}
+
+// Persisted channel/role references must belong to the guild being edited —
+// otherwise a scoped owner could point logs/welcomes/transcripts at channels
+// in a guild outside their ACL.
+async function channelBelongsToGuild(client, guildId, channelId) {
+  if (channelId == null || channelId === "") return true;
+  let channel = client.channels.cache.get(channelId);
+  if (!channel && typeof client.channels.fetch === "function") {
+    channel = await client.channels.fetch(channelId).catch(() => null);
+  }
+  const owner = channel?.guildId ?? channel?.guild?.id ?? null;
+  return owner === guildId;
+}
+
+async function roleBelongsToGuild(guild, roleId) {
+  if (roleId == null || roleId === "") return true;
+  if (!guild) return false;
+  if (guild.roles.cache.has(roleId)) return true;
+  if (typeof guild.roles.fetch === "function") {
+    return Boolean(await guild.roles.fetch(roleId).catch(() => null));
+  }
+  return false;
+}
+
+async function channelsInGuild(req, ids) {
+  const client = req.app.get("client");
+  for (const id of ids) {
+    if (!(await channelBelongsToGuild(client, req.params.guildId, id))) return false;
+  }
+  return true;
+}
+
 // Guilds list
 router.get("/guilds", requireAuth, async (req, res) => {
   const client = req.app.get("client");
-  const guilds = Array.from(client.guilds.cache.values()).map((g) => ({
+  const guilds = accessibleGuilds(client, req.user).map((g) => ({
     id: g.id,
     name: g.name,
     icon: g.iconURL?.() ?? null,
@@ -186,7 +240,7 @@ router.post("/guilds/:guildId/resolve", requireAuth, async (req, res) => {
   const result = { users: {}, roles: {}, channels: {} };
 
   for (const id of users) {
-    const member = guild.members.cache.get(id) || client.users.cache.get(id);
+    const member = guild.members.cache.get(id) || (req.user.guilds == null ? client.users.cache.get(id) : null);
     if (member) {
       const user = member.user || member;
       result.users[id] = {
@@ -204,7 +258,7 @@ router.post("/guilds/:guildId/resolve", requireAuth, async (req, res) => {
   }
 
   for (const id of channels) {
-    const channel = client.channels.cache.get(id) || guild.channels.cache.get(id);
+    const channel = guild.channels.cache.get(id);
     if (channel) result.channels[id] = { id, name: channel.name, type: channel.type };
   }
 
@@ -275,6 +329,9 @@ router.get("/ai/:guildId", requireAuth, async (req, res) => {
 
 router.post("/ai/:guildId", requireAuth, async (req, res) => {
   const { enabled, mode, channelId, customPrompt } = req.body;
+  if (!(await channelsInGuild(req, [channelId]))) {
+    return res.status(400).json({ error: "Channel does not belong to this server" });
+  }
   await AISettings.set(req.params.guildId, { enabled, mode, channelId, customPrompt });
   res.json({ ok: true });
 });
@@ -287,6 +344,9 @@ router.get("/streak/:guildId", requireAuth, async (req, res) => {
 
 router.post("/streak/:guildId", requireAuth, async (req, res) => {
   const { enabled, trackChannelId, notifyChannelId } = req.body;
+  if (!(await channelsInGuild(req, [trackChannelId, notifyChannelId]))) {
+    return res.status(400).json({ error: "Channel does not belong to this server" });
+  }
   await StreakSettings.set(req.params.guildId, { enabled, trackChannelId, notifyChannelId });
   res.json({ ok: true });
 });
@@ -321,6 +381,13 @@ router.get("/moderation/:guildId", requireAuth, async (req, res) => {
 
 router.post("/moderation/:guildId", requireAuth, async (req, res) => {
   const { logChannelId, modRoleId } = req.body;
+  if (!(await channelsInGuild(req, [logChannelId]))) {
+    return res.status(400).json({ error: "Channel does not belong to this server" });
+  }
+  const guild = req.app.get("client").guilds.cache.get(req.params.guildId);
+  if (!(await roleBelongsToGuild(guild, modRoleId))) {
+    return res.status(400).json({ error: "Role does not belong to this server" });
+  }
   await ModerationSettings.set(req.params.guildId, { logChannelId, modRoleId });
   res.json({ ok: true });
 });
@@ -409,15 +476,30 @@ router.get("/overview", requireAuth, async (req, res) => {
   const oneDay = 24 * 60 * 60 * 1000;
   const oneWeek = 7 * oneDay;
 
-  const msgStats = MessageLog.getStats(null, now - oneWeek);
-  const voiceStats = VoiceSession.getVoiceStats(null, now - oneWeek);
+  const scope = accessibleGuilds(client, req.user);
+  const globalScope = scope.length === client.guilds.cache.size;
+  const msgStats = globalScope
+    ? MessageLog.getStats(null, now - oneWeek)
+    : scope.reduce((acc, g) => {
+        const s = MessageLog.getStats(g.id, now - oneWeek);
+        acc.total += s.total;
+        acc.uniqueUsers += s.uniqueUsers;
+        return acc;
+      }, { total: 0, uniqueUsers: 0 });
+  const voiceStats = globalScope
+    ? VoiceSession.getVoiceStats(null, now - oneWeek)
+    : scope.reduce((acc, g) => {
+        const s = VoiceSession.getVoiceStats(g.id, now - oneWeek);
+        acc.hours += s.hours;
+        return acc;
+      }, { hours: 0 });
 
   res.json({
     bot: {
       tag: client.user?.tag,
       status: client.user?.status ?? "online",
-      guilds: client.guilds.cache.size,
-      users: Array.from(client.guilds.cache.values()).reduce((acc, g) => acc + (g.memberCount || 0), 0),
+      guilds: scope.length,
+      users: scope.reduce((acc, g) => acc + (g.memberCount || 0), 0),
       uptime: Math.floor(process.uptime()),
       ping: client.ws.ping ?? -1,
       apiStatus: client.ws.ping >= 0 ? "ok" : "degraded",
@@ -444,6 +526,8 @@ router.get(["/vitals", "/vitals/:guildId"], requireAuth, async (req, res) => {
   const guildId = req.params.guildId || null;
   const guild = guildId ? client.guilds.cache.get(guildId) : null;
 
+  const scope = accessibleGuilds(client, req.user);
+
   const now = Date.now();
   const dayStart = new Date().setHours(0, 0, 0, 0);
   const dayMs = 24 * 60 * 60 * 1000;
@@ -455,8 +539,8 @@ router.get(["/vitals", "/vitals/:guildId"], requireAuth, async (req, res) => {
       status: client.user?.status ?? "online",
       ping: client.ws.ping ?? -1,
       uptime: Math.floor(process.uptime()),
-      guilds: client.guilds.cache.size,
-      users: Array.from(client.guilds.cache.values()).reduce((acc, g) => acc + (g.memberCount || 0), 0),
+      guilds: scope.length,
+      users: scope.reduce((acc, g) => acc + (g.memberCount || 0), 0),
     },
     commands: {
       registered: client.commands?.size ?? 0,
@@ -501,7 +585,7 @@ router.get("/stats", requireAuth, async (req, res) => {
   const daysNum = Math.min(Math.max(Number(days) || 7, 1), 90);
   const since = Date.now() - daysNum * 24 * 60 * 60 * 1000;
 
-  const guilds = Array.from(client.guilds.cache.values());
+  const guilds = accessibleGuilds(client, req.user);
   const data = await Promise.all(guilds.map(async (g) => {
     const msgStats = MessageLog.getStats(g.id, since);
     const voiceStats = VoiceSession.getVoiceStats(g.id, since);
@@ -590,9 +674,21 @@ router.get("/tickets/panels/:guildId", requireAuth, async (req, res) => {
   res.json(panels);
 });
 
+async function panelRefsValid(req, data) {
+  if (!(await channelsInGuild(req, [data.categoryId, data.transcriptChannelId]))) return false;
+  const guild = req.app.get("client").guilds.cache.get(req.params.guildId);
+  for (const id of [data.staffRoleId, ...(data.staffRoleIds || [])]) {
+    if (!(await roleBelongsToGuild(guild, id))) return false;
+  }
+  return true;
+}
+
 router.post("/tickets/panels/:guildId", requireAuth, async (req, res) => {
   const data = parsePanelBody(req.body);
   if (!data.name) return res.status(400).json({ error: "Panel name is required" });
+  if (!(await panelRefsValid(req, data))) {
+    return res.status(400).json({ error: "Channel or role does not belong to this server" });
+  }
 
   const existing = await TicketPanel.getByName(req.params.guildId, data.name);
   if (existing) return res.status(409).json({ error: "A panel with that name already exists" });
@@ -612,6 +708,9 @@ router.post("/tickets/panels/:guildId/:panelId", requireAuth, async (req, res) =
   if (!panel || panel.guildId !== req.params.guildId) return res.status(404).json({ error: "Panel not found" });
 
   const data = parsePanelBody(req.body);
+  if (!(await panelRefsValid(req, data))) {
+    return res.status(400).json({ error: "Channel or role does not belong to this server" });
+  }
   if (data.name) {
     const existing = await TicketPanel.getByName(req.params.guildId, data.name);
     if (existing && existing.id !== panel.id) return res.status(409).json({ error: "A panel with that name already exists" });
@@ -663,6 +762,10 @@ router.post("/tickets/panels/:guildId/:panelId/send", requireAuth, async (req, r
   const { channelId } = req.body;
   const channel = client.channels.cache.get(channelId);
   if (!channel?.isTextBased()) return res.status(400).json({ error: "Invalid channel" });
+  const channelGuildId = channel.guildId ?? channel.guild?.id ?? null;
+  if (channelGuildId !== req.params.guildId) {
+    return res.status(400).json({ error: "Channel does not belong to this server" });
+  }
 
   const customId = `ticket:create:${panel.id}`;
   const payload = await buildTicketPanelPayload(panel, customId);
@@ -813,6 +916,9 @@ router.get("/shop/settings/:guildId", requireAuth, async (req, res) => {
 
 router.post("/shop/settings/:guildId", requireAuth, async (req, res) => {
   const { shopChannelId, shopInterfaceEnabled, shopInterfaceComponents, shopInterfaceColor, shopInterfaceUseDominantColor } = req.body;
+  if (!(await channelsInGuild(req, [shopChannelId]))) {
+    return res.status(400).json({ error: "Channel does not belong to this server" });
+  }
   await GuildSettings.save(req.params.guildId, {
     shopChannelId: shopChannelId?.trim() || null,
     shopInterfaceEnabled: shopInterfaceEnabled !== undefined ? Boolean(shopInterfaceEnabled) : undefined,
@@ -846,6 +952,9 @@ router.get("/welcome/:guildId", requireAuth, async (req, res) => {
 
 router.post("/welcome/:guildId", requireAuth, async (req, res) => {
   const values = req.body || {};
+  if (!(await channelsInGuild(req, [values.welcomeChannelId, values.goodbyeChannelId]))) {
+    return res.status(400).json({ error: "Channel does not belong to this server" });
+  }
   await GuildSettings.save(req.params.guildId, {
     welcomeEnabled: values.welcomeEnabled !== undefined ? Boolean(values.welcomeEnabled) : undefined,
     welcomeChannelId: values.welcomeChannelId !== undefined ? (values.welcomeChannelId?.trim() || null) : undefined,
@@ -949,6 +1058,14 @@ router.post("/boost/:guildId", requireAuth, async (req, res) => {
     earningsMultiplier, level, specialCommands, messageChannelId, thankMessage,
   } = req.body;
 
+  if (!(await channelsInGuild(req, [messageChannelId]))) {
+    return res.status(400).json({ error: "Channel does not belong to this server" });
+  }
+  const guild = req.app.get("client").guilds.cache.get(req.params.guildId);
+  if (!(await roleBelongsToGuild(guild, roleId))) {
+    return res.status(400).json({ error: "Role does not belong to this server" });
+  }
+
   await BoostSettings.save(req.params.guildId, {
     enabled: enabled !== undefined ? Boolean(enabled) : undefined,
     rewardPrimary: rewardPrimary !== undefined ? Math.max(0, Number(rewardPrimary) || 0) : undefined,
@@ -1010,6 +1127,9 @@ router.get("/quests/:guildId/board", requireAuth, requirePermission("quests"), a
 
 router.post("/quests/:guildId/board", requireAuth, requirePermission("quests"), async (req, res) => {
   const { channelId, enabled } = req.body || {};
+  if (!(await channelsInGuild(req, [channelId]))) {
+    return res.status(400).json({ error: "Channel does not belong to this server" });
+  }
   await QuestBoard.save(req.params.guildId, { channelId, enabled });
   const messageId = await updateQuestBoard(req.app.get("client"), req.params.guildId);
   res.json({ ok: true, messageId });

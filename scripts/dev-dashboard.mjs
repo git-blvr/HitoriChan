@@ -96,6 +96,9 @@ const guild = {
   },
 };
 
+// Channels need guildId so the dashboard's same-guild checks pass.
+for (const ch of channels.values()) ch.guildId = guild.id;
+
 const fakeCommand = (name, cat) => ({
   data: { name },
   category: cat,

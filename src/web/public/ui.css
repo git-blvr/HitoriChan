@@ -47,6 +47,10 @@
   margin-bottom: calc(30px * var(--ui-scale));
 }
 
+.brand-text { display: flex; flex-direction: column; min-width: 0; }
+.brand-name { font-size: var(--text-md); font-weight: 600; color: var(--text-1); }
+.brand-sub { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-3); }
+
 .login-card h1 {
   font-family: var(--font-mono);
   font-size: calc(22px * var(--ui-scale));
@@ -123,6 +127,58 @@
 }
 .login-btn:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
 
+.login-discord {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(10px * var(--ui-scale));
+  width: 100%;
+  padding: calc(12px * var(--ui-scale));
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  border: calc(1px * var(--ui-scale)) solid var(--accent);
+  color: var(--accent-contrast);
+  font-size: var(--text-md);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--duration-1) var(--ease-out), border-color var(--duration-1) var(--ease-out), transform var(--duration-1) var(--ease-out);
+}
+.login-discord:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+.login-discord:active { transform: translateY(calc(1px * var(--ui-scale))); }
+.login-discord svg { width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale)); flex: none; }
+.login-discord[hidden] { display: none; }
+
+.login-note {
+  margin: calc(10px * var(--ui-scale)) 0 0;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+.login-note[hidden] { display: none; }
+
+.login-local { margin-top: calc(22px * var(--ui-scale)); }
+.login-local summary {
+  display: flex;
+  align-items: center;
+  gap: calc(10px * var(--ui-scale));
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.login-local summary::before,
+.login-local summary::after {
+  content: "";
+  flex: 1;
+  height: calc(1px * var(--ui-scale));
+  background: var(--border-1);
+}
+.login-local summary::-webkit-details-marker { display: none; }
+.login-local summary:hover { color: var(--text-2); }
+.login-local summary .login-form { margin-top: calc(4px * var(--ui-scale)); }
+
 .login-error {
   margin-top: calc(14px * var(--ui-scale));
   padding: calc(10px * var(--ui-scale)) calc(12px * var(--ui-scale));
@@ -177,7 +233,7 @@
   text-overflow: ellipsis;
 }
 .select-filter-option:hover, .select-filter-option.active { background: var(--surface-3); }
-.select-filter-option.selected { color: var(--accent); }
+.select-filter-option.selected { color: var(--accent-readable); }
 
 .combobox { position: relative; flex: 1; min-width: calc(160px * var(--ui-scale)); }
 .combobox-input {
@@ -225,7 +281,7 @@
   text-overflow: ellipsis;
 }
 .combobox-option:hover, .combobox-option.active { background: var(--surface-3); }
-.combobox-option.selected { color: var(--accent); }
+.combobox-option.selected { color: var(--accent-readable); }
 
 .combobox-multi { display: flex; flex-direction: column; gap: calc(6px * var(--ui-scale)); }
 .combobox-pills { display: flex; flex-wrap: wrap; gap: calc(6px * var(--ui-scale)); }
@@ -321,7 +377,7 @@
   color: var(--text-1);
   overflow: hidden;
 }
-.dsl-token-keyword { color: var(--accent); font-weight: 500; }
+.dsl-token-keyword { color: var(--accent-readable); font-weight: 500; }
 .dsl-token-string { color: #86efac; }
 [data-theme="light"] .dsl-token-string { color: #15803d; }
 .dsl-token-number { color: #fdba74; }

@@ -28,14 +28,17 @@
   --text-2: #a3a3a3;
   --text-3: #6b6b6b;
 
-  /* Signal accent — phosphor. Overridden by the theme engine. */
-  --accent: #00ff1e;
+  /* Signal accent — neon pink. Overridden by the theme engine. */
+  --accent: #ff2ec4;
   --accent-strong: color-mix(in srgb, var(--accent) 86%, #ffffff);
   --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
   --accent-softer: color-mix(in srgb, var(--accent) 7%, transparent);
   --accent-border: color-mix(in srgb, var(--accent) 32%, transparent);
   --accent-glow: 0 0 calc(14px * var(--ui-scale)) color-mix(in srgb, var(--accent) 22%, transparent);
   --accent-contrast: #000000;
+  /* Accent as a text color — JS swaps this for black/white when the
+     accent would be illegible on the surface (see accentReadable). */
+  --accent-readable: var(--accent);
 
   /* Semantic */
   --success: #00ff1e;

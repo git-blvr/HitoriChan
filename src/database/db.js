@@ -558,6 +558,16 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor, created_at);
     `,
   },
+  {
+    version: 29,
+    sql: `
+      ALTER TABLE dashboard_sessions ADD COLUMN auth_type TEXT NOT NULL DEFAULT 'local';
+      ALTER TABLE dashboard_sessions ADD COLUMN discord_id TEXT;
+      ALTER TABLE dashboard_sessions ADD COLUMN display_name TEXT;
+      ALTER TABLE dashboard_sessions ADD COLUMN avatar TEXT;
+      ALTER TABLE dashboard_sessions ADD COLUMN guilds TEXT;
+    `,
+  },
 ];
 
 export function migrate() {

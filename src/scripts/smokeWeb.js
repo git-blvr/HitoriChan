@@ -15,8 +15,16 @@ process.env.WEB_PORT = "3199";
 const { startWebServer } = await import("../web/server.js");
 const { closeDatabase } = await import("../database/db.js");
 
+const stubGuild = (id, name) => ({
+  id, name, memberCount: 10,
+  iconURL: () => null,
+  channels: { cache: new Map() },
+  roles: { cache: new Map() },
+  emojis: { cache: new Map() },
+  members: { cache: new Map(), fetch: async () => new Map() },
+});
 const stubClient = {
-  guilds: { cache: new Map() },
+  guilds: { cache: new Map([["g1", stubGuild("g1", "Guild One")], ["g2", stubGuild("g2", "Guild Two")]]) },
   users: { cache: new Map() },
   channels: { cache: new Map() },
   commands: new Map(),
@@ -168,6 +176,54 @@ try {
   res = await req("/api/security/audit", { cookie: adminCookie });
   const audit = await res.json();
   check("Audit log records events", res.status === 200 && audit.some((a) => a.action === "auth.login"));
+
+  // --- Discord-scoped session ACL ---
+  const { createSession } = await import("../web/auth.js");
+  const { token: scopedToken } = createSession(
+    {
+      username: "discord:999",
+      displayName: "ScopedOwner",
+      authType: "discord",
+      discordId: "999",
+      isAdmin: false,
+      permissions: ["overview", "moderation"],
+      guilds: ["g1"],
+    },
+    { ip: "127.0.0.1", userAgent: "smoke" }
+  );
+  const scopedCookie = `hc_session=${scopedToken}`;
+
+  res = await req("/api/auth/me", { cookie: scopedCookie });
+  const scopedMe = await res.json();
+  check("Discord session resolves without local account", res.status === 200 && scopedMe.user.discordId === "999");
+
+  res = await req("/api/guilds", { cookie: scopedCookie });
+  const scopedGuilds = await res.json();
+  check("/api/guilds filtered to owned guilds", scopedGuilds.length === 1 && scopedGuilds[0].id === "g1");
+
+  res = await req("/api/moderation/g1", { cookie: scopedCookie });
+  check("Scoped user reaches owned guild", res.status === 200);
+  res = await req("/api/moderation/g2", { cookie: scopedCookie });
+  check("Scoped user 403 on foreign guild", res.status === 403);
+  res = await req("/api/guilds/g2/channels", { cookie: scopedCookie });
+  check("Scoped user 403 on foreign guild metadata", res.status === 403);
+
+  res = await req("/api/stats", { cookie: scopedCookie });
+  const scopedStats = await res.json();
+  check("/api/stats scoped to owned guilds", scopedStats.data.length === 1 && scopedStats.data[0].guildId === "g1");
+
+  res = await req("/api/overview", { cookie: scopedCookie });
+  const scopedOverview = await res.json();
+  check("/api/overview scoped", scopedOverview.bot.guilds === 1);
+
+  // --- OAuth endpoints when not configured ---
+  res = await req("/auth/config");
+  const authCfg = await res.json();
+  check("/auth/config reports oauth disabled", authCfg.oauth === false);
+  res = await req("/auth/discord");
+  check("/auth/discord without secret bounces to login", res.status === 302 && res.headers.get("location") === "/?error=oauth_disabled");
+  res = await req("/auth/discord/callback?state=x&code=y");
+  check("/auth/discord/callback without secret bounces", res.status === 302 && res.headers.get("location") === "/?error=oauth_disabled");
 
   // --- Login lockout ---
   for (let i = 0; i < 6; i++) {

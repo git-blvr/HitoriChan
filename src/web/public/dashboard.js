@@ -16,15 +16,21 @@ const resolvedCache = { users: {}, roles: {}, channels: {} };
 // Theme engine — mode, accent, density. Persisted per browser.
 // ---------------------------------------------------------------------------
 const THEME_KEY = "hc-theme-v1";
-const THEME_DEFAULT = { mode: "dark", accent: "#00ff1e", scale: 1, collapsed: false };
+const THEME_DEFAULT = { mode: "dark", accent: "#ff2ec4", scale: 1, collapsed: false, font: "geist", tz: "UTC" };
 const ACCENT_PRESETS = [
+  { id: "pink", color: "#ff2ec4" },
   { id: "phosphor", color: "#00ff1e" },
-  { id: "magenta", color: "#ff2ec4" },
   { id: "violet", color: "#8b5cf6" },
   { id: "amber", color: "#ffb224" },
   { id: "cyan", color: "#22d3ee" },
   { id: "crimson", color: "#ff4d4f" },
 ];
+const FONT_STACKS = {
+  geist: '"Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  mono: '"Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
+  serif: '"Instrument Serif", Georgia, "Times New Roman", serif',
+  system: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+};
 
 let theme = loadTheme();
 
@@ -40,13 +46,36 @@ function saveTheme() {
   try { localStorage.setItem(THEME_KEY, JSON.stringify(theme)); } catch { /* private mode */ }
 }
 
-function accentContrast(hex) {
+function hexLuminance(hex) {
   const c = String(hex || "").replace("#", "");
-  if (c.length !== 6) return "#000000";
-  const r = parseInt(c.slice(0, 2), 16) / 255;
-  const g = parseInt(c.slice(2, 4), 16) / 255;
-  const b = parseInt(c.slice(4, 6), 16) / 255;
-  return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 0.55 ? "#000000" : "#ffffff";
+  if (c.length !== 6) return 0;
+  const ch = (i) => {
+    const v = parseInt(c.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * ch(0) + 0.7152 * ch(2) + 0.0722 * ch(4);
+}
+
+function contrastRatio(a, b) {
+  const [hi, lo] = [hexLuminance(a), hexLuminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+// Whichever of black/white reads better on the given background.
+function readableOn(bgHex) {
+  return contrastRatio(bgHex, "#000000") >= contrastRatio(bgHex, "#ffffff") ? "#000000" : "#ffffff";
+}
+
+// Text/icon color for elements sitting ON a solid accent background —
+// flips to the legible side if the pair would be (nearly) invisible.
+function accentContrast(hex) {
+  return readableOn(hex);
+}
+
+// Accent used as a text color on tinted/plain surfaces — keeps the accent
+// when it's legible, falls back to black/white when it would blend in.
+function accentReadable(accent, surface) {
+  return contrastRatio(accent, surface) >= 3 ? accent : readableOn(surface);
 }
 
 function applyTheme() {
@@ -54,11 +83,16 @@ function applyTheme() {
   root.dataset.theme = theme.mode;
   root.style.setProperty("--accent", theme.accent);
   root.style.setProperty("--accent-contrast", accentContrast(theme.accent));
+  root.style.setProperty("--accent-readable",
+    accentReadable(theme.accent, theme.mode === "light" ? "#fafafa" : "#050505"));
   root.style.setProperty("--ui-scale", String(theme.scale || 1));
+  root.style.setProperty("--font-ui", FONT_STACKS[theme.font] || FONT_STACKS.geist);
   document.body.classList.toggle("nav-collapsed", theme.collapsed === true);
 
   document.querySelectorAll("#theme-mode .seg-btn").forEach((b) =>
     b.classList.toggle("active", b.dataset.mode === theme.mode));
+  document.querySelectorAll("#theme-font .seg-btn").forEach((b) =>
+    b.classList.toggle("active", b.dataset.font === (theme.font || "geist")));
   document.querySelectorAll(".accent-swatch").forEach((s) =>
     s.classList.toggle("active", s.dataset.color.toLowerCase() === String(theme.accent).toLowerCase()));
   const scaleInput = document.getElementById("ui-scale");
@@ -67,6 +101,12 @@ function applyTheme() {
   if (scaleVal) scaleVal.textContent = `${Math.round((theme.scale || 1) * 100)}%`;
   const custom = document.getElementById("accent-custom");
   if (custom && custom.value.toLowerCase() !== String(theme.accent).toLowerCase()) custom.value = theme.accent;
+  const tzSel = document.getElementById("tz-select");
+  if (tzSel && tzSel.value !== theme.tz) {
+    if (tzSel._setFilter) tzSel._setFilter(theme.tz);
+    else tzSel.value = theme.tz;
+  }
+  updateGreeting();
 }
 
 function setTheme(patch) {
@@ -98,6 +138,18 @@ function initThemeUI() {
 
   document.querySelectorAll("#theme-mode .seg-btn").forEach((b) =>
     b.addEventListener("click", () => setTheme({ mode: b.dataset.mode })));
+
+  document.querySelectorAll("#theme-font .seg-btn").forEach((b) =>
+    b.addEventListener("click", () => setTheme({ font: b.dataset.font })));
+
+  const tzSel = document.getElementById("tz-select");
+  if (tzSel) {
+    const zones = ["UTC", "local", ...(Intl.supportedValuesOf?.("timeZone") || [])];
+    tzSel.innerHTML = zones.map((z) =>
+      `<option value="${z}">${z === "local" ? "Local (browser)" : z}</option>`).join("");
+    tzSel.value = theme.tz || "UTC";
+    tzSel.addEventListener("change", () => setTheme({ tz: tzSel.value }));
+  }
 
   grid.addEventListener("click", (e) => {
     const sw = e.target.closest(".accent-swatch");
@@ -370,11 +422,12 @@ async function loadGuilds() {
   guildSelect.innerHTML = '<option value="">Select a server</option>' +
     allGuilds.map((g) => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join("");
 
-  if (allGuilds.length === 1) {
-    const g = allGuilds[0];
-    currentGuild = g.id;
-    guildSelect.value = g.id;
-    await loadGuildData(g.id);
+  const preferred = currentUser.mainGuildId && allGuilds.find((g) => g.id === currentUser.mainGuildId);
+  const auto = preferred || (allGuilds.length === 1 ? allGuilds[0] : null);
+  if (auto) {
+    currentGuild = auto.id;
+    guildSelect.value = auto.id;
+    await loadGuildData(auto.id);
   }
 
   updateGuildCard(currentGuild);
@@ -401,8 +454,8 @@ async function initUser() {
 }
 
 function renderUserChip() {
-  const name = currentUser.username || "Account";
-  const role = currentUser.isAdmin ? "Admin" : "Staff";
+  const name = currentUser.displayName || currentUser.username || "Account";
+  const role = currentUser.isAdmin ? "Admin" : currentUser.isDeveloper ? "Developer" : currentUser.discordId ? "Owner" : "Staff";
   const initial = (name.trim()[0] || "?").toUpperCase();
   for (const [id, val] of [["user-name", name], ["user-name-top", name]]) {
     const el = document.getElementById(id);
@@ -410,7 +463,15 @@ function renderUserChip() {
   }
   for (const id of ["user-avatar", "user-avatar-top"]) {
     const el = document.getElementById(id);
-    if (el) el.textContent = initial;
+    if (!el) continue;
+    if (currentUser.avatar) {
+      const img = document.createElement("img");
+      img.src = currentUser.avatar;
+      img.alt = "";
+      el.replaceChildren(img);
+    } else {
+      el.textContent = initial;
+    }
   }
   const roleEl = document.getElementById("user-role");
   if (roleEl) roleEl.textContent = role;
@@ -1198,12 +1259,29 @@ function cmdDelta(today, yesterday) {
     : `<span class="err">${pct}% vs yesterday</span>`;
 }
 
-function updateHero(vitals, overview) {
-  const h = new Date().getHours();
-  const greeting = h < 5 ? "Working late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-  document.getElementById("hero-greeting").textContent = greeting;
+function updateGreeting() {
+  const tz = theme.tz === "local" ? undefined : (theme.tz || "UTC");
+  const now = new Date();
+  let h;
+  try {
+    h = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: tz }).format(now)) % 24;
+  } catch {
+    h = now.getUTCHours();
+  }
+  const night = h < 5 || h >= 22;
+  const greet = h >= 5 && h < 12 ? "Good Morning"
+    : h >= 12 && h < 17 ? "Good Afternoon"
+    : h >= 17 && h < 22 ? "Good Evening" : "Can't sleep";
+  document.getElementById("hero-greet").textContent = `${greet},`;
+  document.getElementById("hero-punct").textContent = night ? "?" : "";
+  document.getElementById("hero-greeting").textContent =
+    now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz, timeZoneName: "short" });
   document.getElementById("hero-date").textContent =
-    new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    now.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: tz });
+}
+
+function updateHero(vitals, overview) {
+  updateGreeting();
 
   const g = vitals?.guild;
   document.getElementById("hero-guild").textContent = g?.name || vitals?.bot?.tag?.split("#")[0] || "HitoriChan";
@@ -1637,12 +1715,17 @@ const sections = {
 
   security: async () => {
     const me = await json("/api/auth/me");
-    document.getElementById("sec-username").textContent = me.user.username + (me.user.isAdmin ? " (admin)" : "");
+    const meName = me.user.displayName || me.user.username;
+    const meTag = me.user.isAdmin ? " (admin)" : me.user.isDeveloper ? " (developer)" : "";
+    document.getElementById("sec-username").textContent = meName + meTag;
     document.getElementById("sec-expires").textContent = formatDate(me.session.expiresAt);
 
     const hint = document.getElementById("password-hint");
     const pwForm = document.getElementById("password-form");
-    if (me.user.isAdmin) {
+    if (me.user.authType === "discord") {
+      hint.textContent = "You sign in with Discord — there is no local password to change.";
+      pwForm.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
+    } else if (me.user.isAdmin) {
       hint.textContent = "The bootstrap admin password is generated at startup and printed to the console. Set DASHBOARD_PASSWORD in the environment for a persistent password.";
       pwForm.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
     } else {
@@ -1658,7 +1741,7 @@ const sections = {
     const tbody = document.querySelector("#sessions-table tbody");
     tbody.innerHTML = sessions.map((s) => `
       <tr class="${s.current ? "current-session" : ""}">
-        ${canManageUsers ? `<td>${escapeHtml(s.username)}</td>` : ""}
+        ${canManageUsers ? `<td>${escapeHtml(s.displayName || s.username)}</td>` : ""}
         <td>${escapeHtml(shortUserAgent(s.userAgent))}</td>
         <td>${escapeHtml(s.ip || "—")}</td>
         <td>${formatDate(s.createdAt)}</td>
@@ -4146,6 +4229,7 @@ document.querySelector(".nav-links")?.addEventListener("click", (e) => {
 });
 
 // Init
+setInterval(updateGreeting, 30_000);
 initThemeUI();
 initPalette();
 initGuildSwitcher();

@@ -1,4 +1,5 @@
 import { resolveSession, hasPermission, SESSION_COOKIE } from "../auth.js";
+import { isDeveloperId, MAIN_GUILD_ID } from "../oauth.js";
 import * as User from "../../models/User.js";
 
 const PATH_PERMISSIONS = [
@@ -22,6 +23,7 @@ const PATH_PERMISSIONS = [
   { pattern: /^\/leveling/, permission: "leveling" },
   { pattern: /^\/marriage/, permission: "leveling" },
   { pattern: /^\/interactions/, permission: "interactions" },
+  { pattern: /^\/gifmaker/, permission: "gifmaker" },
   { pattern: /^\/security\/audit/, permission: "security" },
   { pattern: /^\/security\/sessions/, permission: "users" },
   { pattern: /^\/security/, permission: null },
@@ -43,6 +45,30 @@ function readToken(req) {
   return req.cookies?.[SESSION_COOKIE] ?? req.headers.authorization?.replace(/^Bearer /i, "");
 }
 
+function sessionUser(session, permissions) {
+  return {
+    username: session.username,
+    displayName: session.displayName || session.username,
+    avatar: session.avatar || null,
+    authType: session.authType || "local",
+    discordId: session.discordId || null,
+    isDeveloper: isDeveloperId(session.discordId),
+    mainGuildId: isDeveloperId(session.discordId) ? MAIN_GUILD_ID : null,
+    isAdmin: session.isAdmin,
+    permissions,
+    guilds: session.guilds ?? null,
+    sessionId: session.id,
+  };
+}
+
+// Admins, developers and local dashboard users are unrestricted; Discord
+// sign-in users are limited to the guilds they owned at login.
+export function canAccessGuild(user, guildId) {
+  if (!user || guildId == null || guildId === "") return false;
+  if (user.isAdmin || user.isDeveloper || user.guilds == null) return true;
+  return user.guilds.includes(String(guildId));
+}
+
 export async function requireAuth(req, res, next) {
   try {
     const token = readToken(req);
@@ -55,10 +81,11 @@ export async function requireAuth(req, res, next) {
       return res.status(401).json({ error: "Session expired or invalid" });
     }
 
-    // For non-admin users, read live permissions so edits and deletions
-    // take effect immediately instead of after session expiry.
+    // For non-admin local users, read live permissions so edits and
+    // deletions take effect immediately instead of after session expiry.
+    // Discord sessions carry their own permissions — no local account exists.
     let permissions = session.permissions;
-    if (!session.isAdmin) {
+    if (!session.isAdmin && session.authType !== "discord") {
       const user = await User.getByUsername(session.username);
       if (!user) {
         res.clearCookie(SESSION_COOKIE);
@@ -67,17 +94,16 @@ export async function requireAuth(req, res, next) {
       permissions = user.permissions;
     }
 
-    req.user = {
-      username: session.username,
-      isAdmin: session.isAdmin,
-      permissions,
-      sessionId: session.id,
-    };
+    req.user = sessionUser(session, permissions);
     req.session = session;
 
     const required = requiredPermissionForPath(req.path);
     if (required && !hasPermission(req.user, required)) {
       return res.status(403).json({ error: `You do not have permission to access ${required}.` });
+    }
+
+    if (req.params.guildId && !canAccessGuild(req.user, req.params.guildId)) {
+      return res.status(403).json({ error: "You do not have access to this server." });
     }
 
     next();
@@ -104,12 +130,7 @@ export function authPage(req, res, next) {
     res.clearCookie(SESSION_COOKIE);
     return res.redirect("/?expired=1");
   }
-  req.user = {
-    username: session.username,
-    isAdmin: session.isAdmin,
-    permissions: session.permissions,
-    sessionId: session.id,
-  };
+  req.user = sessionUser(session, session.permissions);
   req.session = session;
   next();
 }

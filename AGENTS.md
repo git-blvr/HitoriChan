@@ -24,6 +24,11 @@
 - `src/handlers/` — command/event/chat/streak loading
 - `src/helpers/` — shared helper utilities
 - `src/utils/` — older shared utilities (still used)
+- `native/src/gif/` — Rust GIF engine (imagequant palettes, diff-optimized GIF89a, in-engine LRU cache); napi exports `gifEncode`, `gifCacheStats`, `gifCacheClear`
+- `src/utils/gifEngine.js` — engine wrapper: uses the Rust module when loaded, pure-JS GIF89a/LZW fallback otherwise
+- `src/utils/gifRenderer.js` — server-side scene→frames renderer (`@napi-rs/canvas` + `safeFetch` for asset URLs)
+- `src/web/public/gifscene.js` — shared scene model, keyframe sampler, canvas renderer (browser + Node)
+- `src/web/public/gifmaker.{css,js}` — GIF maker dashboard section (`#gifmaker`); renders via `POST /api/gifmaker/render`, permission `gifmaker`
 
 ## Environment variables
 - `TOKEN` — Discord bot token (required)
@@ -37,11 +42,17 @@
 - `PUBLIC_URL` — optional public URL (e.g. `https://hitori.wispbyte.org`) used for the console message
 - `DASHBOARD_PASSWORD` — optional persistent admin password (otherwise one is generated each boot and printed to console)
 - `DASHBOARD_ORIGINS` — optional comma-separated extra allowed origins for dashboard API mutations
+- `DISCORD_CLIENT_SECRET` — optional OAuth2 client secret; enables "Sign in with Discord" on the login page
+- `OAUTH_REDIRECT_URI` — optional override for the OAuth callback (defaults to `PUBLIC_URL` or request host + `/auth/discord/callback`); must be registered in the Discord developer portal
+- `DEV_USER_IDS` — optional comma-separated Discord user IDs with developer access to every guild (built-in default: `1017830522677891163`)
+- `MAIN_GUILD_ID` — developer's primary guild, preselected in the dashboard (default `1376236720030486670`)
 - `TLS_KEY_PATH` / `TLS_CERT_PATH` — optional; serve the dashboard over HTTPS
 - `SKIP_AUTO_DEPLOY` — set to `true` to disable auto-deploy on startup
 
 ## Dashboard security notes
 - Auth uses opaque, server-side sessions in `dashboard_sessions` (SHA-256 hashed tokens, sliding 24 h expiry, revocable). No JWT — logging out or editing a user invalidates sessions immediately.
+- Sign-in is Discord OAuth2 (`/auth/discord` → `/auth/discord/callback`, `src/web/oauth.js`). Access = guilds the user **owns** that contain the bot, snapshotted into `session.guilds` at login (NULL = unrestricted). Discord usernames are namespaced `discord:<id>` so they can't collide with local accounts.
+- Per-guild ACL: `requireAuth` checks `req.params.guildId` via `canAccessGuild`; `/api/guilds`, `/api/stats`, `/api/overview`, `/api/vitals` are scoped the same way. `DEV_USER_IDS` + `MAIN_GUILD_ID` give developer access everywhere.
 - `/api` mutations are protected by an Origin/`Sec-Fetch-Site` CSRF guard; API responses are `Cache-Control: no-store`.
 - CSP forbids inline scripts: never add `onclick=` or `<script>` blocks in HTML — use `data-action` + the delegated handler map in `dashboard.js` and external `.js` files.
 - User-supplied image URLs are fetched through `src/utils/safeFetch.js` (SSRF guard).

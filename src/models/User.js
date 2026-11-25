@@ -65,6 +65,7 @@ export const ALL_PERMISSIONS = [
   "quests",
   "leveling",
   "interactions",
+  "gifmaker",
   "security",
   "users",
 ];
