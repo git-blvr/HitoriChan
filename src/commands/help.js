@@ -19,10 +19,11 @@ const CATEGORY_EMOJIS = {
   games:      "🎮",
   tools:      "🔧",
   ai:         "🤖",
+  lastfm:     "🎧",
   misc:       "✨",
 };
 
-const CATEGORY_LABELS = { ai: "AI" };
+const CATEGORY_LABELS = { ai: "AI", lastfm: "Last.fm" };
 
 export default {
   data: new SlashCommandBuilder().setName("help").setDescription("Browse available commands"),

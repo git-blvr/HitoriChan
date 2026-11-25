@@ -568,6 +568,16 @@ const MIGRATIONS = [
       ALTER TABLE dashboard_sessions ADD COLUMN guilds TEXT;
     `,
   },
+  {
+    version: 30,
+    sql: `
+      CREATE TABLE IF NOT EXISTS lastfm_users (
+        user_id TEXT PRIMARY KEY,
+        username TEXT NOT NULL COLLATE NOCASE,
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+    `,
+  },
 ];
 
 export function migrate() {

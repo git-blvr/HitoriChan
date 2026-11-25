@@ -33,6 +33,7 @@
 ## Environment variables
 - `TOKEN` — Discord bot token (required)
 - `GROQ_API` — Groq API key (required for AI)
+- `LASTFM_API` — Last.fm API key (required for `fm`/`lastfm` commands; read-only, secret not needed)
 - `CLIENT_ID` — Discord application ID (used for command deployment)
 - `GUILD_ID` — optional test guild ID for instant guild command updates
 - `GROQ_MODEL` — optional Groq model override
