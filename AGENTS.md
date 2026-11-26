@@ -43,7 +43,7 @@
 - `PUBLIC_URL` — optional public URL (e.g. `https://hitori.wispbyte.org`) used for the console message
 - `DASHBOARD_PASSWORD` — optional persistent admin password (otherwise one is generated each boot and printed to console)
 - `DASHBOARD_ORIGINS` — optional comma-separated extra allowed origins for dashboard API mutations
-- `DISCORD_CLIENT_SECRET` — optional OAuth2 client secret; enables "Sign in with Discord" on the login page
+- `DISCORD_CLIENT_SECRET` — OAuth2 client secret; enables "Sign in with Discord" on the login page (falls back to `CLIENT_SECRET`)
 - `OAUTH_REDIRECT_URI` — optional override for the OAuth callback (defaults to `PUBLIC_URL` or request host + `/auth/discord/callback`); must be registered in the Discord developer portal
 - `DEV_USER_IDS` — optional comma-separated Discord user IDs with developer access to every guild (built-in default: `1017830522677891163`)
 - `MAIN_GUILD_ID` — developer's primary guild, preselected in the dashboard (default `1376236720030486670`)

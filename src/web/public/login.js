@@ -21,22 +21,25 @@ if (errorEl && errorCode && ERROR_MESSAGES[errorCode]) {
   errorEl.hidden = false;
 }
 
-// Main page only — reveal the Discord button when OAuth is configured,
-// otherwise point people at the local admin sign-in.
+// Main page only — the Discord button always renders; when OAuth isn't
+// configured it gets disabled and a note explains why.
 if (discordBtn) {
+  const oauthUnavailable = () => {
+    discordBtn.classList.add("disabled");
+    discordBtn.setAttribute("aria-disabled", "true");
+    discordBtn.removeAttribute("href");
+    if (oauthOff) oauthOff.hidden = false;
+  };
   fetch("/auth/config")
     .then((res) => (res.ok ? res.json() : { oauth: false }))
     .then((cfg) => {
       if (cfg.oauth) {
-        discordBtn.hidden = false;
         if (discordNote) discordNote.hidden = false;
-      } else if (oauthOff) {
-        oauthOff.hidden = false;
+      } else {
+        oauthUnavailable();
       }
     })
-    .catch(() => {
-      if (oauthOff) oauthOff.hidden = false;
-    });
+    .catch(oauthUnavailable);
 }
 
 const EYE_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';

@@ -44,8 +44,13 @@ export function isDeveloperId(id) {
   return id != null && DEVELOPER_IDS.has(String(id));
 }
 
+// Accepts either name — older .env files use the bare CLIENT_SECRET.
+function clientSecret() {
+  return process.env.DISCORD_CLIENT_SECRET || process.env.CLIENT_SECRET;
+}
+
 export function oauthEnabled() {
-  return Boolean(process.env.CLIENT_ID && process.env.DISCORD_CLIENT_SECRET);
+  return Boolean(process.env.CLIENT_ID && clientSecret());
 }
 
 export function redirectUri(req) {
@@ -95,7 +100,7 @@ async function exchangeCode(code, uri) {
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: process.env.CLIENT_ID,
-      client_secret: process.env.DISCORD_CLIENT_SECRET,
+      client_secret: clientSecret(),
       grant_type: "authorization_code",
       code,
       redirect_uri: uri,
