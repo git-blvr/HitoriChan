@@ -36,7 +36,7 @@ import { invalidateModifierCache } from "../../utils/leveling.js";
 import * as MarriageSettings from "../../models/MarriageSettings.js";
 import * as InteractionSettings from "../../models/InteractionSettings.js";
 import { DEFAULT_INTERACTIONS } from "../../utils/interactions.js";
-import { requirePermission } from "../middleware/auth.js";
+import { requirePermission, sessionGuildEntry } from "../middleware/auth.js";
 import gifmakerRouter from "./gifmaker.js";
 
 const router = Router();
@@ -133,11 +133,12 @@ router.get("/security/audit", requireAuth, requirePermission("security"), (req, 
 });
 
 // Guilds the session is allowed to see. Admins/developers/local users get
-// everything; Discord sign-ins get only the guilds they owned at login.
+// everything; Discord sign-ins get only the guilds they owned or managed at
+// login. Session entries are { id, role } objects (plain ids in old sessions).
 function accessibleGuilds(client, user) {
   const all = Array.from(client.guilds.cache.values());
   if (!user || user.isAdmin || user.isDeveloper || user.guilds == null) return all;
-  const allowed = new Set(user.guilds.map(String));
+  const allowed = new Set(user.guilds.map((g) => String(g?.id ?? g)));
   return all.filter((g) => allowed.has(g.id));
 }
 
@@ -180,6 +181,8 @@ router.get("/guilds", requireAuth, async (req, res) => {
     name: g.name,
     icon: g.iconURL?.() ?? null,
     memberCount: g.memberCount,
+    // Owner/manager badge for scoped Discord sessions; null when unrestricted.
+    role: sessionGuildEntry(req.user, g.id)?.role ?? null,
   }));
   res.json(guilds);
 });

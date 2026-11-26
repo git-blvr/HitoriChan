@@ -61,12 +61,19 @@ function sessionUser(session, permissions) {
   };
 }
 
+// Session guild entries are { id, role } objects written at Discord login;
+// older sessions may still hold plain id strings — both are accepted.
+export function sessionGuildEntry(user, guildId) {
+  if (!Array.isArray(user?.guilds)) return null;
+  return user.guilds.find((g) => String(g?.id ?? g) === String(guildId)) ?? null;
+}
+
 // Admins, developers and local dashboard users are unrestricted; Discord
-// sign-in users are limited to the guilds they owned at login.
+// sign-in users are limited to the guilds they owned or managed at login.
 export function canAccessGuild(user, guildId) {
   if (!user || guildId == null || guildId === "") return false;
   if (user.isAdmin || user.isDeveloper || user.guilds == null) return true;
-  return user.guilds.includes(String(guildId));
+  return sessionGuildEntry(user, guildId) !== null;
 }
 
 export async function requireAuth(req, res, next) {

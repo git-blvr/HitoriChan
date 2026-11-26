@@ -8,6 +8,7 @@ import https from "node:https";
 import {
   verifyCredentials,
   createSession,
+  resolveSession,
   revokeSession,
   generateInitialPassword,
   getLoginLockout,
@@ -72,7 +73,7 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
 
   app.use(
     express.static(PUBLIC_DIR, {
-      index: "index.html",
+      index: false,
       setHeaders(res, filePath) {
         const ext = filePath.slice(filePath.lastIndexOf("."));
         res.setHeader("Cache-Control", HTML_FILES.has(ext) ? "no-cache" : "public, max-age=3600");
@@ -126,8 +127,36 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
   });
 
   // ------------------------------------------------------------------
+  // Page routes. `/` is Discord sign-in (or a bounce to the right landing
+  // when a session already exists); `/admin` is the local account login;
+  // `/servers` is the post-OAuth guild picker.
+  // ------------------------------------------------------------------
+  app.get("/", (req, res) => {
+    const token = req.cookies?.[SESSION_COOKIE];
+    const session = token ? resolveSession(token, { ip: req.ip, userAgent: req.headers["user-agent"] }) : null;
+    if (session) {
+      return res.redirect(session.authType === "discord" ? "/servers" : "/dashboard");
+    }
+    if (token) res.clearCookie(SESSION_COOKIE, { path: "/" });
+    res.setHeader("Cache-Control", "no-cache");
+    res.sendFile(join(PUBLIC_DIR, "index.html"));
+  });
+
+  // Always served — a logged-in Discord user can still switch to a local
+  // account here (the login POST simply replaces the session cookie).
+  app.get("/admin", (req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
+    res.sendFile(join(PUBLIC_DIR, "admin.html"));
+  });
+
+  app.get("/servers", authPage, (req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
+    res.sendFile(join(PAGES_DIR, "servers.html"));
+  });
+
+  // ------------------------------------------------------------------
   // Discord OAuth2 sign-in. Guild access is granted to servers the user
-  // OWNS that also contain the bot; developer IDs get every guild.
+  // OWNS or MANAGES that also contain the bot; developer IDs get every guild.
   // ------------------------------------------------------------------
   app.get("/auth/config", (req, res) => {
     res.json({ oauth: oauthEnabled() });
@@ -165,7 +194,7 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
       const actor = access.identity.username;
 
       if (!access.isDeveloper && access.guilds.length === 0) {
-        Audit.add({ actor, action: "auth.login.discord.denied", detail: "no owned guilds with the bot", ip: req.ip });
+        Audit.add({ actor, action: "auth.login.discord.denied", detail: "no owned/managed guilds with the bot", ip: req.ip });
         return res.redirect("/?error=no_guilds");
       }
 
@@ -187,14 +216,14 @@ export function startWebServer(client, port = process.env.WEB_PORT || process.en
       res.cookie(SESSION_COOKIE, token, {
         httpOnly: true,
         maxAge: SESSION_TTL_MS,
-        // lax: the /dashboard navigation after the Discord redirect chain is
+        // lax: the /servers navigation after the Discord redirect chain is
         // still cross-site-initiated, so strict cookies would be withheld and
         // the first landing would bounce back to the login page.
         sameSite: "lax",
         secure: req.secure,
         path: "/",
       });
-      res.redirect("/dashboard");
+      res.redirect("/servers");
     } catch (err) {
       console.error("[oauth] callback failed:", err.message);
       Audit.add({ actor: "discord", action: "auth.login.discord.fail", detail: String(err.message).slice(0, 200), ip: req.ip });

@@ -70,10 +70,16 @@ try {
 
   // --- Static & page routes ---
   let res = await req("/");
-  check("GET / serves login page", res.status === 200 && (await res.text()).includes("login-form"));
+  check("GET / serves Discord login page", res.status === 200 && (await res.text()).includes("discord-login"));
+
+  res = await req("/admin");
+  check("GET /admin serves local login page", res.status === 200 && (await res.text()).includes("login-form"));
 
   res = await req("/dashboard");
   check("GET /dashboard unauthenticated redirects", res.status === 302 && res.headers.get("location") === "/");
+
+  res = await req("/servers");
+  check("GET /servers unauthenticated redirects", res.status === 302 && res.headers.get("location") === "/");
 
   res = await req("/dashboard.html");
   check("GET /dashboard.html is not publicly served", res.status === 404);
@@ -106,6 +112,12 @@ try {
 
   res = await req("/dashboard", { cookie: adminCookie });
   check("GET /dashboard authenticated returns 200", res.status === 200);
+
+  res = await req("/servers", { cookie: adminCookie });
+  check("GET /servers authenticated returns 200", res.status === 200);
+
+  res = await req("/", { cookie: adminCookie });
+  check("GET / with local session redirects to dashboard", res.status === 302 && res.headers.get("location") === "/dashboard");
 
   // --- CSRF guard ---
   res = await req("/api/auth/me", {
@@ -215,6 +227,36 @@ try {
   res = await req("/api/overview", { cookie: scopedCookie });
   const scopedOverview = await res.json();
   check("/api/overview scoped", scopedOverview.bot.guilds === 1);
+
+  // --- Manager-role session (object-form guild entries) ---
+  const { token: mgrToken } = createSession(
+    {
+      username: "discord:998",
+      displayName: "ScopedManager",
+      authType: "discord",
+      discordId: "998",
+      isAdmin: false,
+      permissions: ["overview", "moderation"],
+      guilds: [{ id: "g2", role: "manager" }],
+    },
+    { ip: "127.0.0.1", userAgent: "smoke" }
+  );
+  const mgrCookie = `hc_session=${mgrToken}`;
+
+  res = await req("/api/guilds", { cookie: mgrCookie });
+  const mgrGuilds = await res.json();
+  check(
+    "Manager session lists managed guild with role",
+    mgrGuilds.length === 1 && mgrGuilds[0].id === "g2" && mgrGuilds[0].role === "manager"
+  );
+
+  res = await req("/api/moderation/g2", { cookie: mgrCookie });
+  check("Manager reaches managed guild", res.status === 200);
+  res = await req("/api/moderation/g1", { cookie: mgrCookie });
+  check("Manager 403 on foreign guild", res.status === 403);
+
+  res = await req("/", { cookie: scopedCookie });
+  check("GET / with discord session redirects to /servers", res.status === 302 && res.headers.get("location") === "/servers");
 
   // --- OAuth endpoints when not configured ---
   res = await req("/auth/config");

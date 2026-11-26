@@ -52,7 +52,8 @@
 
 ## Dashboard security notes
 - Auth uses opaque, server-side sessions in `dashboard_sessions` (SHA-256 hashed tokens, sliding 24 h expiry, revocable). No JWT — logging out or editing a user invalidates sessions immediately.
-- Sign-in is Discord OAuth2 (`/auth/discord` → `/auth/discord/callback`, `src/web/oauth.js`). Access = guilds the user **owns** that contain the bot, snapshotted into `session.guilds` at login (NULL = unrestricted). Discord usernames are namespaced `discord:<id>` so they can't collide with local accounts.
+- Sign-in is Discord OAuth2 (`/auth/discord` → `/auth/discord/callback` → `/servers` picker → `/dashboard?guild=<id>`, `src/web/oauth.js`). Access = guilds the user **owns or manages** (Manage Server / Administrator bits) that contain the bot, snapshotted into `session.guilds` as `{ id, role }` entries at login (NULL = unrestricted; plain string ids in pre-existing sessions are still accepted). Discord usernames are namespaced `discord:<id>` so they can't collide with local accounts.
+- Local account sign-in (bootstrap `Admin` + dashboard users) lives at `/admin`; `/` is Discord-only and redirects already-signed-in users (`/servers` for Discord sessions, `/dashboard` for local).
 - Per-guild ACL: `requireAuth` checks `req.params.guildId` via `canAccessGuild`; `/api/guilds`, `/api/stats`, `/api/overview`, `/api/vitals` are scoped the same way. `DEV_USER_IDS` + `MAIN_GUILD_ID` give developer access everywhere.
 - `/api` mutations are protected by an Origin/`Sec-Fetch-Site` CSRF guard; API responses are `Cache-Control: no-store`.
 - CSP forbids inline scripts: never add `onclick=` or `<script>` blocks in HTML — use `data-action` + the delegated handler map in `dashboard.js` and external `.js` files.
@@ -76,5 +77,5 @@
 - The bot auto-migrates the SQLite schema on startup.
 - The `data/` directory is ignored by git.
 - AI behavior can be customized per server with `/aiconfig prompt`.
-- The dashboard initial login is `Admin` with a 6-digit password printed to console on startup.
+- The dashboard admin login is `Admin` at `/admin` with a password printed to console on startup (or `DASHBOARD_PASSWORD`).
 - Put a `login-bg.webp` (or `.jpg`/`.png`) image in `src/web/public/assets/` to customize the login background.

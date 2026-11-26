@@ -16,9 +16,29 @@ export const DEVELOPER_IDS = new Set(
     .filter(Boolean)
 );
 
-// Discord sign-in users manage the guilds they own — all bot features except
-// dashboard account administration, which stays with local dashboard users.
+// Discord sign-in users manage the guilds they own or administer — all bot
+// features except dashboard account administration, which stays with local
+// dashboard users.
 export const GUILD_OWNER_PERMISSIONS = ALL_PERMISSIONS.filter((p) => p !== "users" && p !== "security");
+
+// Discord permission bits that qualify a guild member as a "manager" — the
+// same level of trust as Manage Server in the client.
+const PERM_ADMINISTRATOR = 0x8n;
+const PERM_MANAGE_GUILD = 0x20n;
+
+// Maps an OAuth guild object to the dashboard role it grants, or null when
+// the user has no management access there.
+export function guildAccessRole(g) {
+  if (!g) return null;
+  if (g.owner === true) return "owner";
+  let bits = 0n;
+  try {
+    bits = BigInt(g.permissions ?? g.permissions_new ?? "0");
+  } catch {
+    return null;
+  }
+  return (bits & (PERM_ADMINISTRATOR | PERM_MANAGE_GUILD)) !== 0n ? "manager" : null;
+}
 
 export function isDeveloperId(id) {
   return id != null && DEVELOPER_IDS.has(String(id));
@@ -107,14 +127,20 @@ function avatarUrl(me) {
 }
 
 // Maps a Discord identity + their guild list to dashboard access.
-// guilds = null means unrestricted (developer); otherwise an id array.
+// guilds = null means unrestricted (developer); otherwise a list of
+// { id, role } entries for guilds the user owns or manages and the bot is in.
 export function computeDiscordAccess(me, oauthGuilds, client) {
   const isDeveloper = isDeveloperId(me.id);
+  const seen = new Set();
   const guilds = isDeveloper
     ? null
     : oauthGuilds
-        .filter((g) => g && g.owner === true && client.guilds.cache.has(g.id))
-        .map((g) => g.id);
+        .map((g) => ({ id: g?.id, role: guildAccessRole(g) }))
+        .filter((g) => {
+          if (!g.id || !g.role || !client.guilds.cache.has(g.id) || seen.has(g.id)) return false;
+          seen.add(g.id);
+          return true;
+        });
   return {
     isDeveloper,
     guilds,

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+  <title>HitoriChan — Choose a server</title>
+  <link rel="stylesheet" href="/fonts.css" />
+  <link rel="stylesheet" href="/tokens.css" />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/ui.css" />
+</head>
+<body class="login-body">
+  <div class="login-wrapper">
+    <div class="login-bg"></div>
+    <div class="login-form-box">
+      <div class="login-card">
+        <div class="login-brand">
+          <span class="brand-mark" aria-hidden="true">H</span>
+          <span class="brand-text">
+            <span class="brand-name">HitoriChan</span>
+            <span class="brand-sub">Control center</span>
+          </span>
+        </div>
+        <div class="servers-user" id="servers-user" hidden>
+          <img id="servers-avatar" alt="" hidden />
+          <span id="servers-name"></span>
+          <button type="button" id="servers-logout" class="servers-logout">Sign out</button>
+        </div>
+        <h1>Choose a server</h1>
+        <p class="login-subtitle">Servers you own or manage where HitoriChan is installed.</p>
+        <div id="server-list" class="server-list" role="listbox" aria-label="Your servers"></div>
+        <p id="servers-empty" class="login-note" hidden>
+          No servers found. You need to own or manage a server that has the bot — or sign out and try a different account.
+        </p>
+        <p id="servers-error" class="login-error" hidden></p>
+      </div>
+    </div>
+  </div>
+  <div id="toast-container"></div>
+  <script src="/servers.js"></script>
+</body>
+</html>

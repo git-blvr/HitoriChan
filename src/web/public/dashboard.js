@@ -424,8 +424,10 @@ async function loadGuilds() {
   guildSelect.innerHTML = '<option value="">Select a server</option>' +
     allGuilds.map((g) => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join("");
 
+  const wanted = new URLSearchParams(location.search).get("guild");
+  const requested = wanted ? allGuilds.find((g) => g.id === wanted) : null;
   const preferred = currentUser.mainGuildId && allGuilds.find((g) => g.id === currentUser.mainGuildId);
-  const auto = preferred || (allGuilds.length === 1 ? allGuilds[0] : null);
+  const auto = requested || preferred || (allGuilds.length === 1 ? allGuilds[0] : null);
   if (auto) {
     currentGuild = auto.id;
     guildSelect.value = auto.id;
@@ -2199,6 +2201,10 @@ guildSelect.addEventListener("change", async (e) => {
   currentGuild = e.target.value;
   updateGuildCard(currentGuild);
   renderGuildMenu();
+  const url = new URL(location.href);
+  if (currentGuild) url.searchParams.set("guild", currentGuild);
+  else url.searchParams.delete("guild");
+  history.replaceState(null, "", url);
   if (currentGuild) await loadGuildData(currentGuild);
   if (currentSection === "overview") {
     refreshSection();
