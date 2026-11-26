@@ -10,6 +10,8 @@ let allPermissions = [];
 let currentUser = { isAdmin: false, permissions: [] };
 let activityChart = null;
 let guildData = { id: null, channels: [], roles: [], categories: [], members: [] };
+let levelingRewards = [];
+let levelingModifiers = [];
 const resolvedCache = { users: {}, roles: {}, channels: {} };
 
 // ---------------------------------------------------------------------------
@@ -695,6 +697,10 @@ const ACTION_HANDLERS = {
   "delete-trigger": (d) => deleteTrigger(d.keyword),
   "edit-quest": (d) => editQuest(Number(d.id)),
   "delete-quest": (d) => deleteQuest(Number(d.id)),
+  "edit-level-reward": (d) => editLevelReward(Number(d.id)),
+  "delete-level-reward": (d) => deleteLevelReward(Number(d.id)),
+  "edit-level-modifier": (d) => editLevelModifier(Number(d.id)),
+  "delete-level-modifier": (d) => deleteLevelModifier(Number(d.id)),
   "edit-user": (d) => editUser(Number(d.id)),
   "delete-user": (d) => deleteUser(Number(d.id)),
   "edit-shop-category": (d) => editShopCategory(Number(d.id)),
@@ -1595,17 +1601,27 @@ const sections = {
   leveling: async () => {
     if (!currentGuild) return;
     await loadGuildData(currentGuild);
-    const [settings, leaderboard] = await Promise.all([
+    const [settings, leaderboard, rewards, modifiers] = await Promise.all([
       json(`/api/leveling/${currentGuild}/settings`),
       json(`/api/leveling/${currentGuild}/leaderboard?limit=10`),
+      json(`/api/leveling/${currentGuild}/rewards`),
+      json(`/api/leveling/${currentGuild}/modifiers`),
     ]);
 
-    await resolveEntityIds(currentGuild, leaderboard.map((row) => row.userId), [], []);
+    await resolveEntityIds(
+      currentGuild,
+      [...leaderboard.map((row) => row.userId), ...modifiers.filter((m) => m.targetType === "user").map((m) => m.targetId)],
+      [...rewards.map((r) => r.roleId), ...modifiers.filter((m) => m.targetType === "role").map((m) => m.targetId)],
+      modifiers.filter((m) => m.targetType === "channel").map((m) => m.targetId)
+    );
 
     document.getElementById("leveling-enabled").checked = settings.enabled;
     document.getElementById("leveling-min-xp").value = settings.minXp;
     document.getElementById("leveling-max-xp").value = settings.maxXp;
     document.getElementById("leveling-cooldown").value = settings.cooldownSeconds;
+    document.getElementById("leveling-global-mult").value = settings.globalXpMultiplier ?? 1;
+    document.getElementById("leveling-modifier-stack").value = settings.modifierStack || "multiply";
+    refreshSelectFilter(document.getElementById("leveling-modifier-stack"));
     document.getElementById("leveling-base-xp").value = settings.baseXp;
     document.getElementById("leveling-multiplier").value = settings.multiplier;
     populateMultiChannels("leveling-channels", settings.channels || []);
@@ -1619,6 +1635,20 @@ const sections = {
     document.getElementById("leveling-voice-afk-skip").checked = settings.voiceAfkSkip;
     document.getElementById("leveling-voice-streaming").value = settings.voiceStreamingMultiplier;
     document.getElementById("leveling-voice-video").value = settings.voiceVideoMultiplier;
+    document.getElementById("leveling-booster-enabled").checked = settings.boosterEnabled;
+    document.getElementById("leveling-booster-mult").value = settings.boosterXpMultiplier ?? 1.5;
+    document.getElementById("leveling-booster-cooldown").value = settings.boosterCooldownSeconds ?? "";
+    document.getElementById("leveling-booster-premium").checked = settings.boosterIncludePremium !== false;
+    populateMultiRoles("leveling-booster-roles", settings.boosterRoleIds || []);
+    document.getElementById("leveling-reward-remove").checked = settings.rewardRemovePrevious;
+
+    resetLevelRewardForm();
+    populateRoles("leveling-reward-role", "");
+    syncRewardTypeFields();
+    renderLevelRewards(rewards);
+
+    resetLevelModifierForm();
+    renderLevelModifiers(modifiers);
 
     const tbody = document.querySelector("#leveling-leaderboard-table tbody");
     tbody.innerHTML = leaderboard.map((row, i) => {
@@ -3412,6 +3442,8 @@ document.getElementById("leveling-form").addEventListener("submit", async (e) =>
     minXp: Number(document.getElementById("leveling-min-xp").value) || 1,
     maxXp: Number(document.getElementById("leveling-max-xp").value) || 1,
     cooldownSeconds: Number(document.getElementById("leveling-cooldown").value) || 0,
+    globalXpMultiplier: Number(document.getElementById("leveling-global-mult").value) || 1,
+    modifierStack: document.getElementById("leveling-modifier-stack").value || "multiply",
     baseXp: Number(document.getElementById("leveling-base-xp").value) || 100,
     multiplier: Number(document.getElementById("leveling-multiplier").value) || 1,
     channels: getMultiSelectValues("leveling-channels"),
@@ -3425,6 +3457,14 @@ document.getElementById("leveling-form").addEventListener("submit", async (e) =>
     voiceAfkSkip: document.getElementById("leveling-voice-afk-skip").checked,
     voiceStreamingMultiplier: Number(document.getElementById("leveling-voice-streaming").value) || 1,
     voiceVideoMultiplier: Number(document.getElementById("leveling-voice-video").value) || 1,
+    boosterEnabled: document.getElementById("leveling-booster-enabled").checked,
+    boosterXpMultiplier: Number(document.getElementById("leveling-booster-mult").value) || 1,
+    boosterCooldownSeconds: document.getElementById("leveling-booster-cooldown").value === ""
+      ? null
+      : Number(document.getElementById("leveling-booster-cooldown").value),
+    boosterIncludePremium: document.getElementById("leveling-booster-premium").checked,
+    boosterRoleIds: getMultiSelectValues("leveling-booster-roles"),
+    rewardRemovePrevious: document.getElementById("leveling-reward-remove").checked,
   };
 
   try {
@@ -3432,6 +3472,237 @@ document.getElementById("leveling-form").addEventListener("submit", async (e) =>
     showToast("Leveling settings saved", "success");
   } catch (err) {
     showToast(err.message || "Failed to save leveling settings", "error");
+  }
+});
+
+// Level rewards ---------------------------------------------------------------
+
+function syncRewardTypeFields() {
+  const type = document.getElementById("leveling-reward-type").value;
+  document.getElementById("leveling-reward-role-wrap").hidden = type !== "role";
+  document.getElementById("leveling-reward-currency-wrap").hidden = type !== "currency";
+  document.getElementById("leveling-reward-amount-wrap").hidden = type !== "currency";
+}
+
+function resetLevelRewardForm() {
+  document.getElementById("leveling-reward-id").value = "";
+  document.getElementById("leveling-reward-level").value = "5";
+  document.getElementById("leveling-reward-type").value = "role";
+  document.getElementById("leveling-reward-role").value = "";
+  document.getElementById("leveling-reward-currency").value = "primary";
+  document.getElementById("leveling-reward-amount").value = "100";
+  document.getElementById("leveling-reward-enabled").checked = true;
+  document.getElementById("leveling-reward-save").textContent = "Add Reward";
+  document.getElementById("leveling-reward-cancel").hidden = true;
+  syncRewardTypeFields();
+  refreshSelectFilter(document.getElementById("leveling-reward-type"));
+  refreshSelectFilter(document.getElementById("leveling-reward-currency"));
+  refreshSelectFilter(document.getElementById("leveling-reward-role"));
+}
+
+function renderLevelRewards(rewards) {
+  levelingRewards = rewards || [];
+  const tbody = document.querySelector("#leveling-rewards-table tbody");
+  tbody.innerHTML = levelingRewards.map((r) => {
+    const reward = r.rewardType === "role"
+      ? `Role ${rolePill(r.roleId)}`
+      : `${Number(r.amount).toLocaleString()} ${escapeHtml(r.currency || "primary")}`;
+    return `
+    <tr>
+      <td>${r.level}</td>
+      <td>${reward}</td>
+      <td>${r.enabled ? "Enabled" : "Disabled"}</td>
+      <td>
+        <button data-action="edit-level-reward" data-id="${r.id}">Edit</button>
+        <button data-action="delete-level-reward" data-id="${r.id}">Delete</button>
+      </td>
+    </tr>
+  `;
+  }).join("") || '<tr><td colspan="4">No rewards configured</td></tr>';
+}
+
+window.editLevelReward = (id) => {
+  const r = levelingRewards.find((x) => x.id === id);
+  if (!r) return;
+  document.getElementById("leveling-reward-id").value = r.id;
+  document.getElementById("leveling-reward-level").value = r.level;
+  document.getElementById("leveling-reward-type").value = r.rewardType;
+  document.getElementById("leveling-reward-role").value = r.roleId || "";
+  document.getElementById("leveling-reward-currency").value = r.currency || "primary";
+  document.getElementById("leveling-reward-amount").value = r.amount || 0;
+  document.getElementById("leveling-reward-enabled").checked = r.enabled;
+  document.getElementById("leveling-reward-save").textContent = "Update Reward";
+  document.getElementById("leveling-reward-cancel").hidden = false;
+  syncRewardTypeFields();
+  refreshSelectFilter(document.getElementById("leveling-reward-type"));
+  refreshSelectFilter(document.getElementById("leveling-reward-currency"));
+  refreshSelectFilter(document.getElementById("leveling-reward-role"));
+  document.getElementById("leveling-reward-level").focus();
+};
+
+window.deleteLevelReward = async (id) => {
+  if (!confirm("Delete this level reward?")) return;
+  await json(`/api/leveling/${currentGuild}/rewards/${id}`, { method: "DELETE" });
+  refreshSection();
+  showToast("Level reward deleted", "success");
+};
+
+document.getElementById("leveling-reward-type").addEventListener("change", syncRewardTypeFields);
+document.getElementById("leveling-reward-cancel").addEventListener("click", resetLevelRewardForm);
+
+document.getElementById("leveling-reward-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+
+  const id = document.getElementById("leveling-reward-id").value;
+  const body = {
+    level: Number(document.getElementById("leveling-reward-level").value) || 1,
+    rewardType: document.getElementById("leveling-reward-type").value,
+    roleId: document.getElementById("leveling-reward-role").value || null,
+    currency: document.getElementById("leveling-reward-currency").value,
+    amount: Number(document.getElementById("leveling-reward-amount").value) || 0,
+    enabled: document.getElementById("leveling-reward-enabled").checked,
+  };
+
+  try {
+    if (id) {
+      await json(`/api/leveling/${currentGuild}/rewards/${id}`, { method: "POST", body: JSON.stringify(body) });
+      showToast("Level reward updated", "success");
+    } else {
+      await json(`/api/leveling/${currentGuild}/rewards`, { method: "POST", body: JSON.stringify(body) });
+      showToast("Level reward added", "success");
+    }
+    resetLevelRewardForm();
+    refreshSection();
+  } catch (err) {
+    showToast(err.message || "Failed to save level reward", "error");
+  }
+});
+
+// XP modifiers ----------------------------------------------------------------
+
+function populateModTarget(type, selectedId = "") {
+  const select = document.getElementById("leveling-mod-target");
+  if (!select) return;
+  let options;
+  if (type === "channel") {
+    options = guildData.channels.map((c) =>
+      `<option value="${c.id}" ${c.id === selectedId ? "selected" : ""}>#${escapeHtml(c.name)}</option>`);
+  } else if (type === "role") {
+    options = guildData.roles.map((r) =>
+      `<option value="${r.id}" ${r.id === selectedId ? "selected" : ""}>${escapeHtml(r.name)}</option>`);
+  } else {
+    options = (guildData.members || [])
+      .slice()
+      .sort((a, b) => (a.displayName || a.username).localeCompare(b.displayName || b.username))
+      .map((m) => `<option value="${m.id}" ${m.id === selectedId ? "selected" : ""}>${escapeHtml(m.displayName || m.username)}</option>`);
+  }
+  if (selectedId && !options.some((o) => o.includes(`value="${selectedId}"`))) {
+    const fallback = resolvedCache.users[selectedId] || resolvedCache.roles[selectedId] || resolvedCache.channels[selectedId];
+    const label = escapeHtml(fallback?.displayName || fallback?.username || fallback?.name || selectedId);
+    options.unshift(`<option value="${selectedId}" selected>${label}</option>`);
+  }
+  select.innerHTML = '<option value="">-- Pick a target --</option>' + options.join("");
+  refreshSelectFilter(select);
+}
+
+function resetLevelModifierForm() {
+  document.getElementById("leveling-mod-id").value = "";
+  document.getElementById("leveling-mod-type").value = "channel";
+  populateModTarget("channel");
+  document.getElementById("leveling-mod-mult").value = "1.5";
+  document.getElementById("leveling-mod-applies").value = "all";
+  document.getElementById("leveling-mod-enabled").checked = true;
+  document.getElementById("leveling-mod-save").textContent = "Add Modifier";
+  document.getElementById("leveling-mod-cancel").hidden = true;
+  refreshSelectFilter(document.getElementById("leveling-mod-type"));
+  refreshSelectFilter(document.getElementById("leveling-mod-applies"));
+}
+
+function modifierTargetCell(m) {
+  if (m.targetType === "channel") return channelPill(m.targetId);
+  if (m.targetType === "role") return rolePill(m.targetId);
+  return userCell(m.targetId);
+}
+
+function renderLevelModifiers(modifiers) {
+  levelingModifiers = modifiers || [];
+  const tbody = document.querySelector("#leveling-modifiers-table tbody");
+  const typeLabel = { channel: "Channel", role: "Role", user: "User" };
+  const appliesLabel = { all: "All XP", text: "Text XP", voice: "Voice XP" };
+  tbody.innerHTML = levelingModifiers.map((m) => `
+    <tr>
+      <td>${typeLabel[m.targetType] || escapeHtml(m.targetType)}</td>
+      <td>${modifierTargetCell(m)}</td>
+      <td>×${Number(m.multiplier)}</td>
+      <td>${appliesLabel[m.appliesTo] || escapeHtml(m.appliesTo)}</td>
+      <td>${m.enabled ? "Enabled" : "Disabled"}</td>
+      <td>
+        <button data-action="edit-level-modifier" data-id="${m.id}">Edit</button>
+        <button data-action="delete-level-modifier" data-id="${m.id}">Delete</button>
+      </td>
+    </tr>
+  `).join("") || '<tr><td colspan="6">No modifiers configured</td></tr>';
+}
+
+window.editLevelModifier = (id) => {
+  const m = levelingModifiers.find((x) => x.id === id);
+  if (!m) return;
+  document.getElementById("leveling-mod-id").value = m.id;
+  document.getElementById("leveling-mod-type").value = m.targetType;
+  populateModTarget(m.targetType, m.targetId);
+  document.getElementById("leveling-mod-mult").value = m.multiplier;
+  document.getElementById("leveling-mod-applies").value = m.appliesTo || "all";
+  document.getElementById("leveling-mod-enabled").checked = m.enabled;
+  document.getElementById("leveling-mod-save").textContent = "Update Modifier";
+  document.getElementById("leveling-mod-cancel").hidden = false;
+  refreshSelectFilter(document.getElementById("leveling-mod-type"));
+  refreshSelectFilter(document.getElementById("leveling-mod-applies"));
+  document.getElementById("leveling-mod-mult").focus();
+};
+
+window.deleteLevelModifier = async (id) => {
+  if (!confirm("Delete this XP modifier?")) return;
+  await json(`/api/leveling/${currentGuild}/modifiers/${id}`, { method: "DELETE" });
+  refreshSection();
+  showToast("XP modifier deleted", "success");
+};
+
+document.getElementById("leveling-mod-type").addEventListener("change", () => {
+  populateModTarget(document.getElementById("leveling-mod-type").value);
+});
+document.getElementById("leveling-mod-cancel").addEventListener("click", resetLevelModifierForm);
+
+document.getElementById("leveling-mod-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+
+  const id = document.getElementById("leveling-mod-id").value;
+  const body = {
+    targetType: document.getElementById("leveling-mod-type").value,
+    targetId: document.getElementById("leveling-mod-target").value,
+    multiplier: Number(document.getElementById("leveling-mod-mult").value),
+    appliesTo: document.getElementById("leveling-mod-applies").value,
+    enabled: document.getElementById("leveling-mod-enabled").checked,
+  };
+
+  if (!body.targetId) {
+    showToast("Pick a target for the modifier", "error");
+    return;
+  }
+
+  try {
+    if (id) {
+      await json(`/api/leveling/${currentGuild}/modifiers/${id}`, { method: "POST", body: JSON.stringify(body) });
+      showToast("XP modifier updated", "success");
+    } else {
+      await json(`/api/leveling/${currentGuild}/modifiers`, { method: "POST", body: JSON.stringify(body) });
+      showToast("XP modifier added", "success");
+    }
+    resetLevelModifierForm();
+    refreshSection();
+  } catch (err) {
+    showToast(err.message || "Failed to save XP modifier", "error");
   }
 });
 

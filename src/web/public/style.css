@@ -828,6 +828,12 @@ p.hint { margin-top: calc(4px * var(--ui-scale)); }
   color: var(--text-1);
 }
 
+.config-form label[hidden],
+.inline-form .save-btn[hidden],
+.config-form .save-btn[hidden] {
+  display: none;
+}
+
 .config-form input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]),
 .config-form select,
 .config-form textarea,

@@ -509,8 +509,21 @@
           <li><strong>Cooldown</strong> — seconds between XP gains per user.</li>
           <li><strong>Base XP / Multiplier</strong> — level curve. XP needed for level <em>n</em> is <code>base * multiplier^(n-1)</code>.</li>
           <li><strong>Blacklists</strong> — channel/role IDs where XP is not given.</li>
-          <li><strong>Level-up notification</strong> — message sent when someone levels up. Supports <code>{user}</code>, <code>{level}</code> and other placeholders.</li>
+          <li><strong>Level-up notification</strong> — message sent when someone levels up. Supports <code>{user}</code>, <code>{level}</code>, <code>{xp}</code> and <code>{rewards}</code> placeholders.</li>
           <li><strong>Voice XP</strong> — award XP every 10 seconds to users in voice channels. Optionally skip muted/deafened users and the AFK channel. Streaming users get a multiplier and camera users get an even bigger multiplier.</li>
+          <li><strong>Global XP multiplier</strong> — scales all XP gain for the whole server.</li>
+          <li><strong>Modifier stacking</strong> — whether matching channel/role/user modifiers multiply together or only the highest applies.</li>
+          <li><strong>Booster perks</strong> — extra XP for server boosters (and optionally extra roles you pick), plus an optional shorter XP cooldown.</li>
+        </ul>
+        <h3>Level rewards</h3>
+        <ul>
+          <li>Grant a <strong>role</strong> or a <strong>currency</strong> amount when a member reaches a level. Disabled rewards are skipped.</li>
+          <li><strong>Remove lower-level reward roles</strong> — when someone earns a higher role reward, the lower reward roles are taken away (stacking off).</li>
+        </ul>
+        <h3>XP modifiers</h3>
+        <ul>
+          <li>Multiply XP for a <strong>channel</strong>, <strong>role</strong> or <strong>user</strong>. A multiplier of <code>0</code> blocks XP entirely.</li>
+          <li><strong>Applies to</strong> — limit a modifier to text XP, voice XP, or both.</li>
         </ul>
         <h3>Commands</h3>
         <ul>

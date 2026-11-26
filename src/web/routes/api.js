@@ -30,6 +30,9 @@ import * as QuestProgress from "../../models/QuestProgress.js";
 import * as QuestBoard from "../../models/QuestBoard.js";
 import { updateQuestBoard } from "../../utils/questBoard.js";
 import * as LevelingSettings from "../../models/LevelingSettings.js";
+import * as LevelReward from "../../models/LevelReward.js";
+import * as XpModifier from "../../models/XpModifier.js";
+import { invalidateModifierCache } from "../../utils/leveling.js";
 import * as MarriageSettings from "../../models/MarriageSettings.js";
 import * as InteractionSettings from "../../models/InteractionSettings.js";
 import { DEFAULT_INTERACTIONS } from "../../utils/interactions.js";
@@ -1181,6 +1184,158 @@ router.get("/leveling/:guildId/leaderboard", requireAuth, requirePermission("lev
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
   const leaderboard = await EconomyAccount.getLevelLeaderboard(req.params.guildId, limit);
   res.json(leaderboard);
+});
+
+// Level rewards — roles or currency granted when a member reaches a level.
+async function validateLevelReward(req, values, existing = {}) {
+  const client = req.app.get("client");
+  const guild = client.guilds.cache.get(req.params.guildId);
+  if (!guild) return { error: "Guild not found", status: 404 };
+
+  const rewardType = values.rewardType ?? existing.rewardType;
+  if (!LevelReward.REWARD_TYPES.includes(rewardType)) {
+    return { error: "Reward type must be role or currency" };
+  }
+
+  const level = values.level ?? existing.level;
+  if (!Number.isFinite(Number(level)) || Number(level) < 1 || Number(level) > 9999) {
+    return { error: "Level must be between 1 and 9999" };
+  }
+
+  const body = { level: Math.floor(Number(level)), rewardType };
+
+  if (rewardType === "role") {
+    const roleId = values.roleId ?? existing.roleId;
+    if (!roleId) return { error: "Pick a role for the reward" };
+    if (!(await roleBelongsToGuild(guild, roleId))) {
+      return { error: "Role does not belong to this server" };
+    }
+    body.roleId = roleId;
+    body.currency = null;
+    body.amount = 0;
+  } else {
+    const currency = values.currency ?? existing.currency;
+    if (!LevelReward.CURRENCIES.includes(currency)) {
+      return { error: "Currency must be primary or secondary" };
+    }
+    const amount = values.amount ?? existing.amount;
+    if (!Number.isFinite(Number(amount)) || Number(amount) < 1) {
+      return { error: "Amount must be a positive number" };
+    }
+    body.currency = currency;
+    body.amount = Math.floor(Number(amount));
+    body.roleId = null;
+  }
+
+  if (values.enabled !== undefined) body.enabled = Boolean(values.enabled);
+  return { body };
+}
+
+router.get("/leveling/:guildId/rewards", requireAuth, requirePermission("leveling"), async (req, res) => {
+  res.json(await LevelReward.listForGuild(req.params.guildId));
+});
+
+router.post("/leveling/:guildId/rewards", requireAuth, requirePermission("leveling"), async (req, res) => {
+  const { body, error, status } = await validateLevelReward(req, req.body || {});
+  if (error) return res.status(status || 400).json({ error });
+  const reward = await LevelReward.create(req.params.guildId, { ...body, enabled: req.body?.enabled });
+  res.json(reward);
+});
+
+router.post("/leveling/:guildId/rewards/:id", requireAuth, requirePermission("leveling"), async (req, res) => {
+  const reward = await LevelReward.get(Number(req.params.id));
+  if (!reward || reward.guildId !== req.params.guildId) {
+    return res.status(404).json({ error: "Reward not found" });
+  }
+  const { body, error, status } = await validateLevelReward(req, req.body || {}, reward);
+  if (error) return res.status(status || 400).json({ error });
+  res.json(await LevelReward.update(reward.id, body));
+});
+
+router.delete("/leveling/:guildId/rewards/:id", requireAuth, requirePermission("leveling"), async (req, res) => {
+  const reward = await LevelReward.get(Number(req.params.id));
+  if (!reward || reward.guildId !== req.params.guildId) {
+    return res.status(404).json({ error: "Reward not found" });
+  }
+  await LevelReward.remove(reward.id);
+  res.json({ ok: true });
+});
+
+// XP modifiers — per-channel / per-role / per-user multipliers for text or voice XP.
+async function validateXpModifier(req, values, existing = {}) {
+  const client = req.app.get("client");
+  const guild = client.guilds.cache.get(req.params.guildId);
+  if (!guild) return { error: "Guild not found", status: 404 };
+
+  const targetType = values.targetType ?? existing.targetType;
+  if (!XpModifier.TARGET_TYPES.includes(targetType)) {
+    return { error: "Target type must be channel, role or user" };
+  }
+
+  const targetId = values.targetId ?? existing.targetId;
+  if (!targetId) return { error: "Pick a target" };
+
+  if (targetType === "channel") {
+    if (!(await channelBelongsToGuild(client, req.params.guildId, targetId))) {
+      return { error: "Channel does not belong to this server" };
+    }
+  } else if (targetType === "role") {
+    if (!(await roleBelongsToGuild(guild, targetId))) {
+      return { error: "Role does not belong to this server" };
+    }
+  } else {
+    const member = guild.members.cache.get(targetId)
+      || (typeof guild.members.fetch === "function" ? await guild.members.fetch(targetId).catch(() => null) : null);
+    if (!member) return { error: "Member not found in this server" };
+  }
+
+  const multiplier = values.multiplier ?? existing.multiplier;
+  if (!Number.isFinite(Number(multiplier)) || Number(multiplier) < 0 || Number(multiplier) > 100) {
+    return { error: "Multiplier must be between 0 and 100" };
+  }
+
+  const appliesTo = values.appliesTo ?? existing.appliesTo ?? "all";
+  if (!XpModifier.APPLIES_TO.includes(appliesTo)) {
+    return { error: "Applies-to must be all, text or voice" };
+  }
+
+  const body = { targetType, targetId: String(targetId), multiplier: Number(multiplier), appliesTo };
+  if (values.enabled !== undefined) body.enabled = Boolean(values.enabled);
+  return { body };
+}
+
+router.get("/leveling/:guildId/modifiers", requireAuth, requirePermission("leveling"), async (req, res) => {
+  res.json(await XpModifier.listForGuild(req.params.guildId));
+});
+
+router.post("/leveling/:guildId/modifiers", requireAuth, requirePermission("leveling"), async (req, res) => {
+  const { body, error, status } = await validateXpModifier(req, req.body || {});
+  if (error) return res.status(status || 400).json({ error });
+  const modifier = await XpModifier.create(req.params.guildId, { ...body, enabled: req.body?.enabled });
+  invalidateModifierCache(req.params.guildId);
+  res.json(modifier);
+});
+
+router.post("/leveling/:guildId/modifiers/:id", requireAuth, requirePermission("leveling"), async (req, res) => {
+  const modifier = await XpModifier.get(Number(req.params.id));
+  if (!modifier || modifier.guildId !== req.params.guildId) {
+    return res.status(404).json({ error: "Modifier not found" });
+  }
+  const { body, error, status } = await validateXpModifier(req, req.body || {}, modifier);
+  if (error) return res.status(status || 400).json({ error });
+  const updated = await XpModifier.update(modifier.id, body);
+  invalidateModifierCache(req.params.guildId);
+  res.json(updated);
+});
+
+router.delete("/leveling/:guildId/modifiers/:id", requireAuth, requirePermission("leveling"), async (req, res) => {
+  const modifier = await XpModifier.get(Number(req.params.id));
+  if (!modifier || modifier.guildId !== req.params.guildId) {
+    return res.status(404).json({ error: "Modifier not found" });
+  }
+  await XpModifier.remove(modifier.id);
+  invalidateModifierCache(req.params.guildId);
+  res.json({ ok: true });
 });
 
 // Marriage settings

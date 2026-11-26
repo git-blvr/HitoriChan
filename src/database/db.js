@@ -578,6 +578,46 @@ const MIGRATIONS = [
       );
     `,
   },
+  {
+    version: 31,
+    sql: `
+      ALTER TABLE leveling_settings ADD COLUMN global_xp_multiplier REAL NOT NULL DEFAULT 1.0;
+      ALTER TABLE leveling_settings ADD COLUMN modifier_stack TEXT NOT NULL DEFAULT 'multiply';
+      ALTER TABLE leveling_settings ADD COLUMN reward_remove_previous INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE leveling_settings ADD COLUMN booster_enabled INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE leveling_settings ADD COLUMN booster_xp_multiplier REAL NOT NULL DEFAULT 1.5;
+      ALTER TABLE leveling_settings ADD COLUMN booster_role_ids TEXT NOT NULL DEFAULT '[]';
+      ALTER TABLE leveling_settings ADD COLUMN booster_include_premium INTEGER NOT NULL DEFAULT 1;
+      ALTER TABLE leveling_settings ADD COLUMN booster_cooldown_seconds INTEGER;
+
+      CREATE TABLE IF NOT EXISTS level_rewards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        level INTEGER NOT NULL,
+        reward_type TEXT NOT NULL,
+        role_id TEXT,
+        currency TEXT,
+        amount INTEGER NOT NULL DEFAULT 0,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+      CREATE INDEX IF NOT EXISTS idx_level_rewards_guild ON level_rewards(guild_id, level);
+
+      CREATE TABLE IF NOT EXISTS xp_modifiers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        target_type TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        multiplier REAL NOT NULL DEFAULT 1.0,
+        applies_to TEXT NOT NULL DEFAULT 'all',
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+      CREATE INDEX IF NOT EXISTS idx_xp_modifiers_guild ON xp_modifiers(guild_id);
+    `,
+  },
 ];
 
 export function migrate() {

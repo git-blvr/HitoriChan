@@ -1042,6 +1042,15 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
             <label class="grow">Max <input type="number" id="leveling-max-xp" min="1" value="25" placeholder="25" /></label>
             <label class="grow">Cooldown (seconds) <input type="number" id="leveling-cooldown" min="0" value="60" placeholder="60" /></label>
           </div>
+          <div class="inline-fields">
+            <label class="grow">Global XP multiplier <input type="number" id="leveling-global-mult" step="0.1" min="0" value="1" placeholder="1" /></label>
+            <label class="grow">Modifier stacking
+              <select id="leveling-modifier-stack">
+                <option value="multiply">Multiply every matching modifier</option>
+                <option value="highest">Use highest matching modifier only</option>
+              </select>
+            </label>
+          </div>
 
           <h4 style="margin:18px 0 10px;font-size:0.95rem">Level Curve</h4>
           <div class="inline-fields">
@@ -1065,6 +1074,7 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
             </select>
           </label>
           <label>Message <input type="text" id="leveling-notify-message" placeholder="GG {user}, you leveled up to level {level}!" /></label>
+          <p class="hint">Placeholders: {user}, {level}, {xp}, {rewards}. When rewards are earned and {rewards} is not used, they are appended automatically.</p>
 
           <h4 style="margin:18px 0 10px;font-size:0.95rem">Voice XP</h4>
           <label><input type="checkbox" id="leveling-voice-enabled" /> Enable voice XP</label>
@@ -1078,8 +1088,100 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
             <label class="grow">Camera multiplier <input type="number" id="leveling-voice-video" step="0.1" min="1" value="2.0" placeholder="2.0" /></label>
           </div>
 
+          <h4 style="margin:18px 0 10px;font-size:0.95rem">Booster Perks</h4>
+          <label><input type="checkbox" id="leveling-booster-enabled" /> Give boosters bonus XP</label>
+          <div class="inline-fields">
+            <label class="grow">XP multiplier <input type="number" id="leveling-booster-mult" step="0.1" min="0" value="1.5" placeholder="1.5" /></label>
+            <label class="grow">Cooldown override (seconds) <input type="number" id="leveling-booster-cooldown" min="0" placeholder="Default" /></label>
+          </div>
+          <label><input type="checkbox" id="leveling-booster-premium" /> Count real server boosters</label>
+          <label class="grow">Also treat these roles as boosters
+            <select id="leveling-booster-roles" multiple data-searchable="true" data-entity="role" placeholder="Pick roles that get booster XP"></select>
+          </label>
+
+          <h4 style="margin:18px 0 10px;font-size:0.95rem">Level Rewards</h4>
+          <label><input type="checkbox" id="leveling-reward-remove" /> Remove lower-level reward roles when a higher one is earned</label>
+          <p class="hint">Rewards themselves are managed in the Level Rewards panel below.</p>
+
           <button type="submit" class="save-btn" style="margin-top:14px">Save Leveling Settings</button>
         </form>
+
+        <div class="panel sub-panel" id="leveling-rewards-panel">
+          <h3>Level Rewards</h3>
+          <p class="hint">Granted automatically when a member reaches the level — roles are assigned, currency is deposited.</p>
+          <form id="leveling-reward-form" class="config-form" style="margin-bottom:12px">
+            <input type="hidden" id="leveling-reward-id" />
+            <div class="inline-fields">
+              <label class="grow">Level <input type="number" id="leveling-reward-level" min="1" max="9999" value="5" required /></label>
+              <label class="grow">Type
+                <select id="leveling-reward-type">
+                  <option value="role">Role</option>
+                  <option value="currency">Currency</option>
+                </select>
+              </label>
+              <label class="grow" id="leveling-reward-role-wrap">Role
+                <select id="leveling-reward-role" data-searchable="true">
+                  <option value="">-- Pick a role --</option>
+                </select>
+              </label>
+              <label class="grow" id="leveling-reward-currency-wrap" hidden>Currency
+                <select id="leveling-reward-currency">
+                  <option value="primary">Primary</option>
+                  <option value="secondary">Secondary</option>
+                </select>
+              </label>
+              <label class="grow" id="leveling-reward-amount-wrap" hidden>Amount <input type="number" id="leveling-reward-amount" min="1" value="100" /></label>
+            </div>
+            <div class="inline-form" style="margin-top:10px">
+              <label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" id="leveling-reward-enabled" checked /> Enabled</label>
+              <button type="submit" class="save-btn" id="leveling-reward-save">Add Reward</button>
+              <button type="button" class="save-btn" id="leveling-reward-cancel" hidden>Cancel</button>
+            </div>
+          </form>
+          <table class="data-table" id="leveling-rewards-table">
+            <thead><tr><th>Level</th><th>Reward</th><th>Status</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="panel sub-panel" id="leveling-modifiers-panel">
+          <h3>XP Modifiers</h3>
+          <p class="hint">Multiply XP gain for specific channels, roles or users — set 0 to block XP there entirely.</p>
+          <form id="leveling-mod-form" class="config-form" style="margin-bottom:12px">
+            <input type="hidden" id="leveling-mod-id" />
+            <div class="inline-fields">
+              <label class="grow">Target type
+                <select id="leveling-mod-type">
+                  <option value="channel">Channel</option>
+                  <option value="role">Role</option>
+                  <option value="user">User</option>
+                </select>
+              </label>
+              <label class="grow">Target
+                <select id="leveling-mod-target" data-searchable="true">
+                  <option value="">-- Pick a target --</option>
+                </select>
+              </label>
+              <label class="grow">Multiplier <input type="number" id="leveling-mod-mult" step="0.1" min="0" max="100" value="1.5" required /></label>
+              <label class="grow">Applies to
+                <select id="leveling-mod-applies">
+                  <option value="all">All XP</option>
+                  <option value="text">Text XP</option>
+                  <option value="voice">Voice XP</option>
+                </select>
+              </label>
+            </div>
+            <div class="inline-form" style="margin-top:10px">
+              <label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" id="leveling-mod-enabled" checked /> Enabled</label>
+              <button type="submit" class="save-btn" id="leveling-mod-save">Add Modifier</button>
+              <button type="button" class="save-btn" id="leveling-mod-cancel" hidden>Cancel</button>
+            </div>
+          </form>
+          <table class="data-table" id="leveling-modifiers-table">
+            <thead><tr><th>Type</th><th>Target</th><th>Multiplier</th><th>Applies to</th><th>Status</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
 
         <div class="panel sub-panel">
           <h3>Top Users</h3>
