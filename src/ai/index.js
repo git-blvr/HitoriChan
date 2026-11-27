@@ -1,6 +1,8 @@
-// AI provider switch — set AI_PROVIDER=gemini|groq in .env to pick.
-// Unset: Gemini wins if GEMINI_API_KEY is set, else Groq if GROQ_API is set.
-const PROVIDER = (process.env.AI_PROVIDER || (process.env.GEMINI_API_KEY ? "gemini" : "groq")).toLowerCase();
+// AI provider switch — pick "gemini" | "groq" in bot.config.js (ai.provider)
+// or AI_PROVIDER in .env. Auto: Gemini if GEMINI_API_KEY is set, else Groq.
+import config from "../../bot.config.js";
+
+const PROVIDER = (config.ai.provider || (process.env.GEMINI_API_KEY ? "gemini" : "groq")).toLowerCase();
 
 const impl = PROVIDER === "groq" ? await import("./groq.js") : await import("./gemini.js");
 

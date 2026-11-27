@@ -1,8 +1,9 @@
 import { get as getAISettings } from "../models/AISettings.js";
 import { AIError } from "../helpers/aiErrors.js";
+import config from "../../bot.config.js";
 
 const GROQ_API_KEY = process.env.GROQ_API;
-const MODEL        = process.env.GROQ_MODEL || "qwen/qwen3.8-27b";
+const MODEL        = config.ai.groqModel;
 const GROQ_API_URL = process.env.GROQ_API_URL || "https://api.groq.com/openai/v1/chat/completions";
 
 const bocchi = {

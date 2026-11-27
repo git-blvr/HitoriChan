@@ -8,10 +8,11 @@ import { AIError } from "../helpers/aiErrors.js";
 import { safeReply as safeMessageReply } from "../helpers/discord.js";
 import * as MessageHistory from "../models/MessageHistory.js";
 import * as AISettings from "../models/AISettings.js";
+import config from "../../bot.config.js";
 
-const MAX_HISTORY = 10;
+const MAX_HISTORY = config.ai.historyMessages;
 const MAX_DISCORD_LENGTH = 1900;
-const COOLDOWN_MS = 10_000;
+const COOLDOWN_MS = config.ai.cooldownMs;
 
 function formatQuote(replied, imageURLs) {
   const quotedAuthor = replied.member?.displayName ?? replied.author.username;
@@ -93,7 +94,8 @@ export async function handleChat(message) {
 
     const reply = await queryAI({
       messages: contextMessages,
-      maxTokens: 1024,
+      maxTokens: config.ai.maxTokens,
+      temperature: config.ai.temperature,
       guildId: guild.id,
       userName: author.username,
     });

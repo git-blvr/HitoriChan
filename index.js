@@ -5,6 +5,7 @@ import { loadCommands, registerCommandListeners } from "./src/handlers/commandHa
 import { loadEvents } from "./src/handlers/eventHandler.js";
 import { startWebServer } from "./src/web/server.js";
 import { logCrash } from "./src/utils/crashLogger.js";
+import config from "./bot.config.js";
 
 const client = new Client({
   intents: [
@@ -31,19 +32,19 @@ const client = new Client({
     StageInstanceManager: 0,
     GuildBanManager: 0,
     GuildInviteManager: 0,
-    UserManager: { maxSize: 500, keepOverLimit: (u) => u.id === u.client.user.id },
-    GuildMemberManager: { maxSize: 250, keepOverLimit: (m) => m.id === m.client.user.id },
-    VoiceStateManager: { maxSize: 250 },
+    UserManager: { maxSize: config.cache.users, keepOverLimit: (u) => u.id === u.client.user.id },
+    GuildMemberManager: { maxSize: config.cache.members, keepOverLimit: (m) => m.id === m.client.user.id },
+    VoiceStateManager: { maxSize: config.cache.voiceStates },
   }),
   sweepers: {
     ...Options.defaultSweeperSettings,
-    messages: { interval: 60, lifetime: 300 },
+    messages: { interval: 60, lifetime: config.cache.messageSweepLifetimeMs },
     users: {
-      interval: 900,
+      interval: config.cache.userSweepIntervalMs,
       filter: () => (user) => user.id !== user.client.user.id,
     },
     guildMembers: {
-      interval: 900,
+      interval: config.cache.memberSweepIntervalMs,
       filter: () => (member) => member.id !== member.client.user.id,
     },
   },

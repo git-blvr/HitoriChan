@@ -1,9 +1,10 @@
 import { get as getAISettings } from "../models/AISettings.js";
 import { AIError } from "../helpers/aiErrors.js";
 import { safeFetch } from "../utils/safeFetch.js";
+import config from "../../bot.config.js";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const MODEL          = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+const MODEL          = config.ai.geminiModel;
 const GEMINI_API_URL = process.env.GEMINI_API_URL
   || `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 

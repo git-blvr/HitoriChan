@@ -1,8 +1,10 @@
 // Per-user AI chat quota: sliding windows so bursts can't drain the API.
+import config from "../../bot.config.js";
+
 const windows = new Map(); // userId -> number[] of consume timestamps
-export const AI_MESSAGE_CHARS = 128;
-export const AI_MINUTE_LIMIT = 4;
-export const AI_HOUR_LIMIT = 30;
+export const AI_MESSAGE_CHARS = config.ai.maxMessageChars;
+export const AI_MINUTE_LIMIT = config.ai.perMinute;
+export const AI_HOUR_LIMIT = config.ai.perHour;
 export const AI_LIMIT_LABEL = `${AI_MINUTE_LIMIT}/min · ${AI_HOUR_LIMIT}/hour`;
 
 const MINUTE_MS = 60_000;

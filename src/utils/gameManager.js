@@ -2,12 +2,13 @@ import { randomBytes } from "node:crypto";
 import { MessageFlags } from "discord.js";
 import { adjustBalance, recordGameResult, getGameConfig } from "./economyManager.js";
 import * as EconomyAccount from "../models/EconomyAccount.js";
+import config from "../../bot.config.js";
 
 // Active game sessions. Bounded + TTL'd so a busy server can't grow RAM.
 const games = new Map();
-const MAX_GAMES = 250;
-const SWEEP_MS = 5_000;
-const DEFAULT_SESSION_TTL_MS = 10 * 60 * 1000;
+const MAX_GAMES = config.games.maxSessions;
+const SWEEP_MS = config.games.sweepIntervalMs;
+const DEFAULT_SESSION_TTL_MS = config.games.defaultTtlMs;
 
 let sweepTimer = null;
 let clientRef = null;

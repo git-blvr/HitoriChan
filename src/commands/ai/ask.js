@@ -5,9 +5,10 @@ import { checkCooldown, clearCooldown } from "../../utils/cooldowns.js";
 import * as EconomyAccount from "../../models/EconomyAccount.js";
 import { embErr, embWrn } from "../../helpers/embeds.js";
 import { AIError } from "../../helpers/aiErrors.js";
+import config from "../../../bot.config.js";
 
-const FOLT_COST   = 750;
-const COOLDOWN_MS = 5 * 60 * 1000;
+const FOLT_COST   = config.ask.costFolts;
+const COOLDOWN_MS = config.ask.cooldownMs;
 const COLOR       = 0x5865f2;
 
 export default {
@@ -59,7 +60,7 @@ export default {
     try {
       const reply = await queryAI({
         messages: [{ role: "user", content: question }],
-        maxTokens: 512,
+        maxTokens: config.ask.maxTokens,
         guildId: ctx.guild?.id,
         userName: ctx.user.username,
       });
