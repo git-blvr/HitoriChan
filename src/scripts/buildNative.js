@@ -23,5 +23,18 @@ execFileSync("cargo", ["build", "--release"], { cwd: nativeDir, stdio: "inherit"
 
 const src = path.join(nativeDir, "target", "release", artifact);
 const dest = path.join(nativeDir, "hitori_native.node");
-fs.copyFileSync(src, dest);
+try {
+  fs.copyFileSync(src, dest);
+} catch (err) {
+  if (err.code === "EBUSY" || err.code === "EPERM") {
+    // A running bot has the module loaded — Windows forbids overwriting an
+    // in-use DLL but still allows renaming it, so sideline the old one.
+    const sideline = `${dest}.old-${Date.now()}`;
+    fs.renameSync(dest, sideline);
+    fs.copyFileSync(src, dest);
+    console.warn(`[native] existing module was in use — moved to ${path.basename(sideline)} (safe to delete)`);
+  } else {
+    throw err;
+  }
+}
 console.log(`[native] ${artifact} -> native/hitori_native.node`);

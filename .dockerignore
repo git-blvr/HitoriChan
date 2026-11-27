@@ -1,0 +1,11 @@
+node_modules
+native/target
+native/hitori_native.node
+native/*.old-*
+data
+.git
+.env
+*.log
+*.md
+.devin
+scripts

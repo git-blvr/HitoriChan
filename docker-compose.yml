@@ -1,0 +1,9 @@
+services:
+  bot:
+    build: .
+    env_file: .env
+    ports:
+      - "${WEB_PORT:-12948}:${WEB_PORT:-12948}"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
