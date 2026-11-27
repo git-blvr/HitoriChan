@@ -1,10 +1,10 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
-import { queryGroq } from "../../ai/groq.js";
+import { queryGemini } from "../../ai/gemini.js";
 import { checkCooldown, clearCooldown } from "../../utils/cooldowns.js";
 import * as EconomyAccount from "../../models/EconomyAccount.js";
 import { embErr, embWrn } from "../../helpers/embeds.js";
-import { AIGroqError } from "../../helpers/aiErrors.js";
+import { AIError } from "../../helpers/aiErrors.js";
 
 const FOLT_COST   = 750;
 const COOLDOWN_MS = 5 * 60 * 1000;
@@ -57,7 +57,7 @@ export default {
     await ctx.deferReply();
 
     try {
-      const reply = await queryGroq({
+      const reply = await queryGemini({
         messages: [{ role: "user", content: question }],
         maxTokens: 512,
         guildId: ctx.guild?.id,
@@ -79,7 +79,7 @@ export default {
       console.error("Ask command error:", err);
       clearCooldown(ctx.user.id, "ask");
 
-      if (err instanceof AIGroqError) {
+      if (err instanceof AIError) {
         const warning = cv2({
           color: 0xffa500,
           title: "⚠️ AI is unavailable",

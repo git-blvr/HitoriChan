@@ -32,11 +32,11 @@
 
 ## Environment variables
 - `TOKEN` — Discord bot token (required)
-- `GROQ_API` — Groq API key (required for AI)
+- `GEMINI_API_KEY` — Gemini API key (required for AI)
 - `LASTFM_API` — Last.fm API key (required for `fm`/`lastfm` commands; read-only, secret not needed)
 - `CLIENT_ID` — Discord application ID (used for command deployment)
 - `GUILD_ID` — optional test guild ID for instant guild command updates
-- `GROQ_MODEL` — optional Groq model override
+- `GEMINI_MODEL` — optional Gemini model override (default `gemini-3.6-flash`; `GEMINI_API_URL` overrides the endpoint)
 - `DB_PATH` — optional SQLite database path
 - `WEB_PORT` — optional dashboard port (default `3000`)
 - `WEB_HOST` — optional dashboard bind address (default `0.0.0.0`)

@@ -1,9 +1,10 @@
-import { queryGroq } from "../ai/groq.js";
+import { queryGemini } from "../ai/gemini.js";
 import { checkCooldown } from "../utils/cooldowns.js";
+import { consumeAIQuota, formatRetryAfter, AI_MESSAGE_LIMIT, AI_MESSAGE_CHARS } from "../utils/aiQuota.js";
 import { getImageURLs, buildContextMessages, trimHistory } from "../helpers/ai.js";
 import { truncate } from "../helpers/format.js";
 import { cv2 } from "../helpers/cv2.js";
-import { AIGroqError } from "../helpers/aiErrors.js";
+import { AIError } from "../helpers/aiErrors.js";
 import { safeReply as safeMessageReply } from "../helpers/discord.js";
 import * as MessageHistory from "../models/MessageHistory.js";
 import * as AISettings from "../models/AISettings.js";
@@ -61,10 +62,21 @@ export async function handleChat(message) {
   if (!shouldReply) return;
   if (!userMessage && !imageURLs.length) return;
 
+  if (userMessage.length > AI_MESSAGE_CHARS) {
+    await message.reply(`That's a bit long for me... please keep it under **${AI_MESSAGE_CHARS} characters**... 😖`);
+    return;
+  }
+
   const isBoosting = !!message.member?.premiumSince;
   const cooldown = checkCooldown(author.id, "chat", COOLDOWN_MS, isBoosting);
   if (cooldown > 0) {
     await message.reply(`⏳ **${cooldown}s** cooldown remaining.${isBoosting ? " ✨" : ""}`);
+    return;
+  }
+
+  const quota = consumeAIQuota(author.id);
+  if (!quota.allowed) {
+    await message.reply(`S-sorry, I've hit my chat limit... I can talk again in **${formatRetryAfter(quota.retryAfterMs)}**. (${AI_MESSAGE_LIMIT} messages per 4 hours)`);
     return;
   }
 
@@ -83,7 +95,7 @@ export async function handleChat(message) {
 
     const contextMessages = buildContextMessages(historyDoc.messages, userMessage, imageURLs);
 
-    const reply = await queryGroq({
+    const reply = await queryGemini({
       messages: contextMessages,
       maxTokens: 1024,
       guildId: guild.id,
@@ -102,7 +114,7 @@ export async function handleChat(message) {
   } catch (err) {
     console.error("Chat handler error:", err);
 
-    if (err instanceof AIGroqError) {
+    if (err instanceof AIError) {
       await message.reply(cv2({
         color: 0xffa500,
         title: "⚠️ AI is unavailable",

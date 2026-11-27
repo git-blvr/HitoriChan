@@ -1,16 +1,19 @@
-export class AIGroqError extends Error {
+export class AIError extends Error {
   constructor(message, { rateLimited = false, unavailable = false } = {}) {
     super(message);
-    this.name = "AIGroqError";
+    this.name = "AIError";
     this.rateLimited = rateLimited;
     this.unavailable = unavailable;
   }
 }
 
+// Backwards-compatible alias — instanceof works for both names.
+export const AIGroqError = AIError;
+
 export function isRateLimited(err) {
-  return err instanceof AIGroqError && err.rateLimited;
+  return err instanceof AIError && err.rateLimited;
 }
 
 export function isUnavailable(err) {
-  return err instanceof AIGroqError && err.unavailable;
+  return err instanceof AIError && err.unavailable;
 }
