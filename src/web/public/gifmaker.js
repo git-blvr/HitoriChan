@@ -21,6 +21,7 @@ const Gm = {
   initDone: false,
   saveTimer: 0,
   drag: null, // { kind:'move'|'key'|'scrub', ... }
+  grid: { on: false, size: 8, snap: true },
 };
 
 const $gm = (id) => document.getElementById(id);
@@ -75,7 +76,7 @@ function gmSave() {
   clearTimeout(Gm.saveTimer);
   Gm.saveTimer = setTimeout(() => {
     try {
-      localStorage.setItem(GM_STORAGE_KEY, JSON.stringify({ spec: Gm.spec, selectedId: Gm.selectedId }));
+      localStorage.setItem(GM_STORAGE_KEY, JSON.stringify({ spec: Gm.spec, selectedId: Gm.selectedId, grid: Gm.grid }));
     } catch { /* private mode */ }
   }, 300);
 }
@@ -86,6 +87,7 @@ function gmLoad() {
     if (raw?.spec) {
       Gm.spec = GifScene.sanitizeSpec(raw.spec);
       Gm.selectedId = raw.selectedId || null;
+      if (raw.grid) Gm.grid = { on: !!raw.grid.on, size: Math.max(2, Math.min(64, Number(raw.grid.size) || 8)), snap: raw.grid.snap !== false };
       return;
     }
   } catch { /* fall through */ }
@@ -203,6 +205,20 @@ function gmMoveElement(id, dir) {
   gmRenderAll();
 }
 
+function gmDuplicateElement(id) {
+  const src = gmEl(id);
+  if (!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = GifScene.uid(src.type);
+  copy.name = `${src.name || src.type} copy`;
+  copy.x = (copy.x || 0) + Math.max(4, Gm.grid.size);
+  copy.y = (copy.y || 0) + Math.max(4, Gm.grid.size);
+  Gm.spec.elements.splice(Gm.spec.elements.indexOf(src) + 1, 0, copy);
+  Gm.selectedId = copy.id;
+  Gm.selectedKey = null;
+  gmRenderAll();
+}
+
 function gmEnsureAsset(src) {
   if (!src || Gm.assets[src] !== undefined) return;
   Gm.assets[src] = null;
@@ -241,6 +257,33 @@ function gmDraw() {
   const ctx = canvas.getContext("2d");
   GifScene.drawScene(ctx, Gm.spec, Gm.time, Gm.assets);
 
+  // Grid overlay + center guides
+  if (Gm.grid.on) {
+    const step = Math.max(2, Gm.grid.size);
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,0.10)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let gx = step; gx < Gm.spec.width; gx += step) {
+      ctx.moveTo(gx + 0.5, 0);
+      ctx.lineTo(gx + 0.5, Gm.spec.height);
+    }
+    for (let gy = step; gy < Gm.spec.height; gy += step) {
+      ctx.moveTo(0, gy + 0.5);
+      ctx.lineTo(Gm.spec.width, gy + 0.5);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(0,255,30,0.35)";
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(Gm.spec.width / 2 + 0.5, 0);
+    ctx.lineTo(Gm.spec.width / 2 + 0.5, Gm.spec.height);
+    ctx.moveTo(0, Gm.spec.height / 2 + 0.5);
+    ctx.lineTo(Gm.spec.width, Gm.spec.height / 2 + 0.5);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // Selection outline
   const el = gmEl();
   if (el) {
@@ -269,6 +312,8 @@ const GM_LAYER_ICONS = {
   shape: '<svg class="gm-layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>',
   image: '<svg class="gm-layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m5 19 5-5 3 3 4-4 2 2"/></svg>',
   avatar: '<svg class="gm-layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 4-6 8-6s7 2 8 6"/></svg>',
+  bar: '<svg class="gm-layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="9" width="18" height="6" rx="3"/><rect x="3" y="9" width="10" height="6" rx="3" fill="currentColor" stroke="none"/></svg>',
+  counter: '<svg class="gm-layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 9V7h4M4 15v2h4M16 7h4v2M20 15v2h-4"/><path d="M12 9v6"/></svg>',
 };
 
 function gmRenderLayers() {
@@ -291,6 +336,9 @@ function gmRenderLayers() {
         </button>
         <button type="button" class="gm-layer-act" data-gm="layer-down" data-el="${el.id}" title="Send backward" aria-label="Send backward">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 10 6 6 6-6"/></svg>
+        </button>
+        <button type="button" class="gm-layer-act" data-gm="layer-dup" data-el="${el.id}" title="Duplicate layer" aria-label="Duplicate layer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
         </button>
         <button type="button" class="gm-layer-act gm-layer-act--danger" data-gm="layer-del" data-el="${el.id}" title="Delete layer" aria-label="Delete layer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M9 7V5h6v2m-8 0 1 13h8l1-13"/></svg>
@@ -356,6 +404,28 @@ const GM_FIELDSETS = {
     { prop: "member", label: "Member", kind: "member" },
     { prop: "ring", label: "Ring", kind: "color", key: true },
     { prop: "strokeWidth", label: "Ring w", kind: "num", key: true, step: 1, min: 0 },
+  ],
+  bar: [
+    { group: "Progress bar" },
+    { prop: "value", label: "Value %", kind: "num", key: true, step: 1, min: 0, max: 100 },
+    { prop: "track", label: "Track", kind: "color", key: true },
+    { prop: "fill", label: "Fill", kind: "color", key: true },
+    { prop: "cornerRadius", label: "Radius", kind: "num", key: true, step: 1, min: 0 },
+    { prop: "stroke", label: "Stroke", kind: "color", key: true },
+    { prop: "strokeWidth", label: "Stroke w", kind: "num", key: true, step: 1, min: 0 },
+  ],
+  counter: [
+    { group: "Counter" },
+    { prop: "value", label: "Value", kind: "num", key: true, step: 1 },
+    { prop: "prefix", label: "Prefix", kind: "text" },
+    { prop: "suffix", label: "Suffix", kind: "text" },
+    { prop: "decimals", label: "Decimals", kind: "num", step: 1, min: 0, max: 6 },
+    { prop: "fontFamily", label: "Font", kind: "select", options: GM_FONTS },
+    { prop: "fontSize", label: "Size", kind: "num", key: true, step: 1, min: 4 },
+    { prop: "fontWeight", label: "Weight", kind: "select", options: [400, 500, 600, 700] },
+    { prop: "fontStyle", label: "Style", kind: "select", options: ["normal", "italic"] },
+    { prop: "color", label: "Color", kind: "color", key: true },
+    { prop: "align", label: "Align", kind: "select", options: ["left", "center", "right"] },
   ],
 };
 
@@ -660,6 +730,19 @@ function gmInitTimelineEvents() {
     } else if (e.key === "Escape") {
       Gm.selectedKey = null;
       gmRenderAll();
+    } else if (e.key.startsWith("Arrow") && Gm.selectedId) {
+      const el = gmEl();
+      if (!el) return;
+      e.preventDefault();
+      const step = e.shiftKey ? 10 : (Gm.grid.snap ? Math.max(2, Gm.grid.size) : 1);
+      const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+      const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
+      gmSetProp(el, "x", (gmPropValue(el, "x") || 0) + dx);
+      gmSetProp(el, "y", (gmPropValue(el, "y") || 0) + dy);
+      gmDraw();
+      gmRenderInspectorValues(el);
+      gmRenderTimeline();
+      gmSave();
     }
   });
 }
@@ -695,8 +778,15 @@ function gmDragMove(e) {
   const scaleY = Gm.spec.height / rect.height;
   const dx = (e.clientX - Gm.drag.startX) * scaleX;
   const dy = (e.clientY - Gm.drag.startY) * scaleY;
-  gmSetProp(el, "x", Math.round((Gm.drag.origX + dx) * 10) / 10);
-  gmSetProp(el, "y", Math.round((Gm.drag.origY + dy) * 10) / 10);
+  let nx = Gm.drag.origX + dx;
+  let ny = Gm.drag.origY + dy;
+  if (Gm.grid.snap) {
+    const step = Math.max(2, Gm.grid.size);
+    nx = Math.round(nx / step) * step;
+    ny = Math.round(ny / step) * step;
+  }
+  gmSetProp(el, "x", Math.round(nx * 10) / 10);
+  gmSetProp(el, "y", Math.round(ny * 10) / 10);
   gmDraw();
   gmRenderInspectorValues(el);
 }
@@ -833,6 +923,28 @@ function gmInitTransport() {
   });
 }
 
+function gmInitGridControls() {
+  if (!gmEls.gridOn) return;
+  gmEls.gridOn.checked = Gm.grid.on;
+  gmEls.gridSnap.checked = Gm.grid.snap;
+  gmEls.gridSize.value = String(Gm.grid.size);
+  gmEls.gridOn.addEventListener("change", () => {
+    Gm.grid.on = gmEls.gridOn.checked;
+    gmDraw();
+    gmSave();
+  });
+  gmEls.gridSnap.addEventListener("change", () => {
+    Gm.grid.snap = gmEls.gridSnap.checked;
+    gmSave();
+  });
+  gmEls.gridSize.addEventListener("change", () => {
+    Gm.grid.size = Math.max(2, Math.min(64, Number(gmEls.gridSize.value) || 8));
+    gmEls.gridSize.value = String(Gm.grid.size);
+    gmDraw();
+    gmSave();
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Engine + export
 // ---------------------------------------------------------------------------
@@ -903,6 +1015,8 @@ function gmInitActions() {
     else if (act === "add-shape") gmAddElement("shape");
     else if (act === "add-image") gmAddElement("image");
     else if (act === "add-avatar") gmAddElement("avatar");
+    else if (act === "add-bar") gmAddElement("bar");
+    else if (act === "add-counter") gmAddElement("counter");
     else if (act === "export") gmExport();
     else if (act === "play") gmTogglePlay();
     else if (act === "stop") {
@@ -912,6 +1026,7 @@ function gmInitActions() {
     } else if (act === "layer-del") gmRemoveElement(elId);
     else if (act === "layer-up") gmMoveElement(elId, 1);
     else if (act === "layer-down") gmMoveElement(elId, -1);
+    else if (act === "layer-dup") gmDuplicateElement(elId);
     else if (act === "layer-vis") {
       const el = gmEl(elId);
       if (el) {
@@ -1022,12 +1137,16 @@ function gmInit() {
   gmEls.loop = $gm("gm-loop");
   gmEls.bgOn = $gm("gm-bg-on");
   gmEls.bg = $gm("gm-bg");
+  gmEls.gridOn = $gm("gm-grid-on");
+  gmEls.gridSize = $gm("gm-grid-size");
+  gmEls.gridSnap = $gm("gm-snap");
 
   gmLoad();
   gmInitActions();
   gmInitTimelineEvents();
   gmInitCanvas();
   gmInitTransport();
+  gmInitGridControls();
   gmLoadEngine();
 
   window.addEventListener("resize", gmPositionPlayhead);

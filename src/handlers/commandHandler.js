@@ -11,6 +11,7 @@ import { safeMessagePayload } from "../helpers/discord.js";
 import { handleStreak } from "./streakHandler.js";
 import { handleChat } from "./chatHandler.js";
 import { handleTrigger } from "./triggerHandler.js";
+import { handleAfk } from "./afkHandler.js";
 import { handleLeveling } from "../utils/leveling.js";
 import * as CommandLog from "../models/CommandLog.js";
 import * as MessageLog from "../models/MessageLog.js";
@@ -122,6 +123,7 @@ export function registerCommandListeners(client) {
     await safe("chat", handleChat(message));
     await safe("trigger", handleTrigger(message));
     await safe("leveling", handleLeveling(client, message));
+    await safe("afk", handleAfk(message));
 
     const prefix = await getPrefix(message.guild.id);
     if (!message.content.startsWith(prefix)) return;

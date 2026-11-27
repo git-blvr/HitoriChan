@@ -113,6 +113,10 @@
 
       <div class="nav-group" data-group="studio">
         <p class="nav-group-label">Studio</p>
+        <a href="#studio" data-section="studio">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h7M7 13h10M7 17h4"/></svg>
+          <span>Message studio</span>
+        </a>
         <a href="#gifmaker" data-section="gifmaker">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/></svg>
           <span>GIF maker</span>
@@ -121,6 +125,10 @@
 
       <div class="nav-group" data-group="admin">
         <p class="nav-group-label">Admin</p>
+        <a href="#bot" data-section="bot">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7a5 5 0 0 1 10 0v1H7V7Z"/><rect x="4" y="8" width="16" height="11" rx="2"/><path d="M9 13h.01M15 13h.01M10 16.5c.7.5 1.3.7 2 .7s1.3-.2 2-.7"/></svg>
+          <span>Bot profile</span>
+        </a>
         <a href="#users" data-section="users">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M3.5 20c.5-3.5 2.7-5.5 5.5-5.5S14 16.5 14.5 20"/><path d="M16 5.5a3.5 3.5 0 0 1 0 5.6M17.5 15c1.6.8 2.7 2.3 3 5"/></svg>
           <span>Users</span>
@@ -305,17 +313,6 @@
         </form>
       </div>
 
-      <div class="emoji-picker" id="emoji-picker" hidden>
-        <div class="emoji-picker-header">
-          <button type="button" class="emoji-tab active" data-tab="discord">Discord</button>
-          <button type="button" class="emoji-tab" data-tab="server">Server</button>
-        </div>
-        <div class="emoji-picker-body">
-          <div id="emoji-defaults" class="emoji-tab-content active"></div>
-          <div id="emoji-guild" class="emoji-tab-content"></div>
-        </div>
-      </div>
-
       <div class="panel">
         <h2>Server Richboard</h2>
         <table class="data-table" id="economy-table">
@@ -341,7 +338,7 @@
               <option value="">-- None --</option>
             </select>
           </label>
-          <label>Custom Prompt <textarea id="ai-prompt" rows="6" data-payload-import="text" placeholder="Custom instructions..."></textarea></label>
+          <label>Custom Prompt <textarea id="ai-prompt" rows="6" data-payload-import="text" placeholder="Custom instructions..." data-emoji></textarea></label>
           <button type="submit" class="save-btn">Save AI Settings</button>
         </form>
       </div>
@@ -424,14 +421,13 @@
             <label class="grow">Name <input type="text" id="ticket-name" required placeholder="e.g. support" /></label>
             <label class="grow">Type
               <select id="ticket-type">
-                <option value="embed">Embed</option>
                 <option value="cv2">Components V2</option>
               </select>
             </label>
           </div>
 
           <div class="inline-fields" style="align-items:flex-end">
-            <label class="grow">Button Label <input type="text" id="ticket-button-label" value="Create Ticket" placeholder="Create Ticket" /></label>
+            <label class="grow">Button Label <input type="text" id="ticket-button-label" value="Create Ticket" data-emoji placeholder="Create Ticket" /></label>
             <label class="grow">Button Color
               <select id="ticket-button-color">
                 <option value="green">Green</option>
@@ -446,8 +442,8 @@
             <label style="padding-bottom:8px"><input type="checkbox" id="ticket-use-dropdown" /> Show category dropdown instead of button</label>
           </div>
 
-          <label>Title <input type="text" id="ticket-title" data-payload-import="text" placeholder="Support tickets" /></label>
-          <label>Description <textarea id="ticket-description" rows="4" data-payload-import="text" placeholder="Click the button below to open a ticket."></textarea></label>
+          <label>Title <input type="text" id="ticket-title" data-payload-import="text" placeholder="Support tickets" data-emoji /></label>
+          <label>Description <textarea id="ticket-description" rows="4" data-payload-import="text" placeholder="Click the button below to open a ticket." data-emoji></textarea></label>
 
           <div class="inline-fields" style="align-items:flex-end">
             <label class="grow">Color
@@ -467,7 +463,7 @@
           </div>
 
           <div id="ticket-embed-fields" class="panel sub-panel">
-            <h3>Embed Fields</h3>
+            <h3>Fields</h3>
             <div id="ticket-fields-list" class="reorder-list"></div>
             <div class="inline-form">
               <button type="button" id="ticket-add-field" class="save-btn">Add Field</button>
@@ -481,7 +477,7 @@
             </div>
           </div>
 
-          <div id="ticket-cv2-components" class="panel sub-panel" hidden>
+          <div id="ticket-cv2-components" class="panel sub-panel">
             <h3>CV2 Components</h3>
             <p class="hint">The last image component is used for the dominant color.</p>
             <div id="ticket-components-list" class="reorder-list"></div>
@@ -523,11 +519,10 @@
             <div class="inline-fields">
               <label class="grow">Type
                 <select id="ticket-welcome-type">
-                  <option value="embed">Embed</option>
                   <option value="cv2">Components V2</option>
                 </select>
               </label>
-              <label class="grow">Title <input type="text" id="ticket-welcome-title" placeholder="A ticket is open" /></label>
+              <label class="grow">Title <input type="text" id="ticket-welcome-title" placeholder="A ticket is open" data-emoji /></label>
             </div>
             <div class="inline-fields">
               <label class="grow">Color
@@ -544,7 +539,7 @@
               <label class="grow">Image URL <input type="text" id="ticket-welcome-image" placeholder="https://..." /></label>
               <label class="grow">Thumbnail URL <input type="text" id="ticket-welcome-thumbnail" placeholder="https://..." /></label>
             </div>
-            <label>Description <textarea id="ticket-welcome" rows="3" data-payload-import="text" placeholder="Message sent inside the ticket channel. Use {user} to ping the user."></textarea></label>
+            <label>Description <textarea id="ticket-welcome" rows="3" data-payload-import="text" placeholder="Message sent inside the ticket channel. Use {user} to ping the user." data-emoji></textarea></label>
           </div>
 
           <div class="panel sub-panel" id="ticket-categories-panel">
@@ -630,8 +625,8 @@
         <h2>Categories</h2>
         <form id="shop-category-form" class="config-form inline-form" style="margin-bottom: 14px">
           <input type="hidden" id="shop-category-id" />
-          <label class="grow">Name <input type="text" id="shop-category-name" required placeholder="Category name" /></label>
-          <label class="grow">Description <input type="text" id="shop-category-desc" placeholder="Short description" /></label>
+          <label class="grow">Name <input type="text" id="shop-category-name" required placeholder="Category name" data-emoji /></label>
+          <label class="grow">Description <input type="text" id="shop-category-desc" placeholder="Short description" data-emoji /></label>
           <label>Sort <input type="number" id="shop-category-sort" value="0" placeholder="0" /></label>
           <button type="submit" class="save-btn" id="shop-category-btn">Add Category</button>
           <button type="button" id="shop-category-cancel" class="save-btn">Cancel</button>
@@ -657,11 +652,11 @@
           <input type="hidden" id="shop-item-category-id" />
 
           <div class="inline-fields">
-            <label class="grow">Name <input type="text" id="shop-item-name" data-payload-import="text" required placeholder="Item name" /></label>
+            <label class="grow">Name <input type="text" id="shop-item-name" data-payload-import="text" required placeholder="Item name" data-emoji /></label>
             <label class="grow">Sort Order <input type="number" id="shop-item-sort" value="0" placeholder="0" /></label>
           </div>
 
-          <label>Description <textarea id="shop-item-desc" rows="3" data-payload-import="text" placeholder="Item description"></textarea></label>
+          <label>Description <textarea id="shop-item-desc" rows="3" data-payload-import="text" placeholder="Item description" data-emoji></textarea></label>
 
           <div class="inline-fields">
             <label class="grow">Primary Price <input type="number" id="shop-item-price" min="0" value="0" placeholder="0" /></label>
@@ -745,7 +740,7 @@
             </select>
           </label>
 
-          <label>Thank-you Message <input type="text" id="boost-message" data-payload-import="text" placeholder="Thanks {user} for boosting!" /></label>
+          <label>Thank-you Message <input type="text" id="boost-message" data-payload-import="text" placeholder="Thanks {user} for boosting!" data-emoji /></label>
 
           <button type="submit" class="save-btn">Save Boost Settings</button>
         </form>
@@ -756,7 +751,7 @@
       <div class="panel">
         <h2>Keyword Triggers</h2>
         <form id="trigger-form" class="inline-form" style="align-items:flex-start">
-          <input type="text" id="trigger-keyword" placeholder="keyword" required />
+          <input type="text" id="trigger-keyword" placeholder="keyword" required data-emoji />
           <div class="searchable-input" style="min-width:220px">
             <input type="text" id="trigger-command" list="trigger-commands-datalist" placeholder="Search or type command..." required autocomplete="off" />
             <datalist id="trigger-commands-datalist"></datalist>
@@ -967,8 +962,8 @@
                   <option value="">-- Current channel --</option>
                 </select>
               </label>
-              <label>Title <input type="text" id="quest-completion-title" placeholder="# Quest Complete!" data-payload-import="text" /></label>
-              <label>Description <textarea id="quest-completion-desc" rows="2" placeholder="> You have completed the **{quest}**!" data-payload-import="text"></textarea></label>
+              <label>Title <input type="text" id="quest-completion-title" placeholder="# Quest Complete!" data-payload-import="text" data-emoji /></label>
+              <label>Description <textarea id="quest-completion-desc" rows="2" placeholder="> You have completed the **{quest}**!" data-payload-import="text" data-emoji></textarea></label>
               <label>Color <input type="color" id="quest-completion-color" value="#8b5cf6" /></label>
               <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="quest-completion-dominant" /> Use user's avatar dominant color</label>
             </div>
@@ -1073,7 +1068,7 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
               <option value="">-- Same channel --</option>
             </select>
           </label>
-          <label>Message <input type="text" id="leveling-notify-message" placeholder="GG {user}, you leveled up to level {level}!" /></label>
+          <label>Message <input type="text" id="leveling-notify-message" placeholder="GG {user}, you leveled up to level {level}!" data-emoji /></label>
           <p class="hint">Placeholders: {user}, {level}, {xp}, {rewards}. When rewards are earned and {rewards} is not used, they are appended automatically.</p>
 
           <h4 style="margin:18px 0 10px;font-size:0.95rem">Voice XP</h4>
@@ -1277,6 +1272,147 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
         </table>
       </div>
     </section>
+    <section id="studio" class="content-section">
+      <div class="panel studio-wrap">
+        <div class="studio-editor">
+          <header class="panel-header">
+            <h3>Message composer</h3>
+            <div class="meta">Build a components-v2 message, preview it, then send or save it.</div>
+          </header>
+          <div class="field-row">
+            <label class="grow">Title (optional)
+              <input type="text" id="studio-title" data-emoji placeholder="Section heading" />
+            </label>
+            <label>Accent color
+              <input type="color" id="studio-color" value="#00ff1e" />
+            </label>
+            <label class="checkbox-inline">
+              <input type="checkbox" id="studio-no-accent" /> No accent
+            </label>
+          </div>
+          <div id="studio-components"></div>
+          <div class="btn-row">
+            <button type="button" class="btn btn-sm" data-action="studio-add-comp" data-type="text">+ Text</button>
+            <button type="button" class="btn btn-sm" data-action="studio-add-comp" data-type="section">+ Section</button>
+            <button type="button" class="btn btn-sm" data-action="studio-add-comp" data-type="image">+ Image</button>
+            <button type="button" class="btn btn-sm" data-action="studio-add-comp" data-type="media_gallery">+ Gallery</button>
+            <button type="button" class="btn btn-sm" data-action="studio-add-comp" data-type="separator">+ Separator</button>
+            <button type="button" class="btn btn-sm" data-action="studio-add-comp" data-type="buttons">+ Buttons</button>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn btn-ghost btn-sm" data-action="studio-new">New</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-action="studio-import">Import JSON</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-action="studio-copy-json">Copy JSON</button>
+          </div>
+        </div>
+        <div class="studio-preview">
+          <header class="panel-header">
+            <h3>Preview</h3>
+            <div class="meta">Approximate Discord rendering</div>
+          </header>
+          <div class="dc-msg studio-dc-msg" id="studio-preview"></div>
+          <div class="studio-send">
+            <label>Send to channel <select id="studio-channel"><option value="">Pick a channel</option></select></label>
+            <div class="btn-row">
+              <button type="button" class="btn btn-primary" data-action="studio-send">Send message</button>
+              <button type="button" class="btn" data-action="studio-save-template">Save as template</button>
+            </div>
+          </div>
+          <header class="panel-header">
+            <h3>Templates</h3>
+            <div class="meta">Saved messages for this server</div>
+          </header>
+          <div id="studio-templates" class="studio-templates"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="bot" class="content-section">
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Bot profile</h3>
+          <div class="meta">How the bot looks across Discord.</div>
+        </header>
+        <div id="bp-status" class="form-status"></div>
+        <div class="bp-wrap">
+          <div class="bp-card">
+            <div class="bp-banner" id="bp-banner"></div>
+            <div class="bp-head">
+              <img id="bp-avatar" class="bp-avatar" alt="Bot avatar" />
+              <div>
+                <div class="bp-tag" id="bp-tag">—</div>
+                <div class="meta" id="bp-id"></div>
+                <div class="meta" id="bp-created"></div>
+              </div>
+            </div>
+          </div>
+          <div class="bp-form">
+            <div class="field-row">
+              <label class="grow">Username
+                <input type="text" id="bp-username" maxlength="32" placeholder="Bot username" />
+              </label>
+            </div>
+            <div class="field-row">
+              <label class="grow">Avatar
+                <div class="bp-url-row">
+                  <input type="text" id="bp-avatar-url" placeholder="https://… image URL" />
+                  <input type="file" id="bp-avatar-file" accept="image/*" hidden />
+                  <button type="button" class="btn btn-sm" data-action="bp-avatar-file">Upload</button>
+                </div>
+              </label>
+            </div>
+            <div class="field-row">
+              <label class="grow">Banner
+                <div class="bp-url-row">
+                  <input type="text" id="bp-banner-url" placeholder="https://… image URL (or 'remove')" />
+                  <input type="file" id="bp-banner-file" accept="image/*" hidden />
+                  <button type="button" class="btn btn-sm" data-action="bp-banner-file">Upload</button>
+                </div>
+              </label>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn btn-primary" data-action="bp-save">Save profile</button>
+              <button type="button" class="btn btn-ghost" data-action="bp-refresh">Refresh</button>
+            </div>
+          </div>
+        </div>
+        <header class="panel-header">
+          <h3>Presence</h3>
+          <div class="meta">Status and activity shown under the bot's name.</div>
+        </header>
+        <div class="field-row">
+          <label>Status
+            <select id="bp-status-select">
+              <option value="online">Online</option>
+              <option value="idle">Idle</option>
+              <option value="dnd">Do not disturb</option>
+              <option value="invisible">Invisible</option>
+            </select>
+          </label>
+          <label>Activity type
+            <select id="bp-activity-type">
+              <option value="playing">Playing</option>
+              <option value="listening">Listening to</option>
+              <option value="watching">Watching</option>
+              <option value="competing">Competing in</option>
+              <option value="streaming">Streaming</option>
+            </select>
+          </label>
+          <label class="grow">Activity text
+            <input type="text" id="bp-activity-name" maxlength="128" placeholder="e.g. /help — leave blank to clear" />
+          </label>
+        </div>
+        <div class="field-row" id="bp-activity-url-row" hidden>
+          <label class="grow">Stream URL (Twitch/YouTube)
+            <input type="text" id="bp-activity-url" placeholder="https://twitch.tv/…" />
+          </label>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn" data-action="bp-save-presence">Save presence</button>
+        </div>
+      </div>
+    </section>
+
     <section id="gifmaker" class="content-section" data-no-auto-tabs>
       <div class="gm">
         <div class="gm-bar panel">
@@ -1286,6 +1422,20 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
             <button type="button" class="btn btn--sm" data-gm="add-shape">Shape</button>
             <button type="button" class="btn btn--sm" data-gm="add-image">Image</button>
             <button type="button" class="btn btn--sm" data-gm="add-avatar">Avatar</button>
+            <button type="button" class="btn btn--sm" data-gm="add-bar">Bar</button>
+            <button type="button" class="btn btn--sm" data-gm="add-counter">Counter</button>
+          </div>
+          <div class="gm-bar-group" role="group" aria-label="Canvas aids">
+            <label class="gm-field gm-check"><input type="checkbox" id="gm-grid-on" /> Grid</label>
+            <label class="gm-field gm-check"><input type="checkbox" id="gm-snap" checked /> Snap</label>
+            <label class="gm-field">Size
+              <select id="gm-grid-size">
+                <option value="4">4</option>
+                <option value="8" selected>8</option>
+                <option value="16">16</option>
+                <option value="32">32</option>
+              </select>
+            </label>
           </div>
           <div class="gm-bar-group gm-bar-right">
             <span class="gm-engine" id="gm-engine">engine</span>
@@ -1426,8 +1576,24 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
     </div>
   </div>
 
+  <div class="emoji-picker" id="emoji-picker" hidden>
+    <div class="emoji-picker-header">
+      <button type="button" class="emoji-tab active" data-tab="discord">Discord</button>
+      <button type="button" class="emoji-tab" data-tab="server">Server</button>
+    </div>
+    <div class="emoji-picker-search">
+      <input type="text" id="emoji-picker-search" placeholder="Search emoji…" autocomplete="off" />
+    </div>
+    <div class="emoji-picker-body">
+      <div id="emoji-defaults" class="emoji-tab-content active"></div>
+      <div id="emoji-guild" class="emoji-tab-content"></div>
+    </div>
+  </div>
+
   <script src="/dashboard.js?v=3"></script>
   <script src="/gifscene.js"></script>
   <script src="/gifmaker.js"></script>
+  <script src="/studio.js"></script>
+  <script src="/botprofile.js"></script>
 </body>
 </html>

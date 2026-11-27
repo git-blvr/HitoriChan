@@ -19,6 +19,7 @@ const { createSession } = await import("../src/web/auth.js");
 const textChannel = (id, name, parentId = null, position = 0) => ({
   id, name, type: 0, parentId, position,
   isTextBased: () => true, isVoiceBased: () => false,
+  send: async (payload) => ({ id: `msg-${Date.now()}`, channelId: id, payload }),
 });
 const voiceChannel = (id, name, members = 0, parentId = null, position = 0) => ({
   id, name, type: 2, parentId, position,
@@ -121,8 +122,18 @@ const stubClient = {
   ),
   user: {
     tag: "Hitori Chan#6606",
+    id: "6606",
+    username: "Hitori Chan",
     status: "online",
+    createdAt: new Date("2021-06-01"),
+    bannerURL: () => null,
+    accentColor: 0x00ff1e,
     displayAvatarURL: () => "https://cdn.discordapp.com/embed/avatars/1.png",
+    presence: { status: "online", activities: [] },
+    setPresence: (p) => { stubClient.user.presence = { ...stubClient.user.presence, ...p }; },
+    setUsername: async (n) => { stubClient.user.username = n; stubClient.user.tag = `${n}#6606`; },
+    setAvatar: async () => {},
+    setBanner: async () => {},
   },
   ws: { ping: 103 },
 };

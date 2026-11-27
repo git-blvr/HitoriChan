@@ -35,8 +35,13 @@ import * as XpModifier from "../../models/XpModifier.js";
 import { invalidateModifierCache } from "../../utils/leveling.js";
 import * as MarriageSettings from "../../models/MarriageSettings.js";
 import * as InteractionSettings from "../../models/InteractionSettings.js";
+import * as MessageTemplate from "../../models/MessageTemplate.js";
 import { DEFAULT_INTERACTIONS } from "../../utils/interactions.js";
 import { requirePermission, sessionGuildEntry } from "../middleware/auth.js";
+import { buildCV2Components } from "../../helpers/cv2.js";
+import { cv2 } from "../../helpers/cv2.js";
+import { safeFetch } from "../../utils/safeFetch.js";
+import { ActivityType } from "discord.js";
 import gifmakerRouter from "./gifmaker.js";
 
 const router = Router();
@@ -1366,6 +1371,234 @@ router.post("/interactions/:guildId", requireAuth, requirePermission("interactio
   }
   const settings = await InteractionSettings.save(req.params.guildId, interactions);
   res.json({ ok: true, interactions: settings.interactions });
+});
+
+// ---------------------------------------------------------------------------
+// Bot profile — view and update the bot's global Discord profile + presence.
+// ---------------------------------------------------------------------------
+const ACTIVITY_TYPES = {
+  playing: ActivityType.Playing,
+  streaming: ActivityType.Streaming,
+  listening: ActivityType.Listening,
+  watching: ActivityType.Watching,
+  competing: ActivityType.Competing,
+};
+const PRESENCE_STATUSES = new Set(["online", "idle", "dnd", "invisible"]);
+
+router.get("/bot/profile", requireAuth, requirePermission("bot"), async (req, res) => {
+  const client = req.app.get("client");
+  const user = client.user;
+  if (!user) return res.status(503).json({ error: "Bot is not connected" });
+  const presence = user.presence;
+  res.json({
+    id: user.id,
+    username: user.username,
+    tag: user.tag,
+    avatar: user.displayAvatarURL?.({ size: 256 }) ?? null,
+    banner: user.bannerURL?.({ size: 1024 }) ?? null,
+    accentColor: user.accentColor ?? null,
+    createdAt: user.createdAt,
+    status: presence?.status ?? "online",
+    activities: (presence?.activities ?? []).map((a) => ({ name: a.name, type: a.type })),
+  });
+});
+
+router.post("/bot/profile", requireAuth, requirePermission("bot"), async (req, res) => {
+  const client = req.app.get("client");
+  const user = client.user;
+  if (!user) return res.status(503).json({ error: "Bot is not connected" });
+  const { username, avatar, banner } = req.body || {};
+  const changed = [];
+
+  try {
+    if (typeof username === "string" && username.trim() && username.trim() !== user.username) {
+      const name = username.trim().slice(0, 32);
+      if (!/^.{2,32}$/.test(name)) return res.status(400).json({ error: "Username must be 2-32 characters" });
+      await user.setUsername(name);
+      changed.push("username");
+    }
+
+    const resolveImage = async (input, label) => {
+      if (typeof input !== "string" || !input.trim()) return undefined;
+      const v = input.trim();
+      if (v === "null" || v === "remove") return null;
+      if (/^data:image\/(png|jpe?g|gif|webp);base64,[a-z0-9+/=\s]+$/i.test(v)) {
+        if (v.length > 14_000_000) throw new Error(`${label} image is too large`);
+        return v;
+      }
+      if (/^https?:\/\//i.test(v)) {
+        const { buffer, contentType } = await safeFetch(v, { maxBytes: 10 * 1024 * 1024 });
+        const mime = /^image\//.test(contentType || "") ? contentType : "image/png";
+        return `data:${mime};base64,${buffer.toString("base64")}`;
+      }
+      throw new Error(`${label} must be an https URL or a data image`);
+    };
+
+    const avatarData = await resolveImage(avatar, "Avatar");
+    if (avatarData !== undefined) {
+      await user.setAvatar(avatarData);
+      changed.push("avatar");
+    }
+
+    const bannerData = await resolveImage(banner, "Banner");
+    if (bannerData !== undefined) {
+      await user.setBanner(bannerData);
+      changed.push("banner");
+    }
+  } catch (err) {
+    Audit.add({ actor: req.user.username, action: "bot.profile.fail", detail: String(err.message).slice(0, 200), ip: req.ip });
+    return res.status(400).json({ error: err.message || "Could not update the bot profile" });
+  }
+
+  Audit.add({ actor: req.user.username, action: "bot.profile.update", detail: changed.join(",") || "none", ip: req.ip });
+  res.json({ ok: true, changed });
+});
+
+router.post("/bot/presence", requireAuth, requirePermission("bot"), async (req, res) => {
+  const client = req.app.get("client");
+  const user = client.user;
+  if (!user) return res.status(503).json({ error: "Bot is not connected" });
+  const { status, activityType, activityName, activityUrl } = req.body || {};
+
+  const presence = {};
+  if (typeof status === "string" && PRESENCE_STATUSES.has(status)) presence.status = status;
+
+  if (typeof activityName === "string") {
+    const name = activityName.trim().slice(0, 128);
+    if (!name) {
+      presence.activities = [];
+    } else {
+      const type = ACTIVITY_TYPES[String(activityType || "playing").toLowerCase()] ?? ActivityType.Playing;
+      const activity = { name, type };
+      if (type === ActivityType.Streaming && /^https?:\/\/(www\.)?(twitch\.tv|youtube\.com)/i.test(String(activityUrl || ""))) {
+        activity.url = activityUrl;
+      }
+      presence.activities = [activity];
+    }
+  }
+
+  try {
+    user.setPresence(presence);
+    Audit.add({ actor: req.user.username, action: "bot.presence.update", detail: `status=${presence.status ?? "-"} activity=${activityName ?? "-"}`, ip: req.ip });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message || "Could not update presence" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Message studio — saved CV2 message templates + send-to-channel.
+// ---------------------------------------------------------------------------
+function sanitizeTemplatePayload(body) {
+  const src = body?.payload ?? body ?? {};
+  const components = (Array.isArray(src.components) ? src.components : []).slice(0, 20).map((c) => {
+    const type = String(c?.type || "text");
+    const out = { type };
+    if (type === "text") out.content = String(c.content ?? "").slice(0, 2000);
+    else if (type === "section") {
+      out.content = String(c.content ?? "").slice(0, 2000);
+      out.thumbnail = String(c.thumbnail ?? "").slice(0, 2048);
+    } else if (type === "image") out.url = String(c.url ?? "").slice(0, 2048);
+    else if (type === "media_gallery") out.urls = (Array.isArray(c.urls) ? c.urls : [c.url]).filter(Boolean).slice(0, 10).map((u) => String(u).slice(0, 2048));
+    else if (type === "buttons") {
+      out.buttons = (Array.isArray(c.buttons) ? c.buttons : []).slice(0, 5).map((b) => ({
+        label: String(b?.label ?? "").slice(0, 80),
+        url: String(b?.url ?? "").slice(0, 512),
+        emoji: b?.emoji ? String(b.emoji).slice(0, 64) : undefined,
+      })).filter((b) => b.label && /^https?:\/\//i.test(b.url));
+    } else if (type === "separator") {
+      out.divider = c.divider !== false;
+      out.large = Boolean(c.large);
+    }
+    return out;
+  }).filter((c) => {
+    if (c.type === "text" || c.type === "section") return c.content.trim().length > 0;
+    if (c.type === "image") return /^https?:\/\//i.test(c.url);
+    if (c.type === "media_gallery") return c.urls.length > 0;
+    if (c.type === "buttons") return c.buttons.length > 0;
+    return c.type === "separator";
+  });
+
+  const color = src.color;
+  return {
+    title: typeof src.title === "string" ? src.title.slice(0, 256) : "",
+    color: color === null || color === "" || color === undefined ? null : (Number(color) || null),
+    components,
+  };
+}
+
+function templateToMessagePayload(payload) {
+  const parts = [];
+  if (payload.title) parts.push({ type: "section", content: `**${payload.title}**` });
+  const built = buildCV2Components([...parts, ...payload.components]);
+  return cv2({ color: payload.color ?? undefined, cv2Components: built });
+}
+
+router.get("/messages/:guildId", requireAuth, async (req, res) => {
+  res.json(MessageTemplate.list(req.params.guildId));
+});
+
+router.post("/messages/:guildId", requireAuth, async (req, res) => {
+  const name = String(req.body?.name || "").trim().slice(0, 64);
+  if (!name) return res.status(400).json({ error: "Template name required" });
+  if (MessageTemplate.getByName(req.params.guildId, name)) {
+    return res.status(409).json({ error: "A template with that name already exists" });
+  }
+  const payload = sanitizeTemplatePayload(req.body);
+  const tpl = MessageTemplate.create(req.params.guildId, name, payload);
+  res.json(tpl);
+});
+
+router.put("/messages/:guildId/:id", requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  const existing = MessageTemplate.get(req.params.guildId, id);
+  if (!existing) return res.status(404).json({ error: "Template not found" });
+  const name = req.body?.name !== undefined ? String(req.body.name).trim().slice(0, 64) : undefined;
+  if (name !== undefined && !name) return res.status(400).json({ error: "Name cannot be empty" });
+  if (name && name !== existing.name) {
+    const clash = MessageTemplate.getByName(req.params.guildId, name);
+    if (clash && clash.id !== id) return res.status(409).json({ error: "A template with that name already exists" });
+  }
+  const payload = req.body?.payload !== undefined ? sanitizeTemplatePayload(req.body) : undefined;
+  res.json(MessageTemplate.update(req.params.guildId, id, { name, payload }));
+});
+
+router.delete("/messages/:guildId/:id", requireAuth, async (req, res) => {
+  const ok = MessageTemplate.remove(req.params.guildId, Number(req.params.id));
+  if (!ok) return res.status(404).json({ error: "Template not found" });
+  res.json({ ok: true });
+});
+
+router.post("/messages/:guildId/send", requireAuth, async (req, res) => {
+  const client = req.app.get("client");
+  const channelId = String(req.body?.channelId || "").trim();
+  if (!channelId) return res.status(400).json({ error: "Channel required" });
+  if (!(await channelBelongsToGuild(client, req.params.guildId, channelId))) {
+    return res.status(400).json({ error: "Channel does not belong to this server" });
+  }
+
+  let payload;
+  if (req.body?.templateId != null) {
+    const tpl = MessageTemplate.get(req.params.guildId, Number(req.body.templateId));
+    if (!tpl) return res.status(404).json({ error: "Template not found" });
+    payload = tpl.payload;
+  } else {
+    payload = sanitizeTemplatePayload(req.body);
+  }
+  if (!payload.components.length && !payload.title) {
+    return res.status(400).json({ error: "Add at least one component before sending" });
+  }
+
+  const channel = client.channels.cache.get(channelId) ?? (await client.channels.fetch(channelId).catch(() => null));
+  if (!channel?.isTextBased()) return res.status(404).json({ error: "Channel not found" });
+
+  try {
+    const message = await channel.send(templateToMessagePayload(payload));
+    Audit.add({ actor: req.user.username, action: "messages.send", detail: `guild=${req.params.guildId} channel=${channelId} message=${message.id}`, ip: req.ip });
+    res.json({ ok: true, messageId: message.id, channelId });
+  } catch (err) {
+    res.status(400).json({ error: `Could not send: ${err.message}` });
+  }
 });
 
 export default router;

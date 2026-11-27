@@ -66,6 +66,8 @@ export const ALL_PERMISSIONS = [
   "leveling",
   "interactions",
   "gifmaker",
+  "studio",
+  "bot",
   "security",
   "users",
 ];

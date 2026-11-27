@@ -27,10 +27,10 @@
   };
 
   const NUMERIC_PROPS = new Set([
-    "x", "y", "width", "height", "rotation", "opacity",
+    "x", "y", "width", "height", "rotation", "opacity", "value",
     "scaleX", "scaleY", "fontSize", "cornerRadius", "strokeWidth", "radius",
   ]);
-  const COLOR_PROPS = new Set(["color", "fill", "stroke"]);
+  const COLOR_PROPS = new Set(["color", "fill", "stroke", "track"]);
   const STEP_PROPS = new Set(["text", "src"]);
 
   function clamp(v, lo, hi) {
@@ -330,6 +330,36 @@
     }
   }
 
+  function drawBar(ctx, p) {
+    const { x, y, width: w, height: h } = p;
+    const r = Math.max(0, Math.min(p.cornerRadius ?? 8, h / 2));
+    ctx.beginPath();
+    roundRectPath(ctx, x, y, w, h, r);
+    ctx.fillStyle = p.track || "rgba(255,255,255,0.12)";
+    ctx.fill();
+    const frac = clamp((p.value ?? 0) / 100, 0, 1);
+    if (frac > 0) {
+      const fw = Math.max(h, w * frac);
+      ctx.beginPath();
+      roundRectPath(ctx, x, y, Math.min(fw, w), h, r);
+      ctx.fillStyle = p.fill || "#00ff1e";
+      ctx.fill();
+    }
+    if (p.stroke && (p.strokeWidth || 0) > 0) {
+      ctx.beginPath();
+      roundRectPath(ctx, x, y, w, h, r);
+      ctx.strokeStyle = p.stroke;
+      ctx.lineWidth = p.strokeWidth;
+      ctx.stroke();
+    }
+  }
+
+  function drawCounter(ctx, p) {
+    const decimals = clamp(Math.round(p.decimals || 0), 0, 6);
+    const text = `${p.prefix || ""}${Number(p.value ?? 0).toFixed(decimals)}${p.suffix || ""}`;
+    drawText(ctx, { ...p, text });
+  }
+
   function drawScene(ctx, spec, tMs, assets) {
     const { width: W, height: H } = spec;
     ctx.clearRect(0, 0, W, H);
@@ -363,6 +393,8 @@
       ctx.translate(-cx, -cy);
       const rp = { ...p, width: w, height: h };
       if (p.type === "text") drawText(ctx, rp);
+      else if (p.type === "counter") drawCounter(ctx, rp);
+      else if (p.type === "bar") drawBar(ctx, rp);
       else if (p.type === "image" || p.type === "avatar") drawImageEl(ctx, rp, assets);
       else drawShape(ctx, rp);
       ctx.restore();
@@ -395,6 +427,17 @@
       type: "avatar", name: "Avatar", src: "", fit: "cover",
       radius: 9999, ring: "#00ff1e", strokeWidth: 2,
     },
+    bar: {
+      type: "bar", name: "Progress bar", value: 60,
+      track: "#2a2a2a", fill: "#00ff1e", cornerRadius: 8,
+      stroke: "", strokeWidth: 0,
+    },
+    counter: {
+      type: "counter", name: "Counter", value: 0,
+      prefix: "", suffix: "", decimals: 0,
+      fontFamily: "Geist", fontSize: 32, fontWeight: 600, fontStyle: "normal",
+      color: "#ffffff", align: "center", stroke: "", strokeWidth: 0,
+    },
   };
 
   const ELEMENT_SIZES = {
@@ -402,6 +445,8 @@
     shape: { width: 120, height: 120 },
     image: { width: 160, height: 160 },
     avatar: { width: 120, height: 120 },
+    bar: { width: 220, height: 24 },
+    counter: { width: 160, height: 52 },
   };
 
   function defaultElement(type, x = 40, y = 40) {

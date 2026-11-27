@@ -1,5 +1,7 @@
 import {
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   ContainerBuilder,
   TextDisplayBuilder,
   SectionBuilder,
@@ -171,6 +173,8 @@ export function cv2({
         container.addMediaGalleryComponents(c);
       } else if (c instanceof SeparatorBuilder) {
         container.addSeparatorComponents(c);
+      } else if (c instanceof ActionRowBuilder) {
+        container.addActionRowComponents(c);
       } else if (c?.toJSON) {
         container.addActionRowComponents(new ActionRowBuilder().addComponents(c));
       } else {
@@ -216,7 +220,26 @@ export function buildCV2Components(components) {
         const urls = Array.isArray(c.urls) ? c.urls : [c.url].filter(Boolean);
         out.push(mediaGallery(urls));
       }
-      if (c.type === "separator") out.push(separator());
+      if (c.type === "separator") out.push(separator(Boolean(c.large), c.divider !== false));
+      if (c.type === "section" && c.content != null) {
+        const sec = new SectionBuilder().addTextDisplayComponents(buildTextDisplay(String(c.content)));
+        const thumb = buildThumbnail(c.thumbnail || c.thumbnailUrl);
+        if (thumb) sec.setThumbnailAccessory(thumb);
+        out.push(sec);
+      }
+      if (c.type === "buttons" && Array.isArray(c.buttons)) {
+        const row = new ActionRowBuilder();
+        for (const b of c.buttons.slice(0, 5)) {
+          if (!b?.url || !/^https?:\/\//i.test(String(b.url))) continue;
+          const btn = new ButtonBuilder()
+            .setStyle(ButtonStyle.Link)
+            .setURL(String(b.url).slice(0, 512))
+            .setLabel(String(b.label || b.url).slice(0, 80));
+          if (b.emoji) btn.setEmoji(String(b.emoji).slice(0, 64));
+          row.addComponents(btn);
+        }
+        if (row.components.length) out.push(row);
+      }
     } catch (err) {
       console.warn("Failed to build CV2 component:", err);
     }

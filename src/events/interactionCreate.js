@@ -6,7 +6,6 @@ import {
   ButtonStyle,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
-  EmbedBuilder,
   MessageFlags,
 } from "discord.js";
 import * as TicketPanel from "../models/TicketPanel.js";
@@ -15,6 +14,7 @@ import { resolveTicketPanelColor, buildTicketWelcomeMessage, getStaffRoleIds, is
 import { cv2 } from "../helpers/cv2.js";
 import { embErr, embWrn } from "../helpers/embeds.js";
 import { buildShopInterface, buildItemSelectMessage, buildItemPreview, purchaseItem } from "../utils/shopManager.js";
+import { handlePollButton } from "../utils/pollManager.js";
 
 function ticketButton(customId, label, color = "red") {
   const styleMap = {
@@ -297,13 +297,14 @@ async function handleTicketButton(interaction, client) {
             transcriptText += `\n[Could not fetch messages: ${err.message}]\n`;
           }
 
-          const embed = new EmbedBuilder()
-            .setTitle(`Ticket closed`)
-            .setDescription(`Ticket <#${ticket.channelId}> was closed by <@${interaction.user.id}>`)
-            .setColor(0x7c3aed)
-            .setFooter({ text: `User: ${ticket.userId}` })
-            .setTimestamp();
-          await transcriptChannel.send({ embeds: [embed], files: [{ attachment: Buffer.from(transcriptText, "utf8"), name: `ticket-${ticket.id}.txt` }] });
+          const payload = cv2({
+            color: 0x7c3aed,
+            title: "Ticket closed",
+            description: `Ticket <#${ticket.channelId}> was closed by <@${interaction.user.id}>`,
+            footer: { text: `User: ${ticket.userId}` },
+            timestamp: true,
+          });
+          await transcriptChannel.send({ ...payload, files: [{ attachment: Buffer.from(transcriptText, "utf8"), name: `ticket-${ticket.id}.txt` }] });
         }
       }
 
@@ -399,6 +400,9 @@ export default {
     }
 
     if (interaction.isButton()) {
+      if (interaction.customId.startsWith("poll:")) {
+        return handlePollButton(interaction);
+      }
       if (interaction.customId.startsWith("shop_")) {
         return handleShopInteraction(interaction);
       }

@@ -618,6 +618,69 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_xp_modifiers_guild ON xp_modifiers(guild_id);
     `,
   },
+  {
+    version: 32,
+    sql: `
+      CREATE TABLE IF NOT EXISTS polls (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        channel_id TEXT NOT NULL,
+        message_id TEXT,
+        author_id TEXT NOT NULL,
+        question TEXT NOT NULL,
+        options TEXT NOT NULL DEFAULT '[]',
+        multi INTEGER NOT NULL DEFAULT 0,
+        ends_at INTEGER,
+        closed INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+      CREATE INDEX IF NOT EXISTS idx_polls_guild ON polls(guild_id, closed);
+      CREATE INDEX IF NOT EXISTS idx_polls_message ON polls(message_id);
+
+      CREATE TABLE IF NOT EXISTS poll_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        poll_id INTEGER NOT NULL,
+        user_id TEXT NOT NULL,
+        option_index INTEGER NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        UNIQUE(poll_id, user_id, option_index),
+        FOREIGN KEY (poll_id) REFERENCES polls(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_poll_votes_poll ON poll_votes(poll_id);
+
+      CREATE TABLE IF NOT EXISTS reminders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT,
+        channel_id TEXT,
+        user_id TEXT NOT NULL,
+        message TEXT NOT NULL,
+        remind_at INTEGER NOT NULL,
+        delivered INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+      CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders(delivered, remind_at);
+      CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id);
+
+      CREATE TABLE IF NOT EXISTS afk_statuses (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        message TEXT,
+        since INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        PRIMARY KEY (user_id, guild_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS message_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        payload TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+        UNIQUE(guild_id, name)
+      );
+      CREATE INDEX IF NOT EXISTS idx_message_templates_guild ON message_templates(guild_id);
+    `,
+  },
 ];
 
 export function migrate() {

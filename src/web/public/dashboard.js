@@ -2259,32 +2259,38 @@ document.querySelectorAll(".emoji-tab").forEach((tab) => {
 function positionPicker(input) {
   const picker = document.getElementById("emoji-picker");
   const rect = input.getBoundingClientRect();
-  const economy = document.getElementById("economy");
-  const econRect = economy.getBoundingClientRect();
   const padding = 8;
-  const pickerHeight = picker.offsetHeight || 320;
+  const pickerWidth = picker.offsetWidth || 340;
+  const pickerHeight = picker.offsetHeight || 360;
 
-  let top = rect.bottom - econRect.top + padding;
-  if (top + pickerHeight > economy.clientHeight) {
-    top = Math.max(0, rect.top - econRect.top - pickerHeight - padding);
+  let top = rect.bottom + padding;
+  if (top + pickerHeight > window.innerHeight - padding) {
+    top = Math.max(padding, rect.top - pickerHeight - padding);
   }
-
+  let left = rect.left;
+  if (left + pickerWidth > window.innerWidth - padding) {
+    left = Math.max(padding, window.innerWidth - pickerWidth - padding);
+  }
   picker.style.top = `${top}px`;
-  picker.style.left = `${Math.min(Math.max(0, rect.left - econRect.left), Math.max(0, economy.clientWidth - 340))}px`;
+  picker.style.left = `${left}px`;
 }
+
+let emojiPickerGuild = null;
 
 async function loadEmojiPicker(guildId) {
   const picker = document.getElementById("emoji-picker");
   const defaultsEl = document.getElementById("emoji-defaults");
   const guildEl = document.getElementById("emoji-guild");
 
-  defaultsEl.innerHTML = "";
-  guildEl.innerHTML = "";
-
   if (!guildId) {
     picker.hidden = true;
     return;
   }
+  if (emojiPickerGuild === guildId && defaultsEl.children.length) return;
+  emojiPickerGuild = guildId;
+
+  defaultsEl.innerHTML = "";
+  guildEl.innerHTML = "";
 
   for (const emoji of DEFAULT_EMOJIS) {
     const btn = document.createElement("button");
@@ -2331,45 +2337,93 @@ async function loadEmojiPicker(guildId) {
   highlightEmoji(activeEmojiInput?.value);
 }
 
+function insertEmojiIntoInput(input, emoji) {
+  if (!input) return;
+  if (input.readOnly || typeof input.selectionStart !== "number" || input.selectionStart == null) {
+    input.value = emoji;
+  } else {
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    input.value = input.value.slice(0, start) + emoji + input.value.slice(end);
+    const caret = start + emoji.length;
+    input.setSelectionRange(caret, caret);
+  }
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
 function pickEmoji(emoji, btn) {
   if (activeEmojiInput) {
-    activeEmojiInput.value = emoji;
+    insertEmojiIntoInput(activeEmojiInput, emoji);
     document.querySelectorAll(".emoji-btn").forEach((b) => b.classList.remove("selected"));
     if (btn) btn.classList.add("selected");
   }
   document.getElementById("emoji-picker").hidden = true;
+  activeEmojiInput?.focus?.();
 }
 
-for (const id of ["econ-primary-emoji", "econ-secondary-emoji"]) {
-  const input = document.getElementById(id);
-  const openPicker = async () => {
-    if (!currentGuild) {
-      showToast("Select a server first", "error");
-      return;
-    }
-    activeEmojiInput = input;
-    const picker = document.getElementById("emoji-picker");
-    picker.hidden = false;
-    positionPicker(input);
-    await loadEmojiPicker(currentGuild);
-    showEmojiTab("discord");
-    highlightEmoji(input.value);
-  };
-  input.addEventListener("focus", openPicker);
-  input.addEventListener("click", openPicker);
+function emojiCapableInput(el) {
+  if (!(el instanceof HTMLElement)) return null;
+  const t = el.closest("input[data-emoji], textarea[data-emoji], input.emoji-input, input.interaction-message, textarea.system-comp-content, textarea.comp-content, input.field-name, textarea.field-value, textarea.shop-comp-content, input.shop-btn-label");
+  return t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA") ? t : null;
 }
+
+async function openEmojiPicker(input) {
+  if (!currentGuild) {
+    showToast("Select a server first", "error");
+    return;
+  }
+  if (activeEmojiInput === input && !document.getElementById("emoji-picker").hidden) return;
+  activeEmojiInput = input;
+  const picker = document.getElementById("emoji-picker");
+  picker.hidden = false;
+  positionPicker(input);
+  await loadEmojiPicker(currentGuild);
+  const search = document.getElementById("emoji-picker-search");
+  if (search) search.value = "";
+  filterEmojiButtons("");
+  showEmojiTab("discord");
+  highlightEmoji(input.value);
+}
+
+function filterEmojiButtons(query) {
+  const q = (query || "").trim().toLowerCase();
+  document.querySelectorAll("#emoji-picker .emoji-btn").forEach((b) => {
+    const name = (b.dataset.name || b.title || "").toLowerCase();
+    b.style.display = !q || name.includes(q) || b.dataset.value === q ? "" : "none";
+  });
+}
+
+document.getElementById("emoji-picker-search")?.addEventListener("input", (e) => {
+  filterEmojiButtons(e.target.value);
+});
+
+document.addEventListener("focusin", (e) => {
+  const input = emojiCapableInput(e.target);
+  if (input) openEmojiPicker(input);
+});
 
 document.addEventListener("click", (e) => {
   const picker = document.getElementById("emoji-picker");
-  if (picker.hidden) return;
-  if (!e.target.closest(".emoji-picker") && !e.target.classList.contains("emoji-input")) {
-    picker.hidden = true;
+  const input = emojiCapableInput(e.target);
+  if (input) {
+    openEmojiPicker(input);
+    return;
   }
+  if (!picker.hidden && !e.target.closest(".emoji-picker")) picker.hidden = true;
 });
+
+window.addEventListener("scroll", () => {
+  const picker = document.getElementById("emoji-picker");
+  if (!picker.hidden && activeEmojiInput && document.contains(activeEmojiInput)) {
+    positionPicker(activeEmojiInput);
+  }
+}, true);
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     document.getElementById("emoji-picker").hidden = true;
+    activeEmojiInput = null;
   }
 });
 
@@ -2399,9 +2453,9 @@ function getTicketImageSource() {
 }
 
 function updateTicketTypeVisibility() {
-  const type = document.getElementById("ticket-type").value;
-  document.getElementById("ticket-embed-fields").hidden = type !== "embed";
-  document.getElementById("ticket-cv2-components").hidden = type !== "cv2";
+  // All panels render as CV2 — both editors stay visible.
+  document.getElementById("ticket-embed-fields").hidden = false;
+  document.getElementById("ticket-cv2-components").hidden = false;
 }
 
 function resetTicketEditor() {
@@ -2556,6 +2610,16 @@ function renderTicketPreview() {
   let html = `<div class="ticket-cv2-preview" style="border-top-color: ${escapeHtml(color)}">`;
   if (title) html += `<div class="cv2-title">${escapeHtml(title)}</div>`;
   if (description) html += `<div class="cv2-text">${escapeHtml(description).replace(/\n/g, "<br>")}</div>`;
+  if (thumbnailUrl && !title && !description) html += `<img src="${escapeHtml(thumbnailUrl)}" class="cv2-thumb" style="max-width:80px" alt="" />`;
+
+  if (fields.length) {
+    html += `<div class="embed-fields">` + fields.map((f) => `
+      <div class="embed-field" style="grid-column: ${f.inline ? "span 1" : "1 / -1"}">
+        <h4>${escapeHtml(f.name)}</h4>
+        <p>${escapeHtml(f.value)}</p>
+      </div>`).join("") + `</div>`;
+  }
+  if (imageUrl) html += `<img src="${escapeHtml(imageUrl)}" class="cv2-image" style="max-width:100%;border-radius:6px" alt="" />`;
 
   if (components.length) {
     for (const c of components) {

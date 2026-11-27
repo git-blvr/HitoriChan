@@ -1,5 +1,4 @@
 import {
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -152,29 +151,16 @@ export async function buildTicketWelcomeMessage(panel, user, member, guild, chan
     { name: "Created", value: `<t:${Math.floor(createdAt / 1000)}:F>`, inline: false },
   ];
 
-  if (panel.welcomeType === "cv2") {
-    return cv2({
-      color,
-      title: resolvedTitle,
-      description: resolvedDescription,
-      image,
-      thumbnail,
-      fields,
-      components: [actionRow],
-      ephemeral: false,
-    });
-  }
-
-  const embed = new EmbedBuilder();
-  if (resolvedTitle) embed.setTitle(resolvedTitle);
-  if (resolvedDescription) embed.setDescription(resolvedDescription);
-  if (color != null) embed.setColor(color);
-  if (image) embed.setImage(image);
-  if (thumbnail) embed.setThumbnail(thumbnail);
-  for (const f of fields) {
-    if (f.name && f.value) embed.addFields(f);
-  }
-  return { embeds: [embed], components: [actionRow] };
+  return cv2({
+    color,
+    title: resolvedTitle,
+    description: resolvedDescription,
+    image,
+    thumbnail,
+    fields,
+    components: [actionRow],
+    ephemeral: false,
+  });
 }
 
 export async function buildTicketPanelPayload(panel, customId) {
@@ -186,66 +172,68 @@ export async function buildTicketPanelPayload(panel, customId) {
     ? new ActionRowBuilder().addComponents(buildButton(customId, panel.buttonLabel, panel.buttonColor))
     : null;
 
-  if (panel.type === "cv2") {
-    const container = new ContainerBuilder();
-    if (color != null) container.setAccentColor(color);
+  const container = new ContainerBuilder();
+  if (color != null) container.setAccentColor(color);
 
-    if (panel.title) {
-      const titleParts = [];
-      if (panel.title) titleParts.push(`**${escapeBold(panel.title)}**`);
-      if (panel.description) titleParts.push(String(panel.description));
-      const text = titleParts.join("\n\n");
-      if (panel.thumbnailUrl) {
-        container.addSectionComponents(buildSection(text, panel.thumbnailUrl));
-      } else {
-        container.addTextDisplayComponents(buildText(text));
-      }
-    } else if (panel.description) {
-      container.addTextDisplayComponents(buildText(String(panel.description)));
+  if (panel.title) {
+    const titleParts = [];
+    if (panel.title) titleParts.push(`**${escapeBold(panel.title)}**`);
+    if (panel.description) titleParts.push(String(panel.description));
+    const text = titleParts.join("\n\n");
+    if (panel.thumbnailUrl) {
+      container.addSectionComponents(buildSection(text, panel.thumbnailUrl));
+    } else {
+      container.addTextDisplayComponents(buildText(text));
     }
-
-    if (Array.isArray(panel.components)) {
-      for (const c of panel.components) {
-        if (!c || !c.type) continue;
-        if (c.type === "text" && c.content) {
-          container.addTextDisplayComponents(buildText(String(c.content)));
-        } else if (c.type === "image" && c.url) {
-          const gallery = new MediaGalleryBuilder().addItems(
-            new MediaGalleryItemBuilder({ media: { url: c.url } })
-          );
-          container.addMediaGalleryComponents(gallery);
-        } else if (c.type === "separator") {
-          container.addSeparatorComponents(new SeparatorBuilder().setDivider(Boolean(c.divider)).setSpacing(c.large ? 2 : 1));
-        } else if (c.type === "ticket" && !selectRow) {
-          const b = buildButton(customId, c.label || panel.buttonLabel, c.color || panel.buttonColor);
-          container.addActionRowComponents(new ActionRowBuilder().addComponents(b));
-        }
-      }
-    }
-
-    if (selectRow) {
-      container.addActionRowComponents(selectRow);
-    } else if (buttonRow) {
-      container.addActionRowComponents(buttonRow);
-    }
-
-    return { components: [container], flags: MessageFlags.IsComponentsV2 };
+  } else if (panel.description) {
+    container.addTextDisplayComponents(buildText(String(panel.description)));
   }
 
-  const embed = new EmbedBuilder();
-  if (panel.title) embed.setTitle(panel.title);
-  if (panel.description) embed.setDescription(panel.description);
-  if (color != null) embed.setColor(color);
-  if (panel.imageUrl) embed.setImage(panel.imageUrl);
-  if (panel.thumbnailUrl) embed.setThumbnail(panel.thumbnailUrl);
-
+  // Legacy embed fields → text blocks (embeds were migrated to CV2).
   if (Array.isArray(panel.fields)) {
-    for (const f of panel.fields) {
-      if (f?.name && f?.value) {
-        embed.addFields({ name: f.name, value: f.value, inline: Boolean(f.inline) });
+    for (let i = 0; i < panel.fields.length; i++) {
+      const f = panel.fields[i];
+      if (!f?.name || !f?.value) continue;
+      const block = [`**${escapeBold(f.name)}**`, String(f.value)];
+      if (f.inline && panel.fields[i + 1]?.inline && panel.fields[i + 1]?.name && panel.fields[i + 1]?.value) {
+        block.push(`\n**${escapeBold(panel.fields[i + 1].name)}**`, String(panel.fields[i + 1].value));
+        i++;
+      }
+      container.addTextDisplayComponents(buildText(block.join("\n")));
+    }
+  }
+
+  if (panel.imageUrl) {
+    const gallery = new MediaGalleryBuilder().addItems(
+      new MediaGalleryItemBuilder({ media: { url: panel.imageUrl } })
+    );
+    container.addMediaGalleryComponents(gallery);
+  }
+
+  if (Array.isArray(panel.components)) {
+    for (const c of panel.components) {
+      if (!c || !c.type) continue;
+      if (c.type === "text" && c.content) {
+        container.addTextDisplayComponents(buildText(String(c.content)));
+      } else if (c.type === "image" && c.url) {
+        const gallery = new MediaGalleryBuilder().addItems(
+          new MediaGalleryItemBuilder({ media: { url: c.url } })
+        );
+        container.addMediaGalleryComponents(gallery);
+      } else if (c.type === "separator") {
+        container.addSeparatorComponents(new SeparatorBuilder().setDivider(Boolean(c.divider)).setSpacing(c.large ? 2 : 1));
+      } else if (c.type === "ticket" && !selectRow) {
+        const b = buildButton(customId, c.label || panel.buttonLabel, c.color || panel.buttonColor);
+        container.addActionRowComponents(new ActionRowBuilder().addComponents(b));
       }
     }
   }
 
-  return { embeds: [embed], components: [selectRow || buttonRow] };
+  if (selectRow) {
+    container.addActionRowComponents(selectRow);
+  } else if (buttonRow) {
+    container.addActionRowComponents(buttonRow);
+  }
+
+  return { components: [container], flags: MessageFlags.IsComponentsV2 };
 }

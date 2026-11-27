@@ -24,6 +24,8 @@ const PATH_PERMISSIONS = [
   { pattern: /^\/marriage/, permission: "leveling" },
   { pattern: /^\/interactions/, permission: "interactions" },
   { pattern: /^\/gifmaker/, permission: "gifmaker" },
+  { pattern: /^\/messages/, permission: "studio" },
+  { pattern: /^\/bot/, permission: "bot" },
   { pattern: /^\/security\/audit/, permission: "security" },
   { pattern: /^\/security\/sessions/, permission: "users" },
   { pattern: /^\/security/, permission: null },
