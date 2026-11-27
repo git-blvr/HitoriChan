@@ -87,12 +87,8 @@ export async function handleChat(message) {
 
   try {
     const historyDoc = await MessageHistory.getOrCreate(guild.id, author.id, channel.id);
-    const historyText = userMessage || (imageURLs.length ? "[sent an image]" : "[sent media]");
-
-    historyDoc.messages.push({ role: "user", content: historyText, ts: Date.now() });
-    historyDoc.messages = trimHistory(historyDoc.messages, MAX_HISTORY);
-    await MessageHistory.save(historyDoc);
-
+    // buildContextMessages appends the current message itself — history here
+    // must NOT already contain it, or the model sees every message twice.
     const contextMessages = buildContextMessages(historyDoc.messages, userMessage, imageURLs);
 
     const reply = await queryGemini({
@@ -102,6 +98,8 @@ export async function handleChat(message) {
       userName: author.username,
     });
 
+    const historyText = userMessage || (imageURLs.length ? "[sent an image]" : "[sent media]");
+    historyDoc.messages.push({ role: "user", content: historyText, ts: Date.now() });
     historyDoc.messages.push({ role: "assistant", content: reply, ts: Date.now() });
     historyDoc.messages = trimHistory(historyDoc.messages, MAX_HISTORY);
     await MessageHistory.save(historyDoc);
