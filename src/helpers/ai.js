@@ -25,31 +25,40 @@ export function trimHistory(messages, max = 10) {
   return messages.length > max ? messages.slice(-max) : messages;
 }
 
-// Blushing/flustered phrases — wrapped in a markdown link to the blush GIF.
-const BLUSH_RE = new RegExp(
-  [
-    "blush(?:ing|ed|es)?",
-    "fluster(?:ed|ing)?",
-    "(?:my |the |her )?(?:face|cheeks)(?:'s| is| are| feels| feel| gets| got)? (?:burning|burns|flushing|flushed|heating|hot|warm|red|glowing)",
-    "(?:face|cheeks) burning up",
-    "(?:turning|going|getting|turned|gone|went|feel) (?:so |really |all |bright )?(?:red|pink|warm)",
-    "(?:so |really |kinda )?(?:embarrassed|embarrassing|shy)",
-    "heat(?:ing)? up",
-    "hides? (?:my |her |the )?face",
-    "cover(?:ing|s)? (?:my |her |the )?face",
-  ].join("|"),
-  "gi"
-);
+// Emotion phrases get wrapped in markdown links to mood GIFs.
+// Ordered specific → generic so overlapping phrases resolve sensibly.
+const EMOTE_RULES = {
+  sob: /\b(?:sobs?|sobbing|cries|cried|crying|tears?|weep(?:s|ing)?|sniff(?:le|les|ling)?|waa+h+)\b/gi,
+  stutter: /\b[a-z]-[a-z]+\b/gi,
+  blush: /\b(?:blush(?:ing|ed|es)?|fluster(?:ed|ing)?|(?:my |the |her )?(?:face|cheeks)(?:'s| is| are| feels| feel| gets| got)? (?:burning|burns|flushing|flushed|heating|hot|warm|red|glowing)|(?:face|cheeks) burning up|(?:turning|going|getting|turned|gone|went|feel) (?:so |really |all |bright )?(?:red|pink|warm)|(?:so |really |kinda )?(?:embarrassed|embarrassing|shy)|heat(?:ing)? up|hides? (?:my |her |the )?face|cover(?:ing|s)? (?:my |her |the )?face)\b/gi,
+  exhausted: /\b(?:exhausted|worn out|drained|wiped(?: out)?|out of breath|no energy|phew)\b/gi,
+  tired: /\b(?:tired|sleepy|drowsy|yawns?|yawning|dead tired|staring)\b/gi,
+  happy: /\b(?:yay|happy|excited|wonderful|amazing|glad|delighted|hehe+|thrilled|hooray)\b/gi,
+  nod: /\b(?:mhm|mm-hmm?|yep|yup|yes|sure thing|of course|definitely|absolutely|agreed|you got it|alright)\b/gi,
+};
+const EMOTE_ORDER = ["sob", "stutter", "blush", "exhausted", "tired", "happy", "nod"];
 
-export function linkifyBlush(text, gifUrl) {
-  if (!text || !gifUrl) return text;
-  BLUSH_RE.lastIndex = 0;
+function linkify(text, regex, gifOrPicker) {
+  regex.lastIndex = 0;
   // Skip matches already inside a markdown link/image.
-  return text.replace(BLUSH_RE, (match, offset, str) => {
+  return text.replace(regex, (match, offset, str) => {
     const tail = str.slice(offset + match.length);
     if (tail.startsWith("](") || str.slice(0, offset).endsWith("[")) return match;
-    return `[${match}](${gifUrl})`;
+    const url = typeof gifOrPicker === "function" ? gifOrPicker() : gifOrPicker;
+    return `[${match}](${url})`;
   });
+}
+
+export function linkifyEmotes(text, emoteGifs) {
+  if (!text || !emoteGifs) return text;
+  for (const emotion of EMOTE_ORDER) {
+    const urls = emoteGifs[emotion];
+    const regex = EMOTE_RULES[emotion];
+    if (!urls?.length || !regex) continue;
+    const pick = urls.length === 1 ? urls[0] : () => urls[Math.floor(Math.random() * urls.length)];
+    text = linkify(text, regex, pick);
+  }
+  return text;
 }
 
 export function buildContextMessages(history, userMessage, imageURLs) {

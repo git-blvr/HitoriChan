@@ -1,7 +1,7 @@
 import { queryAI } from "../ai/index.js";
 import { checkCooldown } from "../utils/cooldowns.js";
 import { consumeAIQuota, formatRetryAfter, AI_LIMIT_LABEL, AI_MESSAGE_CHARS } from "../utils/aiQuota.js";
-import { getImageURLs, buildContextMessages, trimHistory, linkifyBlush } from "../helpers/ai.js";
+import { getImageURLs, buildContextMessages, trimHistory, linkifyEmotes } from "../helpers/ai.js";
 import { truncate } from "../helpers/format.js";
 import { cv2 } from "../helpers/cv2.js";
 import { AIError } from "../helpers/aiErrors.js";
@@ -98,7 +98,7 @@ export async function handleChat(message) {
       temperature: config.ai.temperature,
       guildId: guild.id,
       userName: author.username,
-    }).then((text) => linkifyBlush(text, config.ai.blushGif));
+    }).then((text) => linkifyEmotes(text, config.ai.emoteGifs));
 
     const historyText = userMessage || (imageURLs.length ? "[sent an image]" : "[sent media]");
     historyDoc.messages.push({ role: "user", content: historyText, ts: Date.now() });

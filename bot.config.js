@@ -23,9 +23,18 @@ export default {
     maxTokens: 1024,               // reply length budget
     temperature: 0.85,
 
-    // Blushing phrases ("my face burning up", "blushing", "so red"...) become
-    // markdown links to this GIF — klipy embeds inline like tenor. "" disables.
-    blushGif: "https://klipy.com/gifs/bocchi-bocchi-the-rock-165",
+    // Emotion phrases in her replies become markdown links to these GIFs —
+    // klipy embeds inline like tenor. Multiple URLs rotate randomly.
+    // Remove a key (or empty array) to disable that emotion.
+    emoteGifs: {
+      blush: ["https://klipy.com/gifs/bocchi-bocchi-the-rock-165"],
+      stutter: ["https://klipy.com/gifs/anime-1215"],
+      sob: ["https://klipy.com/gifs/bocchi-13", "https://klipy.com/gifs/anime-1477"],
+      happy: ["https://klipy.com/gifs/bocchi-bocchi-jump"],
+      nod: ["https://klipy.com/gifs/bocchi-bocchi-the-rock-122"],
+      exhausted: ["https://klipy.com/gifs/goto-xitori"],
+      tired: ["https://klipy.com/gifs/bocchi-bocchi-the-rock-103"],
+    },
   },
 
   ask: {

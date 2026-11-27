@@ -5,7 +5,7 @@ import { checkCooldown, clearCooldown } from "../../utils/cooldowns.js";
 import * as EconomyAccount from "../../models/EconomyAccount.js";
 import { embErr, embWrn } from "../../helpers/embeds.js";
 import { AIError } from "../../helpers/aiErrors.js";
-import { linkifyBlush } from "../../helpers/ai.js";
+import { linkifyEmotes } from "../../helpers/ai.js";
 import config from "../../../bot.config.js";
 
 const FOLT_COST   = config.ask.costFolts;
@@ -64,7 +64,7 @@ export default {
         maxTokens: config.ask.maxTokens,
         guildId: ctx.guild?.id,
         userName: ctx.user.username,
-      }).then((text) => linkifyBlush(text, config.ai.blushGif));
+      }).then((text) => linkifyEmotes(text, config.ai.emoteGifs));
 
       await EconomyAccount.adjust(ctx.guild.id, ctx.user.id, "secondary", -FOLT_COST);
 
