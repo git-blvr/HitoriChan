@@ -1,6 +1,6 @@
 import { queryAI } from "../ai/index.js";
 import { checkCooldown } from "../utils/cooldowns.js";
-import { consumeAIQuota, formatRetryAfter, AI_MESSAGE_LIMIT, AI_MESSAGE_CHARS } from "../utils/aiQuota.js";
+import { consumeAIQuota, formatRetryAfter, AI_LIMIT_LABEL, AI_MESSAGE_CHARS } from "../utils/aiQuota.js";
 import { getImageURLs, buildContextMessages, trimHistory } from "../helpers/ai.js";
 import { truncate } from "../helpers/format.js";
 import { cv2 } from "../helpers/cv2.js";
@@ -76,7 +76,7 @@ export async function handleChat(message) {
 
   const quota = consumeAIQuota(author.id);
   if (!quota.allowed) {
-    await message.reply(`S-sorry, I've hit my chat limit... I can talk again in **${formatRetryAfter(quota.retryAfterMs)}**. (${AI_MESSAGE_LIMIT} messages per 4 hours)`);
+    await message.reply(`S-sorry, I've hit my chat limit... I can talk again in **${formatRetryAfter(quota.retryAfterMs)}**. (${AI_LIMIT_LABEL})`);
     return;
   }
 
