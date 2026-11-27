@@ -1,4 +1,4 @@
-import { buildBocchiPrompt, summarizeHistory } from "../ai/gemini.js";
+import { buildBocchiPrompt, summarizeHistory } from "../ai/index.js";
 
 export function buildUserContent(text, imageURLs = []) {
   if (!imageURLs.length) return text || "[sent media]";

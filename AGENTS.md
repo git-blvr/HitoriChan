@@ -32,7 +32,10 @@
 
 ## Environment variables
 - `TOKEN` — Discord bot token (required)
-- `GEMINI_API_KEY` — Gemini API key (required for AI)
+- `AI_PROVIDER` — which AI backend to use: `gemini` or `groq` (default: `gemini` if `GEMINI_API_KEY` set, else `groq`)
+- `GEMINI_API_KEY` — Gemini API key (required when provider is `gemini`)
+- `GROQ_API` — Groq API key (required when provider is `groq`)
+- `GROQ_MODEL` — optional Groq model override (default `qwen/qwen3.8-27b`)
 - `LASTFM_API` — Last.fm API key (required for `fm`/`lastfm` commands; read-only, secret not needed)
 - `CLIENT_ID` — Discord application ID (used for command deployment)
 - `GUILD_ID` — optional test guild ID for instant guild command updates

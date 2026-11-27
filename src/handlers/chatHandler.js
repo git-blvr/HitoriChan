@@ -1,4 +1,4 @@
-import { queryGemini } from "../ai/gemini.js";
+import { queryAI } from "../ai/index.js";
 import { checkCooldown } from "../utils/cooldowns.js";
 import { consumeAIQuota, formatRetryAfter, AI_MESSAGE_LIMIT, AI_MESSAGE_CHARS } from "../utils/aiQuota.js";
 import { getImageURLs, buildContextMessages, trimHistory } from "../helpers/ai.js";
@@ -91,7 +91,7 @@ export async function handleChat(message) {
     // must NOT already contain it, or the model sees every message twice.
     const contextMessages = buildContextMessages(historyDoc.messages, userMessage, imageURLs);
 
-    const reply = await queryGemini({
+    const reply = await queryAI({
       messages: contextMessages,
       maxTokens: 1024,
       guildId: guild.id,

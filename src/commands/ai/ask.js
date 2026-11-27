@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
-import { queryGemini } from "../../ai/gemini.js";
+import { queryAI } from "../../ai/index.js";
 import { checkCooldown, clearCooldown } from "../../utils/cooldowns.js";
 import * as EconomyAccount from "../../models/EconomyAccount.js";
 import { embErr, embWrn } from "../../helpers/embeds.js";
@@ -57,7 +57,7 @@ export default {
     await ctx.deferReply();
 
     try {
-      const reply = await queryGemini({
+      const reply = await queryAI({
         messages: [{ role: "user", content: question }],
         maxTokens: 512,
         guildId: ctx.guild?.id,
