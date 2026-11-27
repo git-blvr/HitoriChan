@@ -151,3 +151,4 @@ tmp/
 # Rust native module
 native/target/
 native/*.node
+native/*.node.old-*

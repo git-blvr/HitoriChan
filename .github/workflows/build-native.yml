@@ -1,0 +1,45 @@
+name: Build native module
+
+# Rebuilds the Linux hitori_native.node artifact whenever the Rust crate
+# changes, and commits it so hosts that pull the repo get a ready-made binary
+# (no cargo on the production container).
+on:
+  push:
+    paths:
+      - "native/src/**"
+      - "native/Cargo.toml"
+      - "native/Cargo.lock"
+      - "native/build.rs"
+      - ".github/workflows/build-native.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # bullseye = oldest Debian glibc still supported — the artifact loads on
+    # any newer glibc host (bookworm, ubuntu, Pterodactyl yolks, etc).
+    container: rust:1-bullseye
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build release library
+        working-directory: native
+        run: cargo build --release --locked
+
+      - name: Stage artifact
+        run: cp native/target/release/libhitori_native.so native/hitori_native.node
+
+      - name: Commit artifact if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f native/hitori_native.node
+          if git diff --cached --quiet; then
+            echo "No change — artifact already up to date"
+            exit 0
+          fi
+          git commit -m "chore: rebuild native module [skip ci]"
+          git push
