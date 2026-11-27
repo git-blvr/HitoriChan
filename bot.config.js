@@ -22,6 +22,10 @@ export default {
     historyMessages: 10,           // turns of context kept per user+channel
     maxTokens: 1024,               // reply length budget
     temperature: 0.85,
+
+    // Blushing phrases ("my face burning up", "blushing", "so red"...) become
+    // markdown links to this GIF — klipy embeds inline like tenor. "" disables.
+    blushGif: "https://klipy.com/gifs/bocchi-bocchi-the-rock-165",
   },
 
   ask: {
