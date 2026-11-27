@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { Client, GatewayIntentBits, Partials } from "discord.js";
+import { Client, GatewayIntentBits, Partials, Options } from "discord.js";
 import { closeDatabase } from "./src/database/db.js";
 import { loadCommands, registerCommandListeners } from "./src/handlers/commandHandler.js";
 import { loadEvents } from "./src/handlers/eventHandler.js";
@@ -15,6 +15,38 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
   ],
   partials: [Partials.Message, Partials.Channel],
+  // Bound every cache the bot doesn't need unbounded — unbounded message/user/
+  // member caches are the dominant idle-RAM cost on large guilds.
+  makeCache: Options.cacheWithLimits({
+    MessageManager: 0,
+    ThreadManager: 0,
+    GuildForumThreadManager: 0,
+    GuildTextThreadManager: 0,
+    ThreadMemberManager: 0,
+    ReactionManager: 0,
+    ReactionUserManager: 0,
+    PresenceManager: 0,
+    GuildScheduledEventManager: 0,
+    GuildStickerManager: 0,
+    StageInstanceManager: 0,
+    GuildBanManager: 0,
+    GuildInviteManager: 0,
+    UserManager: { maxSize: 500, keepOverLimit: (u) => u.id === u.client.user.id },
+    GuildMemberManager: { maxSize: 250, keepOverLimit: (m) => m.id === m.client.user.id },
+    VoiceStateManager: { maxSize: 250 },
+  }),
+  sweepers: {
+    ...Options.defaultSweeperSettings,
+    messages: { interval: 60, lifetime: 300 },
+    users: {
+      interval: 900,
+      filter: () => (user) => user.id !== user.client.user.id,
+    },
+    guildMembers: {
+      interval: 900,
+      filter: () => (member) => member.id !== member.client.user.id,
+    },
+  },
 });
 
 let webServer = null;
