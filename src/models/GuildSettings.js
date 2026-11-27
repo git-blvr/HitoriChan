@@ -214,8 +214,10 @@ export async function setCurrencies(guildId, values) {
   return save(guildId, {
     primaryName: values.primaryName,
     primarySymbol: values.primarySymbol,
+    primaryEmoji: values.primaryEmoji,
     secondaryName: values.secondaryName,
     secondarySymbol: values.secondarySymbol,
+    secondaryEmoji: values.secondaryEmoji,
   });
 }
 

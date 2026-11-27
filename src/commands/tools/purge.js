@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { buildEmbed, requireModerator, sendLog } from "../moderation/moderationHelpers.js";
 import { embErr, embWrn } from "../../helpers/embeds.js";
+import { cv2 } from "../../helpers/cv2.js";
 import { resolveTarget } from "../../utils/resolveTarget.js";
 
 const MAX_PURGE = 100;
@@ -20,7 +21,8 @@ export default {
   syntax: "{prefix}purge <amount> [@user]",
   example: "{prefix}purge 10",
   async execute(ctx) {
-    if (!(await requireModerator(ctx))) return;
+    const canManage = ctx.member?.permissions?.has(PermissionFlagsBits.ManageMessages);
+    if (!canManage && !(await requireModerator(ctx))) return;
 
     const amount = ctx.isInteraction
       ? ctx.source?.options?.getInteger("amount")
@@ -55,10 +57,27 @@ export default {
     }
 
     const deleted = await ctx.channel.bulkDelete(messages, true);
+    if (!deleted?.size) {
+      await ctx.reply(embWrn("Nothing was deleted — the messages may be too old."), refMessage);
+      return;
+    }
 
     const logEmbed = buildEmbed(
       `**Purge**\n**Channel:** <#${ctx.channel.id}>\n**Moderator:** <@${ctx.user.id}>\n**Deleted:** ${deleted.size} message(s)${filterUserId ? `\n**Filtered User:** <@${filterUserId}>` : ""}`
     );
     await sendLog(ctx.client, ctx.guild.id, logEmbed);
+
+    if (ctx.isInteraction) {
+      await ctx.reply(cv2({
+        color: 0x2ecc71,
+        description: `Deleted **${deleted.size}** message(s)${filterUserId ? ` from <@${filterUserId}>` : ""}.`,
+      }));
+    } else {
+      const confirm = await ctx.reply(cv2({
+        color: 0x2ecc71,
+        description: `Deleted **${deleted.size}** message(s).`,
+      }), refMessage);
+      setTimeout(() => confirm?.delete?.().catch(() => {}), 5000);
+    }
   },
 };

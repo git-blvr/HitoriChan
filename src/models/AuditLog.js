@@ -4,7 +4,6 @@ const RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const MAX_DETAIL = 500;
 
 const insertStmt = db.prepare("INSERT INTO audit_logs (actor, action, detail, ip, created_at) VALUES (?, ?, ?, ?, ?)");
-const listStmt = db.prepare("SELECT * FROM audit_logs ORDER BY created_at DESC, id DESC LIMIT ?");
 const pruneStmt = db.prepare("DELETE FROM audit_logs WHERE created_at < ?");
 
 export function add({ actor, action, detail = null, ip = null }) {
@@ -23,15 +22,20 @@ export function add({ actor, action, detail = null, ip = null }) {
 
 export function list({ limit = 200, action, actor } = {}) {
   const lim = Math.min(Math.max(Number(limit) || 200, 1), 1000);
-  let rows = listStmt.all(lim);
+  const clauses = [];
+  const params = [];
   if (action) {
-    const q = String(action).toLowerCase();
-    rows = rows.filter((r) => r.action.toLowerCase().includes(q));
+    clauses.push("LOWER(action) LIKE ?");
+    params.push(`%${String(action).toLowerCase()}%`);
   }
   if (actor) {
-    const q = String(actor).toLowerCase();
-    rows = rows.filter((r) => r.actor.toLowerCase().includes(q));
+    clauses.push("LOWER(actor) LIKE ?");
+    params.push(`%${String(actor).toLowerCase()}%`);
   }
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const rows = db
+    .prepare(`SELECT * FROM audit_logs ${where} ORDER BY created_at DESC, id DESC LIMIT ?`)
+    .all(...params, lim);
   return rows.map((r) => ({
     id: r.id,
     actor: r.actor,

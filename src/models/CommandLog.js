@@ -78,6 +78,20 @@ export function countForGuild(guildId, since = 0, until = Number.MAX_SAFE_INTEGE
   return countGuildRange.get(guildId, since, until)?.n ?? 0;
 }
 
+const deleteOld = db.prepare(`
+  DELETE FROM command_logs WHERE id IN (
+    SELECT id FROM (
+      SELECT id, ROW_NUMBER() OVER (PARTITION BY guild_id ORDER BY created_at DESC) AS rn
+      FROM command_logs
+    ) WHERE rn > ?
+  )
+`);
+
+// Per-guild retention: keep the newest N command logs per guild.
+export function prune(maxPerGuild = 2000) {
+  return deleteOld.run(maxPerGuild);
+}
+
 function parse(row) {
   return {
     id: row.id,

@@ -8,6 +8,10 @@
   /* Density — every fixed length in the shell multiplies this. */
   --ui-scale: 1;
 
+  /* Theme-customizer knobs — glow intensity and corner-roundness factors. */
+  --glow-scale: 1;
+  --radius-scale: 1;
+
   /* Surfaces — pure black steps */
   --bg-0: #000000;
   --surface-0: #050505;
@@ -34,7 +38,7 @@
   --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
   --accent-softer: color-mix(in srgb, var(--accent) 7%, transparent);
   --accent-border: color-mix(in srgb, var(--accent) 32%, transparent);
-  --accent-glow: 0 0 calc(14px * var(--ui-scale)) color-mix(in srgb, var(--accent) 22%, transparent);
+  --accent-glow: 0 0 calc(14px * var(--ui-scale) * var(--glow-scale)) color-mix(in srgb, var(--accent) 22%, transparent);
   --accent-contrast: #000000;
   /* Accent as a text color — JS swaps this for black/white when the
      accent would be illegible on the surface (see accentReadable). */
@@ -65,11 +69,11 @@
   --text-hero: calc(44px * var(--ui-scale));
 
   /* Radii */
-  --radius-xs: calc(4px * var(--ui-scale));
-  --radius-sm: calc(6px * var(--ui-scale));
-  --radius-md: calc(8px * var(--ui-scale));
-  --radius-lg: calc(12px * var(--ui-scale));
-  --radius-xl: calc(16px * var(--ui-scale));
+  --radius-xs: calc(4px * var(--ui-scale) * var(--radius-scale));
+  --radius-sm: calc(6px * var(--ui-scale) * var(--radius-scale));
+  --radius-md: calc(8px * var(--ui-scale) * var(--radius-scale));
+  --radius-lg: calc(12px * var(--ui-scale) * var(--radius-scale));
+  --radius-xl: calc(16px * var(--ui-scale) * var(--radius-scale));
 
   /* Spacing rhythm */
   --card-pad: calc(20px * var(--ui-scale));
@@ -112,7 +116,6 @@
   --border: var(--border-1);
   --input: var(--surface-1);
   --radius: var(--radius-lg);
-  --radius-sm: var(--radius-sm);
   --shadow: var(--shadow-2);
   --container: var(--accent);
   --error: var(--danger);
@@ -149,4 +152,11 @@
   --shadow-2: 0 calc(4px * var(--ui-scale)) calc(16px * var(--ui-scale)) rgba(0, 0, 0, 0.1);
   --shadow-3: 0 calc(12px * var(--ui-scale)) calc(40px * var(--ui-scale)) rgba(0, 0, 0, 0.14);
   --shadow-focus: 0 0 0 calc(2px * var(--ui-scale)) var(--surface-1), 0 0 0 calc(4px * var(--ui-scale)) var(--accent);
+}
+
+/* Reduced-motion theme knob — zeroes all token-driven durations. */
+[data-motion="reduced"] {
+  --duration-1: 0ms;
+  --duration-2: 0ms;
+  --duration-3: 0ms;
 }

@@ -17,7 +17,8 @@ export default {
     const guildId = ctx.guild?.id;
     if (!guildId) return ctx.editReply("This command only works in a server.");
 
-    const targetId = ctx.getOption("user", 0) || ctx.user.id;
+    const raw = ctx.getOption("user", 0);
+    const targetId = (typeof raw === "string" ? raw.match(/^<@!?(\d+)>$/)?.[1] ?? raw : raw) || ctx.user.id;
     const partnerId = await Marriage.getPartner(guildId, targetId);
     if (!partnerId) {
       return ctx.editReply("No active marriage found.");

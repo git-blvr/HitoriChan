@@ -19,8 +19,23 @@ function fromRow(row) {
 
 export async function create(guildId, userId1, userId2) {
   const now = Date.now();
-  const result = insertStmt.run(guildId, userId1, userId2, now);
-  return fromRow(getStmt.get(result.lastInsertRowid));
+  // BEGIN IMMEDIATE serializes concurrent accepts — two proposals involving
+  // the same user can't both pass the "already married" check.
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const taken = getByUserStmt.get(guildId, userId1, userId1)
+      ?? getByUserStmt.get(guildId, userId2, userId2);
+    if (taken) {
+      db.exec("ROLLBACK");
+      return null;
+    }
+    const result = insertStmt.run(guildId, userId1, userId2, now);
+    db.exec("COMMIT");
+    return fromRow(getStmt.get(result.lastInsertRowid));
+  } catch (err) {
+    try { db.exec("ROLLBACK"); } catch {}
+    throw err;
+  }
 }
 
 export async function getByUser(guildId, userId) {

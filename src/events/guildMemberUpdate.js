@@ -8,8 +8,8 @@ export default {
 
     await questEngine.onMemberUpdate(client, oldMember, newMember);
 
-    const wasBoosting = oldMember.premiumSince !== null;
-    const isBoosting = newMember.premiumSince !== null;
+    const wasBoosting = Boolean(oldMember.premiumSince);
+    const isBoosting = Boolean(newMember.premiumSince);
 
     if (!wasBoosting && isBoosting) {
       await applyBoostPerks(newMember.guild.id, newMember.id, newMember, client);

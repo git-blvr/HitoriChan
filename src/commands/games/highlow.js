@@ -43,18 +43,23 @@ export default {
     const shown = Math.floor(Math.random() * 100) + 1;
     const hidden = Math.floor(Math.random() * 100) + 1;
     const higher = hidden > shown;
-    const won = (guess === "high" && higher) || (guess === "low" && !higher);
+    const tie = hidden === shown;
+    const won = !tie && ((guess === "high" && higher) || (guess === "low" && !higher));
     const payout = Math.floor(amount * 1.8);
 
-    await adjustBalance(ctx.guild.id, ctx.user.id, "primary", won ? payout - amount : -amount);
+    if (!tie) {
+      await adjustBalance(ctx.guild.id, ctx.user.id, "primary", won ? payout - amount : -amount);
+    }
     const updated = await getEconomyAccount(ctx.guild.id, ctx.user.id);
 
     await ctx.reply(cv2({
-      color: won ? 0x57f287 : 0xff3333,
-      title: won ? "🎯 You Guessed Right!" : "🎯 You Guessed Wrong",
-      description: `Shown: **${shown}** — Hidden: **${hidden}**. It was **${higher ? "higher" : "lower"}**!`,
+      color: tie ? 0xffb224 : won ? 0x57f287 : 0xff3333,
+      title: tie ? "🎯 Push — Bet Returned" : won ? "🎯 You Guessed Right!" : "🎯 You Guessed Wrong",
+      description: tie
+        ? `Shown: **${shown}** — Hidden: **${hidden}**. Same number — your bet is back.`
+        : `Shown: **${shown}** — Hidden: **${hidden}**. It was **${higher ? "higher" : "lower"}**!`,
       fields: [
-        { name: won ? "Payout" : "You lost", value: formatCurrency(won ? payout : amount, config.primary), inline: true },
+        { name: tie ? "Returned" : won ? "Payout" : "You lost", value: formatCurrency(tie ? amount : won ? payout : amount, config.primary), inline: true },
         { name: "New balance", value: formatCurrency(updated.primary, config.primary), inline: true },
       ],
     }));

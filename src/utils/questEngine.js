@@ -161,12 +161,28 @@ class Parser {
 // Evaluation helpers
 // =========================================================
 
+// Object counters keyed by the compare's right-hand literal:
+// messages.with_content "x" → counters.messagesWithContent["x"] >= 1.
+const OBJECT_COUNTER_FIELDS = {
+  "messages.with_content": "messagesWithContent",
+  "messages.in_channel": "messagesInChannel",
+  "commands.used": "commandsUsedList",
+};
+
 function resolveValue(node, context, quest) {
   if (node.type === "literal") return node.value;
   if (node.type === "variable") return quest.variables[node.name] ?? null;
   if (node.type === "entity") return null;
   if (node.type === "field") return getEntityField(node.entity, node.field, context);
   if (node.type === "compare") {
+    const counterKey = OBJECT_COUNTER_FIELDS[`${node.entity}.${node.field}`];
+    if (counterKey) {
+      const right = resolveValue(node.value, context, quest);
+      const count = Number(context.progress?.counters?.[counterKey]?.[String(right ?? "")]) || 0;
+      if (node.op === "!=") return count === 0;
+      if (node.op === "=" || node.op === "==") return count >= 1;
+      return compareValues(count, node.op, 1);
+    }
     const left = getEntityField(node.entity, node.field, context);
     const right = resolveValue(node.value, context, quest);
     return compareValues(left, node.op, right);
@@ -351,6 +367,106 @@ function callMethod(entity, method, arg, context) {
 // Counter / progress helpers
 // =========================================================
 
+// Which counters each quest actually reads — memoized per quest revision so
+// hot events only write progress rows the quest's condition depends on.
+const depsCache = new Map();
+
+function collectDeps(quest) {
+  const cacheKey = `${quest.id}:${quest.updatedAt}`;
+  const hit = depsCache.get(cacheKey);
+  if (hit) return hit;
+  if (depsCache.size > 2000) depsCache.clear();
+
+  const counterKeys = new Set();
+  const kwSet = new Set();
+  const lit = (n) => (n?.type === "literal" ? n.value : null);
+
+  const addField = (entity, field, literalArg) => {
+    if (entity === "messages") {
+      if (field === "sent") counterKeys.add("messagesSent");
+      else if (field === "in_channel") counterKeys.add("messagesInChannel");
+      else if (field === "with_content") {
+        counterKeys.add("messagesWithContent");
+        if (typeof literalArg === "string" && literalArg) kwSet.add(literalArg.toLowerCase());
+      }
+    } else if (entity === "commands") {
+      if (field === "count") counterKeys.add("commandsUsed");
+      else if (field === "used" || field === "used_at_least") counterKeys.add("commandsUsedList");
+    } else if (entity === "voice") {
+      if (field === "minutes" || field === "minutes_at_least") counterKeys.add("voiceSeconds");
+      else if (field === "joined") counterKeys.add("voiceJoined");
+    } else if (entity === "invites") {
+      counterKeys.add("invites");
+    } else if (entity === "reactions") {
+      counterKeys.add("reactionsAdded");
+    } else if (entity === "progress") {
+      counterKeys.add(field);
+    } else if (entity === "user" && field === "sent_messages") {
+      counterKeys.add("messagesSent");
+    }
+  };
+
+  const walk = (node) => {
+    if (!node || typeof node !== "object") return;
+    switch (node.type) {
+      case "and":
+      case "or":
+        walk(node.left);
+        walk(node.right);
+        break;
+      case "not":
+        walk(node.expr);
+        break;
+      case "compare":
+        addField(node.entity, node.field, lit(node.value));
+        walk(node.value);
+        break;
+      case "method":
+        addField(node.entity, node.field, lit(node.arg));
+        walk(node.arg);
+        break;
+      case "field":
+        addField(node.entity, node.field, null);
+        break;
+    }
+  };
+
+  if (quest.dsl) {
+    try {
+      const ast = new Parser(tokenize(quest.dsl)).parseStatement();
+      if (ast.type === "if") walk(ast.condition);
+    } catch {
+      // unparseable DSL → no deps (it never evaluates anyway)
+    }
+  }
+
+  const walkBlocks = (blocks) => {
+    for (const block of blocks || []) {
+      if (!block) continue;
+      if (block.match && block.blocks) { walkBlocks(block.blocks); continue; }
+      addField(block.entity, block.field, block.value);
+    }
+  };
+  walkBlocks(quest.condition?.blocks);
+
+  const deps = { counterKeys, contentKeywords: [...kwSet] };
+  depsCache.set(cacheKey, deps);
+  return deps;
+}
+
+function freshProgress(questId, userId) {
+  return {
+    questId,
+    userId,
+    counters: {},
+    status: "in_progress",
+    completedAt: null,
+    claimedAt: null,
+    lastResetAt: 0,
+    updatedAt: Date.now(),
+  };
+}
+
 async function getProgress(questId, userId) {
   return QuestProgress.getOrCreate(questId, userId);
 }
@@ -363,9 +479,16 @@ export async function incrementCounter(guildId, userId, key, amount = 1, extra =
   const quests = await Quest.getEnabledForGuild(guildId);
   if (!quests.length) return;
 
-  for (const quest of quests) {
-    const progress = await getProgress(quest.id, userId);
-    if (!progress) continue;
+  const extraKeys = Object.keys(extra);
+  const needed = quests.filter((q) => {
+    const keys = collectDeps(q).counterKeys;
+    return keys.has(key) || extraKeys.some((k) => keys.has(k));
+  });
+  if (!needed.length) return;
+
+  const progressMap = await QuestProgress.getForUserQuests(userId, needed.map((q) => q.id));
+  for (const quest of needed) {
+    const progress = progressMap.get(quest.id) ?? freshProgress(quest.id, userId);
     if (progress.status !== "in_progress") continue;
 
     if (!progress.counters) progress.counters = {};
@@ -391,30 +514,34 @@ export async function incrementCounter(guildId, userId, key, amount = 1, extra =
 // Quest runner
 // =========================================================
 
-async function resetProgressIfNeeded(quest, progress) {
-  const now = Date.now();
+function isoWeekKey(ts) {
+  const d = new Date(ts);
+  const day = (d.getUTCDay() + 6) % 7; // Monday = 0
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() - day + 3); // Thursday of the ISO week
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+function needsScheduleReset(quest, progress, now = Date.now()) {
   const last = progress.lastResetAt || 0;
-  let shouldReset = false;
-
   if (quest.schedule === "daily") {
-    const lastDate = new Date(last).toDateString();
-    const nowDate = new Date(now).toDateString();
-    shouldReset = lastDate !== nowDate;
-  } else if (quest.schedule === "weekly") {
-    const lastWeek = new Date(last).toISOString().slice(0, 6); // YYYY-W
-    const nowWeek = new Date(now).toISOString().slice(0, 6);
-    shouldReset = lastWeek !== nowWeek;
+    return new Date(last).toDateString() !== new Date(now).toDateString();
   }
+  if (quest.schedule === "weekly") {
+    return isoWeekKey(last) !== isoWeekKey(now);
+  }
+  return false;
+}
 
-  if (shouldReset) {
-    progress.counters = {};
-    progress.status = "in_progress";
-    progress.completedAt = null;
-    progress.claimedAt = null;
-    progress.lastResetAt = now;
-    progress.updatedAt = now;
-    await saveProgress(progress);
-  }
+function applyScheduleReset(progress, now = Date.now()) {
+  progress.counters = {};
+  progress.status = "in_progress";
+  progress.completedAt = null;
+  progress.claimedAt = null;
+  progress.lastResetAt = now;
+  progress.updatedAt = now;
 }
 
 async function ensureEconomy(context, client) {
@@ -478,7 +605,7 @@ function buildConditionBlock(block) {
   if (!block.entity || !block.field) return null;
 
   let leaf;
-  const methodOps = new Set(["has_role", "has_any_role", "in_channel"]);
+  const methodOps = new Set(["has_role", "has_any_role", "in_channel", "with_content"]);
 
   if (methodOps.has(block.op)) {
     leaf = { type: "method", entity: block.entity, field: block.field, arg: toAstValue(block.value) };
@@ -559,15 +686,27 @@ function evaluateQuestCondition(quest, context) {
   return { valid: true, result: evaluateCondition(conditionAst, context, quest) };
 }
 
-async function runQuest(quest, context, client) {
+async function runQuest(quest, context, client, progress, applyCounters) {
   if (!quest.enabled || (!quest.dsl && !quest.condition?.blocks?.length)) return;
 
   const userId = context.userId;
   if (!userId) return;
 
-  const progress = await getProgress(quest.id, userId);
-  await resetProgressIfNeeded(quest, progress);
-  if (progress.status !== "in_progress") return;
+  progress ??= await getProgress(quest.id, userId);
+  if (!progress) return;
+
+  let dirty = false;
+  if (needsScheduleReset(quest, progress)) {
+    applyScheduleReset(progress);
+    dirty = true;
+  }
+  if (progress.status === "in_progress" && applyCounters) {
+    dirty = (await applyCounters(progress, collectDeps(quest))) || dirty;
+  }
+  if (progress.status !== "in_progress") {
+    if (dirty) await saveProgress(progress);
+    return;
+  }
 
   context.client = client;
   context.progress = progress;
@@ -576,9 +715,13 @@ async function runQuest(quest, context, client) {
   const { valid, result } = evaluateQuestCondition(quest, context);
   if (!valid) {
     console.error(`Quest ${quest.id} has no valid condition`);
+    if (dirty) await saveProgress(progress);
     return;
   }
-  if (!result) return;
+  if (!result) {
+    if (dirty) await saveProgress(progress);
+    return;
+  }
 
   // Mark completed
   progress.status = "completed";
@@ -742,6 +885,18 @@ async function runAllForGuild(event, client, guildId, buildContext) {
   }
 }
 
+// Single-pass event runner: one batch progress query for the whole quest set,
+// counters applied only to quests that read them, one save per quest max.
+async function runQuestPass(client, quests, ctx, applyCounters) {
+  const userId = ctx.userId;
+  if (!userId) return;
+  const progressMap = await QuestProgress.getForUserQuests(userId, quests.map((q) => q.id));
+  for (const quest of quests) {
+    const progress = progressMap.get(quest.id) ?? freshProgress(quest.id, userId);
+    await runQuest(quest, ctx, client, progress, applyCounters);
+  }
+}
+
 // =========================================================
 // Public event handlers
 // =========================================================
@@ -751,6 +906,10 @@ export async function onMessage(client, message) {
   const guildId = message.guild.id;
   const userId = message.author.id;
 
+  const quests = await Quest.getEnabledForGuild(guildId);
+  if (!quests.length) return;
+
+  const content = String(message.content ?? "").toLowerCase();
   const ctx = {
     event: "message",
     message,
@@ -758,15 +917,31 @@ export async function onMessage(client, message) {
     userId,
     guildId,
     channelId: message.channelId,
-    userId,
   };
 
-  await incrementCounter(guildId, userId, "messagesSent", 1, {
-    messagesInChannel: { [message.channelId]: 1 },
-    messagesWithContent: { [String(message.content).toLowerCase().trim().slice(0, 50)]: 1 },
+  await runQuestPass(client, quests, ctx, (progress, deps) => {
+    let dirty = false;
+    const c = (progress.counters ??= {});
+    if (deps.counterKeys.has("messagesSent")) {
+      c.messagesSent = (c.messagesSent || 0) + 1;
+      dirty = true;
+    }
+    if (deps.counterKeys.has("messagesInChannel")) {
+      const m = (c.messagesInChannel ??= {});
+      m[message.channelId] = (m[message.channelId] || 0) + 1;
+      dirty = true;
+    }
+    // Only keywords declared by the quest's own condition are tracked —
+    // never raw message content.
+    for (const kw of deps.contentKeywords) {
+      if (content.includes(kw)) {
+        const m = (c.messagesWithContent ??= {});
+        m[kw] = (m[kw] || 0) + 1;
+        dirty = true;
+      }
+    }
+    return dirty;
   });
-
-  await runAllForGuild("message", client, guildId, () => ctx);
 }
 
 export async function onCommand(client, message, commandName, source = "prefix") {
@@ -774,9 +949,8 @@ export async function onCommand(client, message, commandName, source = "prefix")
   const guildId = message.guild.id;
   const userId = message.author.id;
 
-  await incrementCounter(guildId, userId, "commandsUsed", 1, {
-    commandsUsedList: { [commandName]: 1 },
-  });
+  const quests = await Quest.getEnabledForGuild(guildId);
+  if (!quests.length) return;
 
   const ctx = {
     event: "command",
@@ -788,7 +962,7 @@ export async function onCommand(client, message, commandName, source = "prefix")
     channelId: message.channelId,
   };
 
-  await runAllForGuild("command", client, guildId, () => ctx);
+  await runQuestPass(client, quests, ctx, commandCounterApplier(commandName));
 }
 
 export async function onInteraction(client, interaction) {
@@ -798,9 +972,8 @@ export async function onInteraction(client, interaction) {
   const guildId = interaction.guild.id;
   const userId = interaction.user.id;
 
-  await incrementCounter(guildId, userId, "commandsUsed", 1, {
-    commandsUsedList: { [commandName]: 1 },
-  });
+  const quests = await Quest.getEnabledForGuild(guildId);
+  if (!quests.length) return;
 
   const ctx = {
     event: "command",
@@ -812,7 +985,24 @@ export async function onInteraction(client, interaction) {
     channelId: interaction.channelId,
   };
 
-  await runAllForGuild("command", client, guildId, () => ctx);
+  await runQuestPass(client, quests, ctx, commandCounterApplier(commandName));
+}
+
+function commandCounterApplier(commandName) {
+  return (progress, deps) => {
+    let dirty = false;
+    const c = (progress.counters ??= {});
+    if (deps.counterKeys.has("commandsUsed")) {
+      c.commandsUsed = (c.commandsUsed || 0) + 1;
+      dirty = true;
+    }
+    if (deps.counterKeys.has("commandsUsedList")) {
+      const m = (c.commandsUsedList ??= {});
+      m[commandName] = (m[commandName] || 0) + 1;
+      dirty = true;
+    }
+    return dirty;
+  };
 }
 
 export async function onMemberUpdate(client, oldMember, newMember) {

@@ -30,7 +30,7 @@ export default {
     }
 
     const settings = await getShopSettings(ctx.guild.id);
-    const targetChannelId = settings.shopChannelId || ctx.channelId;
+    const targetChannelId = settings.shopChannelId || ctx.channel?.id;
     const targetChannel = await ctx.guild.channels.fetch(targetChannelId).catch(() => null);
     if (!targetChannel) {
       await ctx.reply(embErr("The configured shop channel could not be found."));

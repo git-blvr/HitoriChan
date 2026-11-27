@@ -114,19 +114,24 @@ export function registerCommandListeners(client) {
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) return;
 
-    // Each subsystem is fault-isolated: a failure in one must not prevent
-    // the others (or prefix commands below) from running.
-    const safe = (label, fn) => fn.catch((err) => console.error(`[${label}] failed:`, err));
-    await safe("quests", questEngine.onMessage(client, message));
-    await safe("logMessage", logMessage(message));
-    await safe("streak", handleStreak(message));
-    await safe("chat", handleChat(message));
-    await safe("trigger", handleTrigger(message));
-    await safe("leveling", handleLeveling(client, message));
-    await safe("afk", handleAfk(message));
-
     const prefix = await getPrefix(message.guild.id);
-    if (!message.content.startsWith(prefix)) return;
+    const isPrefixCommand = message.content.startsWith(prefix);
+
+    // Each subsystem is fault-isolated: a failure in one must not prevent
+    // the others (or prefix commands below) from running. They run
+    // concurrently in the background so prefix dispatch isn't blocked by
+    // slow DB writes or network calls.
+    const safe = (label, fn) => fn.catch((err) => console.error(`[${label}] failed:`, err));
+    safe("quests", questEngine.onMessage(client, message));
+    safe("logMessage", logMessage(message));
+    safe("streak", handleStreak(message));
+    safe("trigger", handleTrigger(message));
+    safe("leveling", handleLeveling(client, message));
+    safe("afk", handleAfk(message));
+    // Channel-mode AI must not answer prefix commands (double-reply bug).
+    if (!isPrefixCommand) safe("chat", handleChat(message));
+
+    if (!isPrefixCommand) return;
 
     const args = message.content.slice(prefix.length).trim().split(/\s+/);
     const commandName = args.shift()?.toLowerCase();
@@ -184,6 +189,7 @@ export function registerCommandListeners(client) {
 function logCommand(data) {
   try {
     CommandLog.create(data);
+    if (Math.random() < 0.02) CommandLog.prune(2000);
   } catch (error) {
     console.error("Failed to log command:", error.message);
   }

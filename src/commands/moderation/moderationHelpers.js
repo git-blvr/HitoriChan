@@ -60,7 +60,6 @@ export async function requireModerator(ctx) {
 }
 
 export async function checkHierarchy(ctx, target) {
-  const botMember = ctx.guild.members.me;
   if (target.id === ctx.user.id) {
     await ctx.reply(embErr("You cannot moderate yourself."));
     return false;
@@ -69,11 +68,14 @@ export async function checkHierarchy(ctx, target) {
     await ctx.reply(embErr("You cannot moderate the server owner."));
     return false;
   }
-  if (botMember.roles.highest.comparePositionTo(target.roles.highest) <= 0) {
+  const botMember = ctx.guild.members?.me;
+  const targetTop = target.roles?.highest;
+  if (botMember?.roles?.highest && targetTop && botMember.roles.highest.comparePositionTo(targetTop) <= 0) {
     await ctx.reply(embErr("My role is too low to moderate that member."));
     return false;
   }
-  if (ctx.member.roles.highest.comparePositionTo(target.roles.highest) <= 0) {
+  const myTop = ctx.member?.roles?.highest;
+  if (myTop && targetTop && myTop.comparePositionTo(targetTop) <= 0) {
     await ctx.reply(embErr("Your role is too low to moderate that member."));
     return false;
   }

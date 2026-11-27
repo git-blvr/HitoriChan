@@ -47,7 +47,10 @@ export function buildPollComponents(poll, { closed = poll.closed } = {}) {
     const pct = Math.round(frac * 100);
     return `**${i + 1}.** ${opt}\n\`${bar(frac)}\` **${n}** (${pct}%)`;
   });
-  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(lines.join("\n\n")));
+  // TextDisplay caps at 2000 chars — truncate option bodies, not the bars.
+  let body = lines.join("\n\n");
+  if (body.length > 1980) body = body.slice(0, 1977) + "…";
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
 
   if (!closed) {
     const row = new ActionRowBuilder();

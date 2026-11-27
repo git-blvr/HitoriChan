@@ -3,6 +3,7 @@ import { cv2 } from "../../helpers/cv2.js";
 import * as EconomyAccount from "../../models/EconomyAccount.js";
 import { xpToNextLevel, progressToNextLevel, renderProgressBar } from "../../utils/leveling.js";
 import * as LevelingSettings from "../../models/LevelingSettings.js";
+import { resolveTarget } from "../../utils/resolveTarget.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -22,7 +23,8 @@ export default {
     }
 
     const settings = await LevelingSettings.getOrCreate(guildId);
-    const target = ctx.getOption("user", 0) ? await ctx.client.users.fetch(ctx.getOption("user", 0)) : ctx.user;
+    const resolved = await resolveTarget(ctx, { optionName: "user", argIndex: 0, fallbackToAuthor: true, allowUserFallback: true });
+    const target = resolved.target?.user ?? resolved.target;
     if (!target) return ctx.editReply("Could not find that user.");
 
     const account = await EconomyAccount.getOrCreate(guildId, target.id);

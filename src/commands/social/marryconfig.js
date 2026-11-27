@@ -29,11 +29,13 @@ export default {
     }
 
     const ringInput = ctx.getOption("ring", 0);
-    const contractInput = ctx.getOption("contract", 0);
-    const enabled = ctx.getOption("enabled", 0);
+    const contractInput = ctx.getOption("contract", 1);
+    const enabled = ctx.getOption("enabled", 2);
 
     const values = {};
-    if (enabled !== null) values.enabled = enabled;
+    if (enabled !== null && enabled !== undefined) {
+      values.enabled = typeof enabled === "boolean" ? enabled : /^(on|true|enable|yes)$/i.test(String(enabled));
+    }
 
     if (ringInput) {
       const ring = await findItem(guildId, ringInput);

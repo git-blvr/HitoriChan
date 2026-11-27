@@ -72,6 +72,26 @@ export async function getAllForUser(userId) {
   return listForUserStmt.all(userId).map(fromRow);
 }
 
+// Batch fetch for the per-event hot path — one query for all of a user's
+// progress rows on the guild's quest set. Statements are cached by IN-count.
+const batchStmts = new Map();
+export async function getForUserQuests(userId, questIds) {
+  const map = new Map();
+  if (!questIds.length) return map;
+  let stmt = batchStmts.get(questIds.length);
+  if (!stmt) {
+    stmt = db.prepare(
+      `SELECT * FROM quest_progress WHERE user_id = ? AND quest_id IN (${questIds.map(() => "?").join(",")})`
+    );
+    if (batchStmts.size > 32) batchStmts.clear();
+    batchStmts.set(questIds.length, stmt);
+  }
+  for (const row of stmt.all(userId, ...questIds)) {
+    map.set(row.quest_id, fromRow(row));
+  }
+  return map;
+}
+
 export async function deleteForQuest(questId) {
   return deleteForQuestStmt.run(questId);
 }

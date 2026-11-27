@@ -135,6 +135,9 @@ export async function handleButton(interaction, client) {
   const proposer = await interaction.guild?.members?.fetch?.(proposerId).catch(() => null);
 
   if (action === "decline") {
+    if (interaction.user.id !== targetId && interaction.user.id !== proposerId) {
+      return interaction.editReply("Only the people in this proposal can decline it.");
+    }
     if (proposer) {
       try {
         await proposer.send("Your marriage proposal was declined.").catch(() => {});
@@ -158,8 +161,11 @@ export async function handleButton(interaction, client) {
     return interaction.editReply("The proposer no longer has the required ring and contract.");
   }
 
-  await consumeProposalItems(guildId, proposerId, settings);
   const marriage = await Marriage.create(guildId, proposerId, targetId);
+  if (!marriage) {
+    return interaction.editReply("One of you is already married.");
+  }
+  await consumeProposalItems(guildId, proposerId, settings);
 
   if (settings.marriedRoleId) {
     try {

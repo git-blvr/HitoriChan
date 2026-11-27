@@ -10,9 +10,11 @@ const getStmt = db.prepare("SELECT * FROM economy_accounts WHERE guild_id = ? AN
 const upsertStmt = db.prepare(`
   INSERT INTO economy_accounts (
     guild_id, user_id, primary_balance, secondary_balance, last_daily,
-    earnings_multiplier, level, xp, total_xp, shop_item_ids, unlocked_commands, created_at, updated_at
+    earnings_multiplier, level, xp, total_xp, shop_item_ids, unlocked_commands,
+    bank_balance, last_work, last_weekly, bank_interest_at,
+    games_played, games_won, total_wagered, total_won, created_at, updated_at
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(guild_id, user_id) DO UPDATE SET
     primary_balance = excluded.primary_balance,
     secondary_balance = excluded.secondary_balance,
@@ -23,11 +25,20 @@ const upsertStmt = db.prepare(`
     total_xp = excluded.total_xp,
     shop_item_ids = excluded.shop_item_ids,
     unlocked_commands = excluded.unlocked_commands,
+    bank_balance = excluded.bank_balance,
+    last_work = excluded.last_work,
+    last_weekly = excluded.last_weekly,
+    bank_interest_at = excluded.bank_interest_at,
+    games_played = excluded.games_played,
+    games_won = excluded.games_won,
+    total_wagered = excluded.total_wagered,
+    total_won = excluded.total_won,
     updated_at = excluded.updated_at
 `);
 
 const leaderboardStmt = db.prepare(`
-  SELECT guild_id, user_id, primary_balance, secondary_balance, level, xp, total_xp
+  SELECT guild_id, user_id, primary_balance, secondary_balance, level, xp, total_xp,
+         bank_balance, games_played, games_won
   FROM economy_accounts
   WHERE guild_id = ?
   ORDER BY primary_balance DESC
@@ -74,6 +85,14 @@ function fromRow(row) {
     totalXp: row.total_xp ?? 0,
     shopItemIds: parseJson(row.shop_item_ids),
     unlockedCommands: parseJson(row.unlocked_commands),
+    bank: row.bank_balance ?? 0,
+    lastWork: row.last_work ? new Date(row.last_work) : null,
+    lastWeekly: row.last_weekly ? new Date(row.last_weekly) : null,
+    bankInterestAt: row.bank_interest_at ? new Date(row.bank_interest_at) : null,
+    gamesPlayed: row.games_played ?? 0,
+    gamesWon: row.games_won ?? 0,
+    totalWagered: row.total_wagered ?? 0,
+    totalWon: row.total_won ?? 0,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -88,38 +107,118 @@ export async function getOrCreate(guildId, userId) {
   if (existing) return fromRow(existing);
 
   const now = Date.now();
-  upsertStmt.run(guildId, userId, 0, 0, null, 1.0, 1, 0, 0, "[]", "[]", now, now);
+  upsertStmt.run(guildId, userId, 0, 0, null, 1.0, 1, 0, 0, "[]", "[]", 0, null, null, null, 0, 0, 0, 0, now, now);
   return fromRow(getStmt.get(guildId, userId));
 }
 
 export async function save(account) {
   const now = Date.now();
-  const lastDaily = account.lastDaily instanceof Date ? account.lastDaily.getTime() : account.lastDaily;
+  const toMs = (v) => (v instanceof Date ? v.getTime() : v) || null;
   upsertStmt.run(
     account.guildId,
     account.userId,
     account.primary ?? 0,
     account.secondary ?? 0,
-    lastDaily || null,
+    toMs(account.lastDaily),
     account.earningsMultiplier ?? 1.0,
     account.level ?? 1,
     account.xp ?? 0,
     account.totalXp ?? 0,
     JSON.stringify(account.shopItemIds ?? []),
     JSON.stringify(account.unlockedCommands ?? []),
+    account.bank ?? 0,
+    toMs(account.lastWork),
+    toMs(account.lastWeekly),
+    toMs(account.bankInterestAt),
+    account.gamesPlayed ?? 0,
+    account.gamesWon ?? 0,
+    account.totalWagered ?? 0,
+    account.totalWon ?? 0,
     account.createdAt?.getTime?.() ?? now,
     now
   );
   return fromRow(getStmt.get(account.guildId, account.userId));
 }
 
+const ensureStmt = db.prepare(`
+  INSERT OR IGNORE INTO economy_accounts (
+    guild_id, user_id, primary_balance, secondary_balance, last_daily,
+    earnings_multiplier, level, xp, total_xp, shop_item_ids, unlocked_commands,
+    bank_balance, last_work, last_weekly, bank_interest_at,
+    games_played, games_won, total_wagered, total_won, created_at, updated_at
+  ) VALUES (?, ?, 0, 0, NULL, 1.0, 1, 0, 0, '[]', '[]', 0, NULL, NULL, NULL, 0, 0, 0, 0, ?, ?)
+`);
+
+const bankCol = "bank_balance";
+
 export async function adjust(guildId, userId, currency, amount) {
-  if (!CURRENCY_COLUMNS[currency]) {
+  const col = CURRENCY_COLUMNS[currency];
+  if (!col) {
     throw new Error("Invalid economy currency type.");
   }
-  const account = await getOrCreate(guildId, userId);
-  account[currency] += amount;
-  return save(account);
+  if (!Number.isFinite(amount)) {
+    throw new Error("Amount must be finite.");
+  }
+  const now = Date.now();
+  ensureStmt.run(guildId, userId, now, now);
+  // Atomic increment — no read-modify-write window for concurrent calls.
+  db.prepare(`UPDATE economy_accounts SET ${col} = ${col} + ?, updated_at = ? WHERE guild_id = ? AND user_id = ?`)
+    .run(Math.trunc(amount), now, guildId, userId);
+  return fromRow(getStmt.get(guildId, userId));
+}
+
+// Atomic debit guarded by the current balance — returns null when the user
+// can't cover it (no lost-update window, no half-spent state).
+export async function spend(guildId, userId, currency, amount) {
+  const col = CURRENCY_COLUMNS[currency];
+  if (!col) throw new Error("Invalid economy currency type.");
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be greater than zero.");
+  const now = Date.now();
+  ensureStmt.run(guildId, userId, now, now);
+  const res = db
+    .prepare(`UPDATE economy_accounts SET ${col} = ${col} - ?, updated_at = ? WHERE guild_id = ? AND user_id = ? AND ${col} >= ?`)
+    .run(Math.trunc(amount), now, guildId, userId, Math.trunc(amount));
+  if (res.changes === 0) return null;
+  return fromRow(getStmt.get(guildId, userId));
+}
+
+export async function adjustBank(guildId, userId, amount) {
+  const now = Date.now();
+  ensureStmt.run(guildId, userId, now, now);
+  db.prepare(`UPDATE economy_accounts SET ${bankCol} = ${bankCol} + ?, updated_at = ? WHERE guild_id = ? AND user_id = ?`)
+    .run(Math.trunc(amount), now, guildId, userId);
+  return fromRow(getStmt.get(guildId, userId));
+}
+
+// Atomic debit on the bank column — null when funds don't cover it.
+export async function spendBank(guildId, userId, amount) {
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be greater than zero.");
+  const now = Date.now();
+  ensureStmt.run(guildId, userId, now, now);
+  const res = db
+    .prepare(`UPDATE economy_accounts SET ${bankCol} = ${bankCol} - ?, updated_at = ? WHERE guild_id = ? AND user_id = ? AND ${bankCol} >= ?`)
+    .run(Math.trunc(amount), now, guildId, userId, Math.trunc(amount));
+  if (res.changes === 0) return null;
+  return fromRow(getStmt.get(guildId, userId));
+}
+
+const claimCooldownStmts = new Map();
+
+// Atomically stamps a cooldown column if the previous timestamp is older than
+// `cooldownMs`. Returns the account on success, null while still cooling down.
+export async function claimCooldown(guildId, userId, column, cooldownMs) {
+  const allowed = new Set(["last_work", "last_weekly", "last_daily"]);
+  if (!allowed.has(column)) throw new Error("Invalid cooldown column.");
+  let stmt = claimCooldownStmts.get(column);
+  if (!stmt) {
+    stmt = db.prepare(`UPDATE economy_accounts SET ${column} = ?, updated_at = ? WHERE guild_id = ? AND user_id = ? AND (${column} IS NULL OR ${column} <= ?)`);
+    claimCooldownStmts.set(column, stmt);
+  }
+  const now = Date.now();
+  ensureStmt.run(guildId, userId, now, now);
+  const res = stmt.run(now, now, guildId, userId, now - cooldownMs);
+  if (res.changes === 0) return null;
+  return fromRow(getStmt.get(guildId, userId));
 }
 
 export async function adjustMulti(guildId, userId, changes) {
@@ -139,20 +238,33 @@ export async function setLastDaily(guildId, userId, date = new Date()) {
 
 export async function transfer(guildId, fromUserId, toUserId, amount, currency) {
   if (fromUserId === toUserId) throw new Error("You cannot pay yourself.");
-  if (amount <= 0) throw new Error("Amount must be greater than zero.");
-  if (!Object.values(CURRENCY_COLUMNS).includes(currency)) throw new Error("Invalid economy currency type.");
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be greater than zero.");
+  const col = CURRENCY_COLUMNS[currency];
+  if (!col) throw new Error("Invalid economy currency type.");
 
-  const fromAccount = await getOrCreate(guildId, fromUserId);
-  const toAccount = await getOrCreate(guildId, toUserId);
+  const now = Date.now();
+  ensureStmt.run(guildId, fromUserId, now, now);
+  ensureStmt.run(guildId, toUserId, now, now);
 
-  if (fromAccount[currency] < amount) throw new Error("Insufficient funds.");
+  // Atomic both-sides transfer — a crash mid-way can't mint or burn money.
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const debit = db
+      .prepare(`UPDATE economy_accounts SET ${col} = ${col} - ?, updated_at = ? WHERE guild_id = ? AND user_id = ? AND ${col} >= ?`)
+      .run(Math.trunc(amount), now, guildId, fromUserId, Math.trunc(amount));
+    if (debit.changes === 0) {
+      throw new Error("Insufficient funds.");
+    }
+    db.prepare(`UPDATE economy_accounts SET ${col} = ${col} + ?, updated_at = ? WHERE guild_id = ? AND user_id = ?`)
+      .run(Math.trunc(amount), now, guildId, toUserId);
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
 
-  fromAccount[currency] -= amount;
-  toAccount[currency] += amount;
-
-  await save(fromAccount);
-  await save(toAccount);
-
+  const fromAccount = fromRow(getStmt.get(guildId, fromUserId));
+  const toAccount = fromRow(getStmt.get(guildId, toUserId));
   return { fromAccount, toAccount };
 }
 
@@ -184,6 +296,10 @@ export default {
   save,
   adjust,
   adjustMulti,
+  adjustBank,
+  spend,
+  spendBank,
+  claimCooldown,
   setLastDaily,
   transfer,
   getLeaderboard,

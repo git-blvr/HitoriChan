@@ -15,6 +15,7 @@ import { cv2 } from "../helpers/cv2.js";
 import { embErr, embWrn } from "../helpers/embeds.js";
 import { buildShopInterface, buildItemSelectMessage, buildItemPreview, purchaseItem } from "../utils/shopManager.js";
 import { handlePollButton } from "../utils/pollManager.js";
+import { handleGameInteraction } from "../utils/gameManager.js";
 
 function ticketButton(customId, label, color = "red") {
   const styleMap = {
@@ -400,6 +401,9 @@ export default {
     }
 
     if (interaction.isButton()) {
+      if (interaction.customId.startsWith("game:")) {
+        return handleGameInteraction(interaction, client);
+      }
       if (interaction.customId.startsWith("poll:")) {
         return handlePollButton(interaction);
       }

@@ -49,8 +49,23 @@ export async function getAllForGuild(guildId) {
   return listStmt.all(guildId).map(fromRow);
 }
 
+// Enabled-quest list is read on every message event — cache briefly and
+// invalidate on mutation. Rows are parsed once; consumers treat them read-only.
+const enabledCache = new Map();
+const ENABLED_CACHE_TTL_MS = 15_000;
+
 export async function getEnabledForGuild(guildId) {
-  return getByGuildStmt.all(guildId).map(fromRow);
+  const hit = enabledCache.get(guildId);
+  if (hit && Date.now() - hit.at < ENABLED_CACHE_TTL_MS) return hit.quests;
+  const quests = getByGuildStmt.all(guildId).map(fromRow);
+  if (enabledCache.size > 500) enabledCache.clear();
+  enabledCache.set(guildId, { at: Date.now(), quests });
+  return quests;
+}
+
+export function invalidateEnabledCache(guildId) {
+  if (guildId === undefined) enabledCache.clear();
+  else enabledCache.delete(guildId);
 }
 
 export async function get(id) {
@@ -76,6 +91,7 @@ export async function create(data) {
     now,
     now
   );
+  invalidateEnabledCache(data.guildId);
   return get(result.lastInsertRowid);
 }
 
@@ -99,9 +115,13 @@ export async function update(id, data) {
     now,
     id
   );
+  invalidateEnabledCache(quest.guildId);
   return get(id);
 }
 
 export async function remove(id) {
-  return deleteStmt.run(id);
+  const quest = await get(id);
+  const result = deleteStmt.run(id);
+  if (quest) invalidateEnabledCache(quest.guildId);
+  return result;
 }

@@ -384,7 +384,7 @@ fn build_condition_block(block: &Value) -> Option<Ast> {
     let entity = block.get("entity").and_then(Value::as_str).filter(|s| !s.is_empty())?;
     let field = block.get("field").and_then(Value::as_str).filter(|s| !s.is_empty())?;
 
-    const METHOD_OPS: &[&str] = &["has_role", "has_any_role", "in_channel"];
+    const METHOD_OPS: &[&str] = &["has_role", "has_any_role", "in_channel", "with_content"];
     let op_is_method = block
         .get("op")
         .and_then(Value::as_str)
@@ -770,8 +770,29 @@ fn resolve_value(node: &Ast, ctx: &Value) -> Value {
         Ast::Entity { .. } => Value::Null,
         Ast::Field { entity, field } => get_entity_field(entity, field, ctx),
         Ast::Compare { entity, field, op, value } => {
-            let left = get_entity_field(entity, field, ctx);
             let right = resolve_value(value, ctx);
+            // Object counters keyed by the compare's right literal, e.g.
+            // messages.with_content "x" → counters.messagesWithContent["x"] >= 1.
+            let counter_key = match (entity.as_str(), field.as_str()) {
+                ("messages", "with_content") => Some("messagesWithContent"),
+                ("messages", "in_channel") => Some("messagesInChannel"),
+                ("commands", "used") => Some("commandsUsedList"),
+                _ => None,
+            };
+            if let Some(counter_key) = counter_key {
+                let counters = ctx
+                    .get("counters")
+                    .and_then(Value::as_object)
+                    .cloned()
+                    .unwrap_or_default();
+                let count = js_number(&nested_counter(&counters, counter_key, &js_string(&right)));
+                return json!(match op.as_str() {
+                    "!=" => count == 0.0,
+                    "=" | "==" => count >= 1.0,
+                    _ => compare_values(&json!(count), op, &json!(1)),
+                });
+            }
+            let left = get_entity_field(entity, field, ctx);
             json!(compare_values(&left, op, &right))
         }
         Ast::Method { entity, field, arg } => {

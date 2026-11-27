@@ -681,6 +681,33 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_message_templates_guild ON message_templates(guild_id);
     `,
   },
+  {
+    version: 33,
+    sql: `
+      ALTER TABLE economy_accounts ADD COLUMN bank_balance INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE economy_accounts ADD COLUMN last_work INTEGER;
+      ALTER TABLE economy_accounts ADD COLUMN last_weekly INTEGER;
+      ALTER TABLE economy_accounts ADD COLUMN bank_interest_at INTEGER;
+      ALTER TABLE economy_accounts ADD COLUMN games_played INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE economy_accounts ADD COLUMN games_won INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE economy_accounts ADD COLUMN total_wagered INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE economy_accounts ADD COLUMN total_won INTEGER NOT NULL DEFAULT 0;
+
+      CREATE TABLE IF NOT EXISTS game_settings (
+        guild_id TEXT PRIMARY KEY,
+        gambling_enabled INTEGER NOT NULL DEFAULT 1,
+        gambling_max_bet INTEGER,
+        rob_enabled INTEGER NOT NULL DEFAULT 1,
+        work_min INTEGER NOT NULL DEFAULT 40,
+        work_max INTEGER NOT NULL DEFAULT 120,
+        work_cooldown_seconds INTEGER NOT NULL DEFAULT 3600,
+        weekly_min INTEGER NOT NULL DEFAULT 1000,
+        weekly_max INTEGER NOT NULL DEFAULT 2500,
+        bank_interest_rate REAL NOT NULL DEFAULT 1.0,
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+      );
+    `,
+  },
 ];
 
 export function migrate() {
@@ -697,9 +724,18 @@ export function migrate() {
   for (const { version, sql } of MIGRATIONS) {
     const exists = getVersion.get(version);
     if (!exists) {
-      db.exec(sql);
-      setVersion.run(version);
-      console.log(`Applied database migration v${version}`);
+      // Each migration runs atomically — a mid-migration failure rolls back
+      // instead of leaving a half-applied schema behind.
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        db.exec(sql);
+        setVersion.run(version);
+        db.exec("COMMIT");
+        console.log(`Applied database migration v${version}`);
+      } catch (err) {
+        try { db.exec("ROLLBACK"); } catch {}
+        throw new Error(`Migration v${version} failed: ${err.message}`);
+      }
     }
   }
 }

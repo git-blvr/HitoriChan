@@ -73,6 +73,16 @@
 - `node scripts/dev-dashboard.mjs` — dev dashboard on `http://127.0.0.1:3198` with a stub Discord client; login `Admin` / `preview-admin`.
 - `node scripts/browser.mjs shot|eval|errors <url> [out.png] [--w --h --mobile --wait --login user:pass --eval expr]` — zero-dep headless-Chrome CDP driver for screenshots, in-page JS, and console/network error sweeps. Set `CHROME_PATH` if Edge/Chrome isn't in a standard location.
 
+## Games & economy
+- `src/utils/gameLogic.js` — pure game math (ttt/c4/rps/blackjack/roulette/slots/highlow/lottery/trivia); fully unit-testable.
+- `src/utils/gameManager.js` — session registry (bounded 250, TTL sweep), wager escrow via `buyIn`/`settleGame`/`cancelGame`, per-game `enqueue` lock serializes button handling. Button router: `game:` customId prefix in `interactionCreate.js`.
+- `src/utils/gameChallenge.js` — shared 2-player accept/decline + escrow helper (duel, rps, tictactoe, connect4).
+- `src/models/GameSettings.js` — per-guild knobs (gamblingEnabled, gamblingMaxBet, robEnabled, work/weekly min+max, workCooldownSeconds, bankInterestRate); admin command `/econfig`, dashboard "Games & Rewards" tab under Economy.
+- `economyManager.validateBet` gates all wager commands; `recordGameResult` writes `games_played`/`games_won` stats.
+- Economy: `/work`, `/weekly` (configurable payout+cooldown), `/bank` (deposit/withdraw/lazy daily interest), `/rob`, `/econfig`. Atomic balance ops live on `EconomyAccount` (`spend`, `spendBank`, `transfer`, `claimCooldown`) — never read-modify-write balances.
+- `node scripts/test-games.mjs` — full game-flow harness (escrow, refunds, lock races, timeout sweep, multiplayer sims via the real button router). Run after any gameManager/economy change.
+- `node scripts/test-commands.mjs` — boots all commands against mocked ctx; expect "0 errors".
+
 ## Notes
 - The bot auto-migrates the SQLite schema on startup.
 - The `data/` directory is ignored by git.

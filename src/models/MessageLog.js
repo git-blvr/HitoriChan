@@ -28,9 +28,14 @@ function buildFilteredQuery({ user, content }) {
   return { sql: `SELECT * FROM message_logs WHERE ${where} ORDER BY created_at DESC LIMIT ?`, params };
 }
 
+// Per-guild retention: keep the newest N rows *per guild* so a chatty guild
+// can't evict everyone else's logs.
 const deleteOld = db.prepare(`
-  DELETE FROM message_logs WHERE id NOT IN (
-    SELECT id FROM message_logs ORDER BY created_at DESC LIMIT ?
+  DELETE FROM message_logs WHERE id IN (
+    SELECT id FROM (
+      SELECT id, ROW_NUMBER() OVER (PARTITION BY guild_id ORDER BY created_at DESC) AS rn
+      FROM message_logs
+    ) WHERE rn > ?
   )
 `);
 

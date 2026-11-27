@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
 import * as MarriageSettings from "../../models/MarriageSettings.js";
 import * as Marriage from "../../models/Marriage.js";
+import { resolveTarget } from "../../utils/resolveTarget.js";
 import { hasItemsForProposal, buildProposalPayload, buildMarriagePayload, consumeProposalItems } from "../../utils/marriage.js";
 
 export default {
@@ -22,7 +23,8 @@ export default {
     const settings = await MarriageSettings.getOrCreate(guildId);
     if (!settings.enabled) return ctx.editReply("Marriage is not enabled on this server.");
 
-    const target = ctx.getOption("user", 0) ? await ctx.client.users.fetch(ctx.getOption("user", 0)) : null;
+    const resolved = await resolveTarget(ctx, { optionName: "user", argIndex: 0, fallbackToAuthor: false, allowUserFallback: true });
+    const target = resolved.target?.user ?? resolved.target;
     if (!target) return ctx.editReply("Could not find that user.");
     if (target.id === ctx.user.id) return ctx.editReply("You can't marry yourself.");
     if (target.bot) return ctx.editReply("You can't marry a bot.");

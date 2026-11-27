@@ -32,6 +32,13 @@ export async function getPrefix(guildId) {
   return settings.prefix ?? DEFAULT_PREFIX;
 }
 
+// Call after mutating GuildSettings through any path that bypasses this
+// module (e.g. dashboard API routes) so cached settings don't go stale.
+export function invalidateGuildSettings(guildId) {
+  if (guildId === undefined) cache.clear();
+  else cache.delete(guildId);
+}
+
 export async function setPrefix(guildId, prefix) {
   const settings = await GuildSettings.setPrefix(guildId, prefix);
   cache.set(guildId, settings);

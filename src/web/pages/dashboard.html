@@ -314,9 +314,35 @@
       </div>
 
       <div class="panel">
+        <h2>Games &amp; Rewards</h2>
+        <form id="games-form" class="config-form">
+          <label><input type="checkbox" id="games-gambling-enabled" /> Gambling commands enabled</label>
+          <label>Max bet <input type="number" id="games-max-bet" min="1" placeholder="Unlimited" /></label>
+          <label><input type="checkbox" id="games-rob-enabled" /> Rob command enabled</label>
+
+          <h3>Work payout</h3>
+          <div class="inline-fields">
+            <label class="grow">Min <input type="number" id="games-work-min" min="0" placeholder="40" /></label>
+            <label class="grow">Max <input type="number" id="games-work-max" min="0" placeholder="120" /></label>
+            <label class="grow">Cooldown (min) <input type="number" id="games-work-cooldown" min="1" placeholder="60" /></label>
+          </div>
+
+          <h3>Weekly reward</h3>
+          <div class="inline-fields">
+            <label class="grow">Min <input type="number" id="games-weekly-min" min="0" placeholder="1000" /></label>
+            <label class="grow">Max <input type="number" id="games-weekly-max" min="0" placeholder="2500" /></label>
+          </div>
+
+          <label>Bank interest (% per day) <input type="number" id="games-interest" min="0" max="10" step="0.1" placeholder="1.0" /></label>
+
+          <button type="submit" class="save-btn">Save Game Settings</button>
+        </form>
+      </div>
+
+      <div class="panel">
         <h2>Server Richboard</h2>
         <table class="data-table" id="economy-table">
-          <thead><tr><th>User</th><th>Primary</th><th>Secondary</th></tr></thead>
+          <thead><tr><th>User</th><th>Primary</th><th>Secondary</th><th>Bank</th><th>Games won</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -1558,6 +1584,24 @@ IF ! user.has_role &quot;muted&quot;, EXECUTE TASK free</pre>
     <div class="theme-group">
       <p class="theme-label">Density <span class="theme-label-value" id="scale-val">100%</span></p>
       <input type="range" class="range" id="ui-scale" min="85" max="112" step="1" value="100" />
+    </div>
+
+    <div class="theme-group">
+      <p class="theme-label">Motion</p>
+      <div class="seg-group" id="theme-motion" role="group" aria-label="Motion">
+        <button type="button" class="seg-btn" data-motion="full">Full</button>
+        <button type="button" class="seg-btn" data-motion="reduced">Reduced</button>
+      </div>
+    </div>
+
+    <div class="theme-group">
+      <p class="theme-label">Glow <span class="theme-label-value" id="glow-val">100%</span></p>
+      <input type="range" class="range" id="ui-glow" min="0" max="150" step="5" value="100" />
+    </div>
+
+    <div class="theme-group">
+      <p class="theme-label">Corners <span class="theme-label-value" id="radius-val">100%</span></p>
+      <input type="range" class="range" id="ui-radius" min="0" max="200" step="10" value="100" />
     </div>
 
     <button type="button" class="btn btn--ghost theme-reset" id="theme-reset">Reset to defaults</button>

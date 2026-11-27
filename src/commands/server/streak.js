@@ -45,11 +45,13 @@ export default {
     const longest = profile?.longestStreak ?? 0;
     const total = profile?.totalDays ?? 0;
     const status = streakStatus(profile);
+    const targetUser = target.user ?? target;
+    const displayName = target.displayName ?? targetUser.username ?? target.id;
 
     await ctx.reply(cv2({
       color: COLOR,
-      title: `${target.displayName}'s Streak`,
-      thumbnail: target.user.displayAvatarURL(),
+      title: `${displayName}'s Streak`,
+      thumbnail: targetUser.displayAvatarURL?.() ?? null,
       fields: [
         { name: "🔥 Current Streak", value: `${current} day${current !== 1 ? "s" : ""}`, inline: true },
         { name: "🏆 Longest Streak", value: `${longest} day${longest !== 1 ? "s" : ""}`, inline: true },

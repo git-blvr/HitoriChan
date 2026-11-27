@@ -20,11 +20,27 @@ const findMatch = db.prepare(`
   SELECT * FROM triggers WHERE guild_id = ?
 `);
 
+// Per-guild trigger list cache — invalidated on mutation. Sorted longest-
+// keyword-first so "hi there" wins over "hi".
+const cache = new Map();
+const CACHE_TTL_MS = 30_000;
+
+function cachedRows(guildId) {
+  const hit = cache.get(guildId);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.rows;
+  const rows = findMatch.all(guildId).sort((a, b) => b.keyword.length - a.keyword.length);
+  if (cache.size > 500) cache.clear();
+  cache.set(guildId, { at: Date.now(), rows });
+  return rows;
+}
+
 export function create(guildId, keyword, commandName) {
+  cache.delete(guildId);
   return insert.run(guildId, keyword.toLowerCase(), commandName, Date.now());
 }
 
 export function removeByKeyword(guildId, keyword) {
+  cache.delete(guildId);
   return remove.run(guildId, keyword.toLowerCase());
 }
 
@@ -34,9 +50,8 @@ export function getForGuild(guildId) {
 }
 
 export function findForMessage(guildId, messageContent) {
-  const rows = findMatch.all(guildId);
   const text = messageContent.trim().toLowerCase();
-  for (const row of rows) {
+  for (const row of cachedRows(guildId)) {
     const keyword = row.keyword.toLowerCase();
     if (text.startsWith(keyword)) {
       const nextChar = text[keyword.length];

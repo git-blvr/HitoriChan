@@ -18,7 +18,7 @@ const resolvedCache = { users: {}, roles: {}, channels: {} };
 // Theme engine — mode, accent, density. Persisted per browser.
 // ---------------------------------------------------------------------------
 const THEME_KEY = "hc-theme-v1";
-const THEME_DEFAULT = { mode: "dark", accent: "#ff2ec4", scale: 1, collapsed: false, font: "geist", tz: "UTC" };
+const THEME_DEFAULT = { mode: "dark", accent: "#ff2ec4", scale: 1, collapsed: false, font: "geist", tz: "UTC", motion: "full", glow: 1, radius: 1 };
 const ACCENT_PRESETS = [
   { id: "pink", color: "#ff2ec4" },
   { id: "phosphor", color: "#00ff1e" },
@@ -89,18 +89,31 @@ function applyTheme() {
     accentReadable(theme.accent, theme.mode === "light" ? "#fafafa" : "#050505"));
   root.style.setProperty("--ui-scale", String(theme.scale || 1));
   root.style.setProperty("--font-ui", FONT_STACKS[theme.font] || FONT_STACKS.geist);
+  root.style.setProperty("--glow-scale", String(theme.glow ?? 1));
+  root.style.setProperty("--radius-scale", String(theme.radius ?? 1));
+  root.dataset.motion = theme.motion || "full";
   document.body.classList.toggle("nav-collapsed", theme.collapsed === true);
 
   document.querySelectorAll("#theme-mode .seg-btn").forEach((b) =>
     b.classList.toggle("active", b.dataset.mode === theme.mode));
   document.querySelectorAll("#theme-font .seg-btn").forEach((b) =>
     b.classList.toggle("active", b.dataset.font === (theme.font || "geist")));
+  document.querySelectorAll("#theme-motion .seg-btn").forEach((b) =>
+    b.classList.toggle("active", b.dataset.motion === (theme.motion || "full")));
   document.querySelectorAll(".accent-swatch").forEach((s) =>
     s.classList.toggle("active", s.dataset.color.toLowerCase() === String(theme.accent).toLowerCase()));
   const scaleInput = document.getElementById("ui-scale");
   const scaleVal = document.getElementById("scale-val");
   if (scaleInput) scaleInput.value = Math.round((theme.scale || 1) * 100);
   if (scaleVal) scaleVal.textContent = `${Math.round((theme.scale || 1) * 100)}%`;
+  const glowInput = document.getElementById("ui-glow");
+  const glowVal = document.getElementById("glow-val");
+  if (glowInput) glowInput.value = Math.round((theme.glow ?? 1) * 100);
+  if (glowVal) glowVal.textContent = `${Math.round((theme.glow ?? 1) * 100)}%`;
+  const radiusInput = document.getElementById("ui-radius");
+  const radiusVal = document.getElementById("radius-val");
+  if (radiusInput) radiusInput.value = Math.round((theme.radius ?? 1) * 100);
+  if (radiusVal) radiusVal.textContent = `${Math.round((theme.radius ?? 1) * 100)}%`;
   const custom = document.getElementById("accent-custom");
   if (custom && custom.value.toLowerCase() !== String(theme.accent).toLowerCase()) custom.value = theme.accent;
   const tzSel = document.getElementById("tz-select");
@@ -143,6 +156,15 @@ function initThemeUI() {
 
   document.querySelectorAll("#theme-font .seg-btn").forEach((b) =>
     b.addEventListener("click", () => setTheme({ font: b.dataset.font })));
+
+  document.querySelectorAll("#theme-motion .seg-btn").forEach((b) =>
+    b.addEventListener("click", () => setTheme({ motion: b.dataset.motion })));
+
+  document.getElementById("ui-glow")?.addEventListener("input", (e) =>
+    setTheme({ glow: Number(e.target.value) / 100 }));
+
+  document.getElementById("ui-radius")?.addEventListener("input", (e) =>
+    setTheme({ radius: Number(e.target.value) / 100 }));
 
   const tzSel = document.getElementById("tz-select");
   if (tzSel) {
@@ -1405,7 +1427,7 @@ const sections = {
 
   economy: async () => {
     if (!currentGuild) return;
-    const { settings, leaderboard } = await json(`/api/economy/${currentGuild}`);
+    const { settings, leaderboard, gameSettings } = await json(`/api/economy/${currentGuild}`);
 
     document.getElementById("econ-primary-name").value = settings.primaryCurrency.name;
     document.getElementById("econ-primary-symbol").value = settings.primaryCurrency.symbol;
@@ -1416,8 +1438,22 @@ const sections = {
     document.getElementById("econ-daily-min").value = settings.dailyMin;
     document.getElementById("econ-daily-max").value = settings.dailyMax;
 
+    if (gameSettings) {
+      document.getElementById("games-gambling-enabled").checked = gameSettings.gamblingEnabled;
+      document.getElementById("games-max-bet").value = gameSettings.gamblingMaxBet ?? "";
+      document.getElementById("games-rob-enabled").checked = gameSettings.robEnabled;
+      document.getElementById("games-work-min").value = gameSettings.workMin;
+      document.getElementById("games-work-max").value = gameSettings.workMax;
+      document.getElementById("games-work-cooldown").value = Math.round(gameSettings.workCooldownSeconds / 60);
+      document.getElementById("games-weekly-min").value = gameSettings.weeklyMin;
+      document.getElementById("games-weekly-max").value = gameSettings.weeklyMax;
+      document.getElementById("games-interest").value = gameSettings.bankInterestRate;
+    }
+
     await loadEmojiPicker(currentGuild);
 
+    const pe = settings.primaryCurrency.emoji ? `${settings.primaryCurrency.emoji} ` : "";
+    const se = settings.secondaryCurrency.emoji ? `${settings.secondaryCurrency.emoji} ` : "";
     const tbody = document.querySelector("#economy-table tbody");
     tbody.innerHTML = leaderboard.map((r) => `
       <tr>
@@ -1425,10 +1461,12 @@ const sections = {
           ${r.userAvatar ? `<img src="${escapeHtml(r.userAvatar)}" alt="" class="table-avatar" />` : ""}
           <span>${escapeHtml(r.userName || r.userId)}</span>
         </td>
-        <td>${(settings.primaryCurrency.emoji ? `${settings.primaryCurrency.emoji} ` : "")}${r.primary.toLocaleString()}</td>
-        <td>${(settings.secondaryCurrency.emoji ? `${settings.secondaryCurrency.emoji} ` : "")}${r.secondary.toLocaleString()}</td>
+        <td>${pe}${r.primary.toLocaleString()}</td>
+        <td>${se}${r.secondary.toLocaleString()}</td>
+        <td>${pe}${(r.bank || 0).toLocaleString()}</td>
+        <td>${r.gamesWon || 0} / ${r.gamesPlayed || 0}</td>
       </tr>
-    `).join("") || '<tr><td colspan="3">No data</td></tr>';
+    `).join("") || '<tr><td colspan="5">No data</td></tr>';
   },
 
   ai: async () => {
@@ -2093,6 +2131,46 @@ document.getElementById("economy-form").addEventListener("submit", async (e) => 
     }),
   });
   showToast("Economy settings saved", "success");
+  refreshSection();
+});
+
+document.getElementById("games-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentGuild) return;
+
+  const num = (id) => {
+    const v = document.getElementById(id).value;
+    return v === "" ? undefined : Number(v);
+  };
+  const workMin = num("games-work-min");
+  const workMax = num("games-work-max");
+  if (workMin !== undefined && workMax !== undefined && workMin > workMax) {
+    showToast("Work Min cannot be greater than Work Max", "error");
+    return;
+  }
+  const weeklyMin = num("games-weekly-min");
+  const weeklyMax = num("games-weekly-max");
+  if (weeklyMin !== undefined && weeklyMax !== undefined && weeklyMin > weeklyMax) {
+    showToast("Weekly Min cannot be greater than Weekly Max", "error");
+    return;
+  }
+  const cooldownMin = num("games-work-cooldown");
+
+  await json(`/api/games/${currentGuild}`, {
+    method: "POST",
+    body: JSON.stringify({
+      gamblingEnabled: document.getElementById("games-gambling-enabled").checked,
+      gamblingMaxBet: document.getElementById("games-max-bet").value === "" ? null : Number(document.getElementById("games-max-bet").value),
+      robEnabled: document.getElementById("games-rob-enabled").checked,
+      workMin,
+      workMax,
+      workCooldownSeconds: cooldownMin !== undefined ? cooldownMin * 60 : undefined,
+      weeklyMin,
+      weeklyMax,
+      bankInterestRate: num("games-interest"),
+    }),
+  });
+  showToast("Game settings saved", "success");
   refreshSection();
 });
 

@@ -145,6 +145,7 @@ export async function queryGroq({ messages, maxTokens = 1024, guildId = null, us
   try {
     const res = await fetch(GROQ_API_URL, {
       method: "POST",
+      signal: AbortSignal.timeout(30_000),
       headers: {
         Authorization: `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json",
@@ -177,6 +178,9 @@ export async function queryGroq({ messages, maxTokens = 1024, guildId = null, us
     return stripThoughts(raw) || "Sorry, I couldn't think of anything to say...";
   } catch (err) {
     if (err instanceof AIGroqError) throw err;
+    if (err?.name === "TimeoutError" || err?.name === "AbortError") {
+      throw new AIGroqError("The AI took too long to respond. Please try again.", { unavailable: true });
+    }
 
     console.error("Groq query failed:", err);
     throw new AIGroqError("The bot's AI couldn't be reached. Try again later.", { unavailable: true });

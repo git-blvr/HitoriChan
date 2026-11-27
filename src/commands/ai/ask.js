@@ -21,6 +21,10 @@ export default {
   syntax: "{prefix}ask <question>",
   example: "{prefix}ask what's your favorite song?",
   async execute(ctx) {
+    if (!ctx.guild) {
+      await ctx.reply(embErr("This command only works in a server.", undefined, "cv2", true));
+      return;
+    }
     const isBoosting = !!ctx.member?.premiumSince;
     const cooldown = checkCooldown(ctx.user.id, "ask", COOLDOWN_MS, isBoosting);
 

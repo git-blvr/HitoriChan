@@ -19,6 +19,12 @@ export default {
     .addStringOption((option) =>
       option.setName("secondary_symbol").setDescription("Symbol for the secondary currency")
     )
+    .addStringOption((option) =>
+      option.setName("primary_emoji").setDescription("Emoji for the primary currency")
+    )
+    .addStringOption((option) =>
+      option.setName("secondary_emoji").setDescription("Emoji for the secondary currency")
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
   prefixName: "currency",
   aliases: ["currencies", "moneyconfig"],
@@ -35,10 +41,12 @@ export default {
     const primarySymbol = ctx.getOption("primary_symbol", 1);
     const secondaryName = ctx.getOption("secondary_name", 2);
     const secondarySymbol = ctx.getOption("secondary_symbol", 3);
+    const primaryEmoji = ctx.getOption("primary_emoji", 4);
+    const secondaryEmoji = ctx.getOption("secondary_emoji", 5);
 
     const config = await getGuildEconomyConfig(ctx.guild.id);
 
-    if (!primaryName && !primarySymbol && !secondaryName && !secondarySymbol) {
+    if (!primaryName && !primarySymbol && !secondaryName && !secondarySymbol && !primaryEmoji && !secondaryEmoji) {
       await ctx.reply(cv2({
         color: 0x5865f2,
         title: "Currency Configuration",
@@ -59,8 +67,10 @@ export default {
     const updated = await setGuildCurrencies(ctx.guild.id, {
       primaryName,
       primarySymbol,
+      primaryEmoji,
       secondaryName,
       secondarySymbol,
+      secondaryEmoji,
     });
 
     await ctx.reply(cv2({

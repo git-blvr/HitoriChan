@@ -3,10 +3,12 @@ import { requireAuth } from "../middleware/auth.js";
 import os from "os";
 import { ChannelType } from "discord.js";
 import * as EconomyAccount from "../../models/EconomyAccount.js";
+import * as GameSettings from "../../models/GameSettings.js";
 import * as AISettings from "../../models/AISettings.js";
 import * as StreakSettings from "../../models/StreakSettings.js";
 import * as ModerationSettings from "../../models/ModerationSettings.js";
 import * as GuildSettings from "../../models/GuildSettings.js";
+import { invalidateGuildSettings } from "../../utils/prefixManager.js";
 import * as CommandLog from "../../models/CommandLog.js";
 import * as MessageLog from "../../models/MessageLog.js";
 import { fetchGuildMembers } from "../../utils/discordCache.js";
@@ -291,7 +293,8 @@ router.get("/economy/:guildId", requireAuth, async (req, res) => {
     };
   });
   const settings = await GuildSettings.getOrCreate(req.params.guildId);
-  res.json({ settings, leaderboard });
+  const gameSettings = await GameSettings.get(req.params.guildId);
+  res.json({ settings, leaderboard, gameSettings });
 });
 
 router.post("/economy/:guildId", requireAuth, async (req, res) => {
@@ -300,13 +303,50 @@ router.post("/economy/:guildId", requireAuth, async (req, res) => {
     secondaryName, secondarySymbol, secondaryEmoji,
     dailyMin, dailyMax,
   } = req.body;
+  const toNum = (v) => (v === undefined || v === null || v === "" ? undefined : Number(v));
+  const min = toNum(dailyMin);
+  const max = toNum(dailyMax);
+  if ((min !== undefined && (!Number.isFinite(min) || min < 0)) ||
+      (max !== undefined && (!Number.isFinite(max) || max < 0))) {
+    return res.status(400).json({ error: "dailyMin/dailyMax must be non-negative numbers" });
+  }
   await GuildSettings.save(req.params.guildId, {
     primaryName, primarySymbol, primaryEmoji,
     secondaryName, secondarySymbol, secondaryEmoji,
-    dailyMin: dailyMin !== undefined ? Number(dailyMin) : undefined,
-    dailyMax: dailyMax !== undefined ? Number(dailyMax) : undefined,
+    dailyMin: min,
+    dailyMax: max,
   });
+  invalidateGuildSettings(req.params.guildId);
   res.json({ ok: true });
+});
+
+// Game / work / bank settings
+router.post("/games/:guildId", requireAuth, async (req, res) => {
+  const v = req.body || {};
+  const num = (x) => (x === undefined || x === null || x === "" ? undefined : Number(x));
+  const nums = ["workMin", "workMax", "workCooldownSeconds", "weeklyMin", "weeklyMax", "bankInterestRate"];
+  for (const k of nums) {
+    const n = num(v[k]);
+    if (n !== undefined && !Number.isFinite(n)) {
+      return res.status(400).json({ error: `${k} must be a number` });
+    }
+  }
+  const maxBet = v.gamblingMaxBet === null || v.gamblingMaxBet === "" ? null : num(v.gamblingMaxBet);
+  if (maxBet !== null && maxBet !== undefined && (!Number.isFinite(maxBet) || maxBet < 1)) {
+    return res.status(400).json({ error: "gamblingMaxBet must be a positive number or empty" });
+  }
+  const settings = await GameSettings.save(req.params.guildId, {
+    gamblingEnabled: v.gamblingEnabled !== undefined ? Boolean(v.gamblingEnabled) : undefined,
+    gamblingMaxBet: maxBet === undefined ? undefined : maxBet,
+    robEnabled: v.robEnabled !== undefined ? Boolean(v.robEnabled) : undefined,
+    workMin: num(v.workMin),
+    workMax: num(v.workMax),
+    workCooldownSeconds: num(v.workCooldownSeconds),
+    weeklyMin: num(v.weeklyMin),
+    weeklyMax: num(v.weeklyMax),
+    bankInterestRate: num(v.bankInterestRate),
+  });
+  res.json({ ok: true, settings });
 });
 
 // Emojis
@@ -412,6 +452,7 @@ router.get("/prefix/:guildId", requireAuth, async (req, res) => {
 router.post("/prefix/:guildId", requireAuth, async (req, res) => {
   const { prefix } = req.body;
   await GuildSettings.setPrefix(req.params.guildId, prefix);
+  invalidateGuildSettings(req.params.guildId);
   res.json({ ok: true });
 });
 
@@ -937,6 +978,7 @@ router.post("/shop/settings/:guildId", requireAuth, async (req, res) => {
     shopInterfaceColor: shopInterfaceColor !== undefined && shopInterfaceColor !== "" ? Number(shopInterfaceColor) : undefined,
     shopInterfaceUseDominantColor: shopInterfaceUseDominantColor !== undefined ? Boolean(shopInterfaceUseDominantColor) : undefined,
   });
+  invalidateGuildSettings(req.params.guildId);
   res.json({ ok: true });
 });
 
@@ -982,6 +1024,7 @@ router.post("/welcome/:guildId", requireAuth, async (req, res) => {
     goodbyeUseDominantColor: values.goodbyeUseDominantColor !== undefined ? Boolean(values.goodbyeUseDominantColor) : undefined,
     goodbyeComponents: values.goodbyeComponents !== undefined ? (Array.isArray(values.goodbyeComponents) ? values.goodbyeComponents : []) : undefined,
   });
+  invalidateGuildSettings(req.params.guildId);
   res.json({ ok: true });
 });
 

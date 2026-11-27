@@ -9,7 +9,7 @@ const getStmt = db.prepare("SELECT * FROM polls WHERE id = ?");
 const getByMessageStmt = db.prepare("SELECT * FROM polls WHERE message_id = ?");
 const setMessageStmt = db.prepare("UPDATE polls SET message_id = ? WHERE id = ?");
 const closeStmt = db.prepare("UPDATE polls SET closed = 1 WHERE id = ?");
-const dueStmt = db.prepare("SELECT * FROM polls WHERE closed = 0 AND ends_at IS NOT NULL AND ends_at <= ?");
+const dueStmt = db.prepare("SELECT * FROM polls WHERE closed = 0 AND ends_at IS NOT NULL AND ends_at <= ? ORDER BY ends_at ASC LIMIT 50");
 
 const insertVote = db.prepare(`
   INSERT INTO poll_votes (poll_id, user_id, option_index, created_at)

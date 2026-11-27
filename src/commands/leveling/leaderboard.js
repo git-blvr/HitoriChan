@@ -28,7 +28,8 @@ export default {
 
     const fields = await Promise.all(rows.map(async (entry, i) => {
       try {
-        const user = await ctx.client.users.fetch(entry.userId);
+        const user = ctx.client.users.cache.get(entry.userId)
+          ?? await ctx.client.users.fetch(entry.userId).catch(() => null);
         return {
           name: `${i + 1}. ${user?.username || "Unknown"}`,
           value: `Level **${entry.level}** · ${entry.totalXp.toLocaleString()} XP`,

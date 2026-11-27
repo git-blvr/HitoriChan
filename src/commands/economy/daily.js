@@ -27,7 +27,12 @@ export default {
       return;
     }
 
-    const { account: claimedAccount, reward } = await claimDaily(ctx.guild.id, ctx.user.id);
+    const claimed = await claimDaily(ctx.guild.id, ctx.user.id);
+    if (!claimed) {
+      await ctx.reply(embWrn(`**Daily Reward Already Claimed**\n\nYour next daily is almost ready — try again in a moment.`));
+      return;
+    }
+    const { account: claimedAccount, reward } = claimed;
     const config = await getGuildEconomyConfig(ctx.guild.id);
     const primaryEmoji = config.primary.emoji ? `${config.primary.emoji} ` : "";
 

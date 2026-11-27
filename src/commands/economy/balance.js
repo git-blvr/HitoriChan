@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { cv2 } from "../../helpers/cv2.js";
-import { getEconomyAccount, getGuildEconomyConfig, getExchangeRate, formatMoney } from "../../utils/economyManager.js";
+import { getEconomyAccount, getGuildEconomyConfig, getExchangeRate, formatMoney, getBankAccount } from "../../utils/economyManager.js";
 import { embErr } from "../../helpers/embeds.js";
 import { resolveTarget } from "../../utils/resolveTarget.js";
 import { get_dominant_color } from "../../utils/color_utils.js";
@@ -33,7 +33,7 @@ export default {
     }
 
     const config = await getGuildEconomyConfig(ctx.guild.id);
-    const account = await getEconomyAccount(ctx.guild.id, target.id);
+    const { account } = await getBankAccount(ctx.guild.id, target.id);
     const rate = getExchangeRate(ctx.guild.id);
 
     const displayName = target.user ? target.user.username : target.username;
@@ -69,6 +69,12 @@ export default {
       fields: [
         { name: `${emoji(config.primary)}${config.primary.name}`, value: `**${formatMoney(account.primary)}**`, inline: false },
         { name: `${emoji(config.secondary)}${config.secondary.name}`, value: `**${formatMoney(account.secondary)}**`, inline: false },
+        ...(account.bank > 0 ? [{ name: `🏦 Bank`, value: `**${formatMoney(account.bank)}**`, inline: false }] : []),
+        ...(account.gamesPlayed > 0 ? [{
+          name: "🎮 Games",
+          value: `${account.gamesWon}W / ${account.gamesPlayed - account.gamesWon}L — won **${formatMoney(account.totalWon)}** total`,
+          inline: false,
+        }] : []),
       ],
       footer: { text: `Exchange Rate: 1 ${config.primary.name} = ${rate} ${config.secondary.name}` },
       timestamp: true,

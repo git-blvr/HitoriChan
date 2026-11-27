@@ -9,6 +9,7 @@ import * as ShopItem from "../models/ShopItem.js";
 import * as ShopPurchase from "../models/ShopPurchase.js";
 import * as EconomyAccount from "../models/EconomyAccount.js";
 import * as GuildSettings from "../models/GuildSettings.js";
+import { db } from "../database/db.js";
 import { cv2, text, mediaGallery, separator } from "../helpers/cv2.js";
 import { getGuildEconomyConfig } from "./economyManager.js";
 import { get_dominant_color } from "../utils/color_utils.js";
@@ -220,64 +221,78 @@ export async function purchaseItem(guildId, userId, itemId, member) {
   if (!item) throw new Error("Item not found.");
   if (item.guildId !== guildId) throw new Error("Item does not belong to this server.");
 
-  const account = await EconomyAccount.getOrCreate(guildId, userId);
-
-  // Currency check
-  if (item.price > 0 && account.primary < item.price) {
-    throw new Error(`Insufficient ${(await getGuildEconomyConfig(guildId)).primary.name}.`);
-  }
-  if (item.priceSecondary > 0 && account.secondary < item.priceSecondary) {
-    throw new Error(`Insufficient ${(await getGuildEconomyConfig(guildId)).secondary.name}.`);
-  }
+  const config = await getGuildEconomyConfig(guildId);
 
   // Role requirement
   if (item.requiresRoleId && !member.roles.cache.has(item.requiresRoleId)) {
     throw new Error("You do not meet the role requirement to buy this item.");
   }
 
-  // Stock
-  if (item.stock !== null && item.stock !== undefined) {
-    const sold = await ShopPurchase.getItemTotalCount(guildId, item.id);
-    if (sold >= item.stock) {
-      throw new Error("This item is out of stock.");
+  // Atomic currency debit — the guarded UPDATE can't overdraw.
+  let spentPrimary = false;
+  if (item.price > 0) {
+    const acc = await EconomyAccount.spend(guildId, userId, "primary", item.price);
+    if (!acc) throw new Error(`Insufficient ${config.primary.name}.`);
+    spentPrimary = true;
+  }
+  if (item.priceSecondary > 0) {
+    const acc = await EconomyAccount.spend(guildId, userId, "secondary", item.priceSecondary);
+    if (!acc) {
+      if (spentPrimary) await EconomyAccount.adjust(guildId, userId, "primary", item.price);
+      throw new Error(`Insufficient ${config.secondary.name}.`);
     }
   }
 
-  // Max purchases per user
-  if (item.maxPurchases !== null && item.maxPurchases !== undefined) {
-    const userCount = await ShopPurchase.getUserItemCount(guildId, userId, item.id);
-    if (userCount >= item.maxPurchases) {
-      throw new Error("You have already bought the maximum amount of this item.");
+  // Stock cap + per-user limit + purchase row, serialized so concurrent
+  // buys can't oversell.
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    if (item.stock !== null && item.stock !== undefined) {
+      const sold = await ShopPurchase.getItemTotalCount(guildId, item.id);
+      if (sold >= item.stock) throw new Error("This item is out of stock.");
     }
+    if (item.maxPurchases !== null && item.maxPurchases !== undefined) {
+      const userCount = await ShopPurchase.getUserItemCount(guildId, userId, item.id);
+      if (userCount >= item.maxPurchases) {
+        throw new Error("You have already bought the maximum amount of this item.");
+      }
+    }
+
+    const account = await EconomyAccount.getOrCreate(guildId, userId);
+    if (item.multiplierType === "earnings" && item.multiplierValue) {
+      account.earningsMultiplier = (account.earningsMultiplier || 1) + (item.multiplierValue || 0);
+    } else if (item.multiplierType === "level" && item.multiplierValue) {
+      account.level = (account.level || 1) + (item.multiplierValue || 0);
+    }
+    if (!account.shopItemIds) account.shopItemIds = [];
+    if (!account.shopItemIds.includes(item.id)) {
+      account.shopItemIds.push(item.id);
+    }
+    await EconomyAccount.save(account);
+
+    const expiresAt = item.expiryDuration ? Date.now() + item.expiryDuration : null;
+    await ShopPurchase.create({ guildId, userId, itemId: item.id, quantity: 1, expiresAt });
+    db.exec("COMMIT");
+    var outAccount = account;
+  } catch (err) {
+    try { db.exec("ROLLBACK"); } catch {}
+    if (spentPrimary) await EconomyAccount.adjust(guildId, userId, "primary", item.price).catch(() => {});
+    if (item.priceSecondary > 0) await EconomyAccount.adjust(guildId, userId, "secondary", item.priceSecondary).catch(() => {});
+    throw err;
   }
 
-  // Deduct currency
-  account.primary -= item.price || 0;
-  account.secondary -= item.priceSecondary || 0;
-
-  // Apply effects
+  // Grant the purchased role last — a hierarchy failure refunds the purchase.
   if (item.roleId && member) {
-    await member.roles.add(item.roleId).catch(() => {
+    const added = await member.roles.add(item.roleId).catch(() => false);
+    if (added === false) {
+      await ShopPurchase.removeAllByItem(guildId, userId, item.id).catch(() => {});
+      if (spentPrimary) await EconomyAccount.adjust(guildId, userId, "primary", item.price).catch(() => {});
+      if (item.priceSecondary > 0) await EconomyAccount.adjust(guildId, userId, "secondary", item.priceSecondary).catch(() => {});
       throw new Error("Could not assign the role. Make sure the bot's role is higher than the item role.");
-    });
+    }
   }
 
-  if (item.multiplierType === "earnings" && item.multiplierValue) {
-    account.earningsMultiplier = (account.earningsMultiplier || 1) + (item.multiplierValue || 0);
-  } else if (item.multiplierType === "level" && item.multiplierValue) {
-    account.level = (account.level || 1) + (item.multiplierValue || 0);
-  }
-
-  if (!account.shopItemIds) account.shopItemIds = [];
-  if (!account.shopItemIds.includes(item.id)) {
-    account.shopItemIds.push(item.id);
-  }
-
-  await EconomyAccount.save(account);
-  const expiresAt = item.expiryDuration ? Date.now() + item.expiryDuration : null;
-  await ShopPurchase.create({ guildId, userId, itemId: item.id, quantity: 1, expiresAt });
-
-  return { account, item };
+  return { account: outAccount, item };
 }
 
 export async function getShopSettings(guildId) {

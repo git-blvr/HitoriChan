@@ -81,7 +81,9 @@ export async function handleStreak(message) {
 
   const profile = await StreakProfile.getOrCreate(author.id, guild.id);
 
-  const member = await guild.members.fetch(author.id).catch(() => null);
+  const member = message.member
+    ?? guild.members.cache.get(author.id)
+    ?? (await guild.members.fetch(author.id).catch(() => null));
   if (!member) return;
 
   const notifyChannel = settings.notifyChannelId
