@@ -626,6 +626,21 @@ function toAstValue(value) {
   return { type: "literal", value };
 }
 
+// serde_json rejects the \uD8xx–\uDFFF escapes JSON.stringify emits for lone
+// surrogates, which can arrive via Discord payloads (nicknames, channel names,
+// message content) or stored JSON. Replace them with U+FFFD — in keys too,
+// since counters/variables maps carry arbitrary key strings.
+function wellFormedDeep(value) {
+  if (typeof value === "string") return value.toWellFormed();
+  if (Array.isArray(value)) return value.map(wellFormedDeep);
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k.toWellFormed()] = wellFormedDeep(v);
+    return out;
+  }
+  return value;
+}
+
 // Normalized plain-object context for the Rust evaluator — mirrors
 // getEntityField/callMethod lookups without discord.js objects.
 function buildNativeContext(context, quest) {
@@ -671,8 +686,8 @@ function evaluateQuestCondition(quest, context) {
     try {
       const r = native.evalQuest(
         quest.dsl || null,
-        quest.condition?.blocks?.length ? JSON.stringify(quest.condition) : null,
-        JSON.stringify(buildNativeContext(context, quest))
+        quest.condition?.blocks?.length ? JSON.stringify(wellFormedDeep(quest.condition)) : null,
+        JSON.stringify(wellFormedDeep(buildNativeContext(context, quest)))
       );
       if (!r.valid) return { valid: false, result: false };
       return { valid: true, result: r.result };
@@ -1082,7 +1097,7 @@ export function testParse(dsl) {
 
 export function evaluateConditionForTest(dsl, quest, context) {
   if (native?.evalQuest) {
-    const r = native.evalQuest(dsl, null, JSON.stringify(buildNativeContext(context, quest)));
+    const r = native.evalQuest(dsl, null, JSON.stringify(wellFormedDeep(buildNativeContext(context, quest))));
     return Boolean(r.valid && r.result);
   }
   const tokens = tokenize(dsl);

@@ -38,27 +38,39 @@ const EMOTE_RULES = {
 };
 const EMOTE_ORDER = ["sob", "stutter", "blush", "exhausted", "tired", "happy", "nod"];
 
-function linkify(text, regex, gifOrPicker) {
+function linkifyFirst(text, regex, gifOrPicker) {
   regex.lastIndex = 0;
+  let done = false;
   // Skip matches already inside a markdown link/image.
   return text.replace(regex, (match, offset, str) => {
+    if (done) return match;
     const tail = str.slice(offset + match.length);
     if (tail.startsWith("](") || str.slice(0, offset).endsWith("[")) return match;
+    done = true;
     const url = typeof gifOrPicker === "function" ? gifOrPicker() : gifOrPicker;
     return `[${match}](${url})`;
   });
 }
 
+// Pick the ONE most relevant emotion (most phrase matches; ties go to the
+// earlier emotion in EMOTE_ORDER) and linkify only its first match — so a
+// reply carries a single GIF embed no matter how many cues it has.
 export function linkifyEmotes(text, emoteGifs) {
   if (!text || !emoteGifs) return text;
+  let best = null;
   for (const emotion of EMOTE_ORDER) {
     const urls = emoteGifs[emotion];
     const regex = EMOTE_RULES[emotion];
     if (!urls?.length || !regex) continue;
-    const pick = urls.length === 1 ? urls[0] : () => urls[Math.floor(Math.random() * urls.length)];
-    text = linkify(text, regex, pick);
+    regex.lastIndex = 0;
+    const count = (text.match(regex) ?? []).length;
+    if (count > (best?.count ?? 0)) best = { urls, regex, count };
   }
-  return text;
+  if (!best) return text;
+  const pick = best.urls.length === 1
+    ? best.urls[0]
+    : () => best.urls[Math.floor(Math.random() * best.urls.length)];
+  return linkifyFirst(text, best.regex, pick);
 }
 
 export function buildContextMessages(history, userMessage, imageURLs) {
